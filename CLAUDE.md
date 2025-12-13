@@ -1,41 +1,68 @@
 # Thinkers Chat
 
-A real-time, multi-party chat simulator where users engage in group conversations with AI-simulated historical and contemporary thinkers.
+Real-time multi-party chat with AI-simulated historical/contemporary thinkers.
 
-## Project Overview
+## IMPORTANT Rules
 
-This web application creates an immersive chat experience where users can discuss topics with simulated versions of famous philosophers, scientists, writers, and other notable figures. The simulation aims to authentically replicate each thinker's communication style, intellectual positions, and personality.
+- ALWAYS write tests alongside code (unit, integration, E2E)
+- NEVER commit code without tests - minimum 80% coverage
+- Commit and push frequently at logical checkpoints
+- See REQUIREMENTS.md for full product specification
 
 ## Tech Stack
 
-- **Frontend**: (TBD - considering React/Next.js or SvelteKit)
-- **Backend**: (TBD - considering Node.js/Python)
-- **LLM Integration**: Claude API for agent simulation
-- **Real-time Communication**: WebSockets for live chat experience
+- **Frontend**: Next.js (TypeScript strict mode)
+- **Backend**: Python / FastAPI
+- **Database**: PostgreSQL
+- **LLM**: Claude API
+- **Real-time**: WebSockets
+- **Deployment**: Railway
 
-## Key Concepts
+## Commands
 
-- **Thinker Agents**: LLM-based agents that simulate specific historical/contemporary figures
-- **Chat Room**: A conversation space with one user and multiple thinker agents
-- **Concurrent Responses**: Multiple agents may "type" and respond simultaneously
-- **Topic Context**: Conversations are grounded in a user-specified topic
+```bash
+# Backend
+cd backend
+uv run pytest                    # run tests
+uv run pytest --cov=app          # run tests with coverage
+uv run ruff check .              # lint
+uv run ruff format .             # format
+uv run mypy .                    # type check
+uv run uvicorn app.main:app --reload  # dev server
 
-## Development Commands
+# Frontend
+cd frontend
+npm test                         # jest tests
+npm run lint                     # eslint
+npm run typecheck                # tsc
+npm run dev                      # dev server
+npx playwright test              # e2e tests
 
-(To be added as the project develops)
+# Full test suite
+./scripts/test-all.sh
+```
 
-## Architecture Notes
+## Testing
 
-- Each thinker agent runs as an independent process/thread to enable concurrent responses
-- Agents should have configurable "personality profiles" with biographical context, writing samples, and known positions
-- Response timing should feel natural (varying delays, occasional interruptions/overlaps)
+- **Backend**: pytest + pytest-asyncio + pytest-cov
+- **Frontend**: Jest + React Testing Library
+- **E2E**: Playwright
+- Coverage minimum: 80%
 
 ## Code Style
 
-- (To be defined based on chosen tech stack)
+- **Python**: ruff (format + lint + isort), mypy strict
+- **TypeScript**: ESLint + Prettier, strict mode
+- Run formatters before committing
 
-## Important Considerations
+## Git
 
-- Agents should clearly indicate they are simulations, not the actual people
-- Handle controversial historical figures and viewpoints responsibly
-- Consider rate limiting and cost management for LLM API calls
+- Work on `main` branch
+- Commit frequently with clear messages
+- One logical change per commit
+
+## Architecture
+
+- Thinker agents run as independent async tasks (concurrent responses)
+- Conversation only progresses when user has chat window open
+- Agents resume automatically when user returns to chat

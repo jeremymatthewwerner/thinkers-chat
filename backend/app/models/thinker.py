@@ -53,6 +53,10 @@ class ConversationThinker(Base, TimestampMixin):
         nullable=False,
         default="#6366f1",
     )
+    image_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
 
     # Relationships
     conversation: Mapped["Conversation"] = relationship(

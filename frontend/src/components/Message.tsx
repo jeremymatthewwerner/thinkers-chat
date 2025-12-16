@@ -4,12 +4,15 @@
 
 'use client';
 
-import type { Message as MessageType } from '@/types';
+import type { ConversationThinker, Message as MessageType } from '@/types';
+import { ThinkerAvatar } from './ThinkerAvatar';
 
 export interface MessageProps {
   message: MessageType;
   /** Color for thinker messages */
   thinkerColor?: string;
+  /** Thinker data for avatar image */
+  thinker?: ConversationThinker;
 }
 
 // Default colors for thinkers if no color specified
@@ -29,7 +32,7 @@ function getColorFromName(name: string): string {
   return DEFAULT_THINKER_COLORS[hash % DEFAULT_THINKER_COLORS.length];
 }
 
-export function Message({ message, thinkerColor }: MessageProps) {
+export function Message({ message, thinkerColor, thinker }: MessageProps) {
   const { sender_type, sender_name, content, cost, created_at } = message;
 
   const isUser = sender_type === 'user';
@@ -65,8 +68,19 @@ export function Message({ message, thinkerColor }: MessageProps) {
       data-testid="message"
       data-sender-type={sender_type}
     >
+      {/* Thinker avatar */}
+      {!isUser && sender_name && (
+        <div className="flex-shrink-0 mr-2 mt-1">
+          <ThinkerAvatar
+            name={sender_name}
+            imageUrl={thinker?.image_url}
+            size="md"
+            color={color}
+          />
+        </div>
+      )}
       <div
-        className={`max-w-[80%] ${
+        className={`max-w-[75%] ${
           isUser
             ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm'
             : 'bg-zinc-100 dark:bg-zinc-800 rounded-2xl rounded-bl-sm'

@@ -26,6 +26,9 @@ export type { NewChatModalProps } from './NewChatModal';
 export { Sidebar } from './Sidebar';
 export type { SidebarProps } from './Sidebar';
 
+export { ThinkerAvatar } from './ThinkerAvatar';
+export type { ThinkerAvatarProps } from './ThinkerAvatar';
+
 export { ThinkerSelector } from './ThinkerSelector';
 export type { ThinkerSelectorProps, SelectedThinker } from './ThinkerSelector';
 

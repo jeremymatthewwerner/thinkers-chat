@@ -54,36 +54,43 @@ MOCK_THINKERS: dict[str, ThinkerProfile] = {
 }
 
 
-def get_mock_suggestions(_topic: str, count: int) -> list[ThinkerSuggestion]:
-    """Get mock thinker suggestions for development."""
-    suggestions = [
-        ThinkerSuggestion(
-            name="Socrates",
-            reason="Master of questioning and examining fundamental assumptions.",
-            profile=MOCK_THINKERS["socrates"],
-        ),
-        ThinkerSuggestion(
-            name="Albert Einstein",
-            reason="Brilliant at connecting abstract concepts to real-world understanding.",
-            profile=MOCK_THINKERS["albert einstein"],
-        ),
-        ThinkerSuggestion(
-            name="Maya Angelou",
-            reason="Brings wisdom from lived experience and artistic expression.",
-            profile=MOCK_THINKERS["maya angelou"],
-        ),
-        ThinkerSuggestion(
-            name="Aristotle",
-            reason="Systematic thinker who categorizes and builds logical frameworks.",
-            profile=MOCK_THINKERS["aristotle"],
-        ),
-        ThinkerSuggestion(
-            name="Marie Curie",
-            reason="Represents empirical science and perseverance in discovery.",
-            profile=MOCK_THINKERS["marie curie"],
-        ),
+async def get_mock_suggestions(_topic: str, count: int) -> list[ThinkerSuggestion]:
+    """Get mock thinker suggestions for development with Wikipedia images."""
+    from app.services.thinker import thinker_service
+    import asyncio
+
+    base_suggestions = [
+        ("Socrates", "socrates", "Master of questioning and examining fundamental assumptions."),
+        ("Albert Einstein", "albert einstein", "Brilliant at connecting abstract concepts to real-world understanding."),
+        ("Maya Angelou", "maya angelou", "Brings wisdom from lived experience and artistic expression."),
+        ("Aristotle", "aristotle", "Systematic thinker who categorizes and builds logical frameworks."),
+        ("Marie Curie", "marie curie", "Represents empirical science and perseverance in discovery."),
     ]
-    return suggestions[:count]
+
+    # Fetch Wikipedia images in parallel for performance
+    selected = base_suggestions[:count]
+    image_tasks = [thinker_service.get_wikipedia_image(name) for name, _, _ in selected]
+    images = await asyncio.gather(*image_tasks, return_exceptions=True)
+
+    suggestions = []
+    for (name, key, reason), image in zip(selected, images, strict=False):
+        profile = MOCK_THINKERS[key]
+        image_url = image if isinstance(image, str) else None
+        profile_with_image = ThinkerProfile(
+            name=profile.name,
+            bio=profile.bio,
+            positions=profile.positions,
+            style=profile.style,
+            image_url=image_url,
+        )
+        suggestions.append(
+            ThinkerSuggestion(
+                name=name,
+                reason=reason,
+                profile=profile_with_image,
+            )
+        )
+    return suggestions
 
 
 @router.post("/suggest", response_model=list[ThinkerSuggestion])
@@ -100,7 +107,7 @@ async def suggest_thinkers(
 
     if not settings.anthropic_api_key:
         # Return mock suggestions for development
-        return get_mock_suggestions(data.topic, data.count)
+        return await get_mock_suggestions(data.topic, data.count)
 
     # Use the thinker service to get real suggestions
     suggestions = await thinker_service.suggest_thinkers(data.topic, data.count)
@@ -108,7 +115,7 @@ async def suggest_thinkers(
         return suggestions
 
     # Fallback to mock suggestions if API call fails
-    return get_mock_suggestions(data.topic, data.count)
+    return await get_mock_suggestions(data.topic, data.count)
 
 
 @router.post("/validate", response_model=ThinkerValidateResponse)
@@ -124,12 +131,22 @@ async def validate_thinker(
     settings = get_settings()
     name_lower = data.name.lower()
 
-    # Check mock thinkers first
+    # Check mock thinkers (for names and bios), but always fetch Wikipedia image
     if name_lower in MOCK_THINKERS:
+        profile = MOCK_THINKERS[name_lower]
+        # Fetch Wikipedia image for the thinker
+        image_url = await thinker_service.get_wikipedia_image(profile.name)
+        profile_with_image = ThinkerProfile(
+            name=profile.name,
+            bio=profile.bio,
+            positions=profile.positions,
+            style=profile.style,
+            image_url=image_url,
+        )
         return ThinkerValidateResponse(
             valid=True,
-            name=MOCK_THINKERS[name_lower].name,
-            profile=MOCK_THINKERS[name_lower],
+            name=profile.name,
+            profile=profile_with_image,
         )
 
     if not settings.anthropic_api_key:

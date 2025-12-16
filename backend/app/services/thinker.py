@@ -6,6 +6,7 @@ import random
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING
 
+import httpx
 from anthropic import AsyncAnthropic
 from anthropic.types import TextBlock
 
@@ -36,6 +37,55 @@ class ThinkerService:
         if self._client is None and self.settings.anthropic_api_key:
             self._client = AsyncAnthropic(api_key=self.settings.anthropic_api_key)
         return self._client
+
+    async def get_wikipedia_image(self, name: str) -> str | None:
+        """Fetch the Wikipedia image URL for a person.
+
+        Uses the Wikipedia API to get the main image from the person's page.
+        Returns None if no image found.
+        """
+        try:
+            # Wikipedia requires a User-Agent header
+            headers = {
+                "User-Agent": "ThinkersChatApp/1.0 (https://github.com/example/thinkers-chat; contact@example.com)"
+            }
+            async with httpx.AsyncClient(headers=headers) as client:
+                # First, search for the Wikipedia page title
+                search_url = "https://en.wikipedia.org/w/api.php"
+                search_params = {
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": name,
+                    "format": "json",
+                    "srlimit": 1,
+                }
+                response = await client.get(search_url, params=search_params, timeout=5.0)
+                data = response.json()
+
+                if not data.get("query", {}).get("search"):
+                    return None
+
+                page_title = data["query"]["search"][0]["title"]
+
+                # Get the page images
+                image_params = {
+                    "action": "query",
+                    "titles": page_title,
+                    "prop": "pageimages",
+                    "format": "json",
+                    "pithumbsize": 200,  # Request 200px thumbnail
+                }
+                response = await client.get(search_url, params=image_params, timeout=5.0)
+                data = response.json()
+
+                pages = data.get("query", {}).get("pages", {})
+                for page in pages.values():
+                    if "thumbnail" in page:
+                        return page["thumbnail"]["source"]
+
+                return None
+        except Exception:
+            return None
 
     async def suggest_thinkers(self, topic: str, count: int = 3) -> list[ThinkerSuggestion]:
         """Suggest diverse thinkers for a given topic.
@@ -141,14 +191,25 @@ Return ONLY the JSON array, no other text."""
             content = first_block.text
             data = json.loads(content)
 
-            return [
-                ThinkerSuggestion(
-                    name=item["name"],
-                    reason=item["reason"],
-                    profile=ThinkerProfile(**item["profile"]),
+            # Build suggestions with image URLs (fetched in parallel)
+            suggestions = []
+            image_tasks = [self.get_wikipedia_image(item["name"]) for item in data]
+            images = await asyncio.gather(*image_tasks, return_exceptions=True)
+
+            for item, image in zip(data, images, strict=False):
+                image_url = image if isinstance(image, str) else None
+                profile = ThinkerProfile(
+                    **item["profile"],
+                    image_url=image_url,
                 )
-                for item in data
-            ]
+                suggestions.append(
+                    ThinkerSuggestion(
+                        name=item["name"],
+                        reason=item["reason"],
+                        profile=profile,
+                    )
+                )
+            return suggestions
         except Exception:
             return []
 
@@ -197,7 +258,10 @@ Return ONLY the JSON, no other text."""
             data = json.loads(content)
 
             if data.get("valid"):
-                return True, ThinkerProfile(**data["profile"])
+                # Fetch Wikipedia image for the validated thinker
+                profile_data = data["profile"]
+                image_url = await self.get_wikipedia_image(profile_data["name"])
+                return True, ThinkerProfile(**profile_data, image_url=image_url)
             return False, None
         except Exception:
             return False, None

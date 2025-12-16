@@ -136,7 +136,8 @@ test.describe('New Conversation Flow', () => {
     const firstSuggestion = page.getByTestId('thinker-suggestion').first();
     await expect(firstSuggestion).toBeVisible({ timeout: 10000 });
     // Store the initial name to verify the refresh happened (could compare, but API may return same)
-    await firstSuggestion.locator('.font-medium').textContent();
+    // Use div.font-medium specifically (not span.font-medium which is the avatar initials)
+    await firstSuggestion.locator('div.font-medium').textContent();
 
     // Click refresh button
     const refreshButton = page.getByTestId('refresh-suggestion').first();

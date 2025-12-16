@@ -13,6 +13,7 @@ export interface ThinkerProfile {
   bio: string;
   positions: string;
   style: string;
+  image_url?: string | null;
 }
 
 export interface ThinkerSuggestion {
@@ -28,6 +29,7 @@ export interface ConversationThinker {
   positions: string;
   style: string;
   color: string;
+  image_url?: string | null;
 }
 
 export interface Message {

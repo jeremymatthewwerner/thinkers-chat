@@ -122,6 +122,7 @@ export interface ThinkerCreateData {
   positions: string;
   style: string;
   color?: string;
+  image_url?: string | null;
 }
 
 export interface CreateConversationData {

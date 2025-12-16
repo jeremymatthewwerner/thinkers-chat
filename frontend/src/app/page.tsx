@@ -113,7 +113,7 @@ export default function Home() {
   const handleCreateConversation = useCallback(
     async (
       topic: string,
-      thinkers: { name: string; bio: string; positions: string; style: string }[]
+      thinkers: { name: string; bio: string; positions: string; style: string; image_url?: string | null }[]
     ) => {
       const conv = await api.createConversation({
         topic,

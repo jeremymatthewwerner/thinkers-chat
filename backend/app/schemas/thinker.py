@@ -13,6 +13,7 @@ class ThinkerCreate(BaseModel):
     positions: str
     style: str
     color: str = Field(default="#6366f1", pattern=r"^#[0-9a-fA-F]{6}$")
+    image_url: str | None = None
 
 
 class ThinkerResponse(BaseModel):
@@ -25,6 +26,7 @@ class ThinkerResponse(BaseModel):
     positions: str
     style: str
     color: str
+    image_url: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -37,6 +39,7 @@ class ThinkerProfile(BaseModel):
     bio: str
     positions: str
     style: str
+    image_url: str | None = None
 
 
 class ThinkerSuggestion(BaseModel):

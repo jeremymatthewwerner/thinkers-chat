@@ -6,6 +6,7 @@
 
 import { useCallback, useState } from 'react';
 import type { ThinkerProfile, ThinkerSuggestion } from '@/types';
+import { ThinkerAvatar } from './ThinkerAvatar';
 
 export interface SelectedThinker {
   name: string;
@@ -113,9 +114,14 @@ export function ThinkerSelector({
             {selectedThinkers.map((thinker) => (
               <div
                 key={thinker.name}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+                className="flex items-center gap-2 pl-1 pr-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
                 data-testid="selected-thinker"
               >
+                <ThinkerAvatar
+                  name={thinker.name}
+                  imageUrl={thinker.profile.image_url}
+                  size="sm"
+                />
                 <span>{thinker.name}</span>
                 <button
                   onClick={() => onRemove(thinker.name)}
@@ -156,12 +162,19 @@ export function ThinkerSelector({
                   data-testid="thinker-suggestion"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {suggestion.name}
-                      </div>
-                      <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                        {suggestion.reason}
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <ThinkerAvatar
+                        name={suggestion.name}
+                        imageUrl={suggestion.profile.image_url}
+                        size="lg"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                          {suggestion.name}
+                        </div>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                          {suggestion.reason}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">

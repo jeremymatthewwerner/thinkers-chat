@@ -19,6 +19,7 @@ export interface ThinkerData {
   bio: string;
   positions: string;
   style: string;
+  image_url?: string | null;
 }
 
 export interface NewChatModalProps {
@@ -105,6 +106,7 @@ export function NewChatModal({
           bio: t.profile.bio,
           positions: t.profile.positions,
           style: t.profile.style,
+          image_url: t.profile.image_url,
         }))
       );
       onClose();

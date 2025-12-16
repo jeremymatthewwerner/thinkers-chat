@@ -7,6 +7,7 @@
 import { useEffect, useRef } from 'react';
 import type { ConversationThinker, Message as MessageType } from '@/types';
 import { Message } from './Message';
+import { ThinkerAvatar } from './ThinkerAvatar';
 
 export interface MessageListProps {
   messages: MessageType[];
@@ -21,13 +22,13 @@ export function MessageList({
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Create a map of thinker colors
-  const thinkerColors = thinkers.reduce(
+  // Create a map of thinker data
+  const thinkerMap = thinkers.reduce(
     (acc, t) => {
-      acc[t.name] = t.color;
+      acc[t.name] = t;
       return acc;
     },
-    {} as Record<string, string>
+    {} as Record<string, ConversationThinker>
   );
 
   // Auto-scroll to bottom when new messages arrive or typing status changes
@@ -51,33 +52,37 @@ export function MessageList({
       className="flex-1 overflow-y-auto px-4 py-4"
       data-testid="message-list"
     >
-      {messages.map((msg) => (
-        <Message
-          key={msg.id}
-          message={msg}
-          thinkerColor={
-            msg.sender_name ? thinkerColors[msg.sender_name] : undefined
-          }
-        />
-      ))}
+      {messages.map((msg) => {
+        const thinker = msg.sender_name ? thinkerMap[msg.sender_name] : undefined;
+        return (
+          <Message
+            key={msg.id}
+            message={msg}
+            thinkerColor={thinker?.color}
+            thinker={thinker}
+          />
+        );
+      })}
       {/* Inline typing indicators for thinkers */}
-      {typingThinkers.map((name) => (
+      {typingThinkers.map((name) => {
+        const thinker = thinkerMap[name];
+        return (
         <div
           key={`typing-${name}`}
           className="mb-4 flex items-start gap-3"
           data-testid="thinker-typing-indicator"
         >
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-            style={{ backgroundColor: thinkerColors[name] || '#6b7280' }}
-          >
-            {name.charAt(0).toUpperCase()}
-          </div>
+          <ThinkerAvatar
+            name={name}
+            imageUrl={thinker?.image_url}
+            size="md"
+            color={thinker?.color}
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span
                 className="text-sm font-medium"
-                style={{ color: thinkerColors[name] || '#6b7280' }}
+                style={{ color: thinker?.color || '#6b7280' }}
               >
                 {name}
               </span>
@@ -103,7 +108,8 @@ export function MessageList({
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
       <div ref={bottomRef} />
     </div>
   );

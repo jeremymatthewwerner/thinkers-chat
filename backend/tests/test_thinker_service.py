@@ -75,7 +75,7 @@ class TestSuggestThinkers:
         """Test that suggest_thinkers returns empty list without client."""
         service = ThinkerService()
         # Mock the client property to return None
-        with patch.object(type(service), 'client', new_callable=PropertyMock) as mock_client:
+        with patch.object(type(service), "client", new_callable=PropertyMock) as mock_client:
             mock_client.return_value = None
             result = await service.suggest_thinkers("philosophy", 3)
             assert result == []
@@ -121,7 +121,7 @@ class TestValidateThinker:
         """Test that validate_thinker returns False without client."""
         service = ThinkerService()
         # Mock the client property to return None
-        with patch.object(type(service), 'client', new_callable=PropertyMock) as mock_client:
+        with patch.object(type(service), "client", new_callable=PropertyMock) as mock_client:
             mock_client.return_value = None
             is_valid, profile = await service.validate_thinker("Socrates")
             assert is_valid is False
@@ -193,7 +193,7 @@ class TestGenerateResponse:
         messages: Any = []
 
         # Mock the client property to return None
-        with patch.object(type(service), 'client', new_callable=PropertyMock) as mock_client:
+        with patch.object(type(service), "client", new_callable=PropertyMock) as mock_client:
             mock_client.return_value = None
             response, cost = await service.generate_response(thinker, messages, "test")
             assert response == ""

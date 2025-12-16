@@ -187,6 +187,7 @@ export default function Home() {
         isPaused={isPaused}
         onPause={sendPause}
         onResume={sendResume}
+        onNewChat={() => setModalOpen(true)}
       />
 
       <NewChatModal

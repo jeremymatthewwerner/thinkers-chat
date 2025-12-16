@@ -197,7 +197,7 @@ export function NewChatModal({
       }}
       data-testid="new-chat-modal"
     >
-      <div className="w-full max-w-lg mx-4 bg-white dark:bg-zinc-900 rounded-xl shadow-xl">
+      <div className="w-full max-w-lg mx-4 bg-white dark:bg-zinc-900 rounded-xl shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-700">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -224,7 +224,7 @@ export function NewChatModal({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 flex-1 overflow-y-auto">
           {step === 'topic' ? (
             <form onSubmit={handleTopicSubmit}>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -278,7 +278,7 @@ export function NewChatModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between px-6 py-4 border-t border-zinc-200 dark:border-zinc-700">
+        <div className="flex justify-between px-6 py-4 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0">
           {step === 'thinkers' && (
             <button
               onClick={() => setStep('topic')}

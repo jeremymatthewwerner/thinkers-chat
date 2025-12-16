@@ -71,7 +71,7 @@ export async function getSession(): Promise<Session | null> {
   const sid = getSessionId();
   if (!sid) return null;
   try {
-    return await fetchWithSession<Session>(`/api/sessions/${sid}`);
+    return await fetchWithSession<Session>('/api/sessions/me');
   } catch {
     return null;
   }
@@ -84,8 +84,30 @@ export async function ensureSession(): Promise<Session> {
 }
 
 // Conversation API
+
+// Backend response format (different from frontend ConversationSummary)
+interface BackendConversationResponse {
+  id: string;
+  session_id: string;
+  topic: string;
+  title: string | null;
+  is_active: boolean;
+  created_at: string;
+  thinkers: Array<{ name: string; bio: string; positions: string; style: string; color: string }>;
+}
+
 export async function getConversations(): Promise<ConversationSummary[]> {
-  return fetchWithSession<ConversationSummary[]>('/api/conversations');
+  const response = await fetchWithSession<BackendConversationResponse[]>('/api/conversations');
+  // Transform backend response to frontend ConversationSummary format
+  return response.map((conv) => ({
+    id: conv.id,
+    topic: conv.topic,
+    thinker_names: conv.thinkers.map((t) => t.name),
+    message_count: 0, // Backend doesn't return this in list endpoint
+    total_cost: 0, // Backend doesn't return this in list endpoint
+    created_at: conv.created_at,
+    updated_at: conv.created_at, // Backend doesn't have updated_at, use created_at
+  }));
 }
 
 export async function getConversation(id: string): Promise<Conversation> {

@@ -47,8 +47,12 @@ describe('API Client', () => {
 
       expect(session).toEqual(mockSession);
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/sessions/session-123'),
-        expect.any(Object)
+        expect.stringContaining('/api/sessions/me'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Session-ID': 'session-123',
+          }),
+        })
       );
     });
 
@@ -112,17 +116,37 @@ describe('API Client', () => {
     });
 
     it('gets all conversations', async () => {
-      const mockConversations = [
-        { id: 'conv-1', topic: 'Philosophy', thinker_names: ['Socrates'] },
+      // Backend returns conversations with thinkers array
+      const mockBackendResponse = [
+        {
+          id: 'conv-1',
+          session_id: 'session-123',
+          topic: 'Philosophy',
+          title: null,
+          is_active: true,
+          created_at: '2024-01-01T00:00:00Z',
+          thinkers: [{ name: 'Socrates', bio: 'bio', positions: 'pos', style: 'style', color: '#fff' }],
+        },
       ];
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockConversations),
+        json: () => Promise.resolve(mockBackendResponse),
       });
 
       const conversations = await api.getConversations();
 
-      expect(conversations).toEqual(mockConversations);
+      // Frontend transforms to ConversationSummary format
+      expect(conversations).toEqual([
+        {
+          id: 'conv-1',
+          topic: 'Philosophy',
+          thinker_names: ['Socrates'],
+          message_count: 0,
+          total_cost: 0,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ]);
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/conversations'),
         expect.objectContaining({

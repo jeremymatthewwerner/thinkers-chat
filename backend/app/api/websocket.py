@@ -254,9 +254,7 @@ async def websocket_endpoint(
                 conv_id: str, thinker_name: str, content: str, cost: float
             ) -> Message:
                 async with async_session_maker() as session:
-                    return await save_thinker_message(
-                        conv_id, thinker_name, content, cost, session
-                    )
+                    return await save_thinker_message(conv_id, thinker_name, content, cost, session)
 
             # Start thinker agents
             await thinker_service.start_conversation_agents(

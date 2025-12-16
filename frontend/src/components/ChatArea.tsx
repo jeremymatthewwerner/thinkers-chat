@@ -21,6 +21,7 @@ export interface ChatAreaProps {
   isPaused?: boolean;
   onPause?: () => void;
   onResume?: () => void;
+  onNewChat?: () => void;
 }
 
 export function ChatArea({
@@ -35,6 +36,7 @@ export function ChatArea({
   isPaused = false,
   onPause,
   onResume,
+  onNewChat,
 }: ChatAreaProps) {
   if (!conversation) {
     return (
@@ -74,6 +76,25 @@ export function ChatArea({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* New Chat button */}
+          {onNewChat && (
+            <button
+              onClick={onNewChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              data-testid="new-chat-button-header"
+              title="Start a new conversation"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4"
+              >
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+              </svg>
+              New Chat
+            </button>
+          )}
           {/* Pause/Resume button */}
           {(onPause || onResume) && (
             <button

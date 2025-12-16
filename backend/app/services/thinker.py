@@ -219,8 +219,8 @@ Return ONLY the JSON, no other text."""
         # sender_type can be either string or enum depending on how SQLAlchemy returns it
         def get_sender_label(msg: "Message") -> str:
             sender = msg.sender_type
-            is_user = (hasattr(sender, 'value') and sender.value == 'user') or sender == 'user'
-            return 'User' if is_user else (msg.sender_name or 'Unknown')
+            is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
+            return "User" if is_user else (msg.sender_name or "Unknown")
 
         conversation_history = "\n".join(
             f"{get_sender_label(m)}: {m.content}"

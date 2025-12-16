@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Application settings
     debug: bool = False
 
+    # CORS settings (comma-separated list of allowed origins)
+    cors_origins: str = "http://localhost:3000"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -7,7 +7,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import api_router, ws_router
+from app.core.config import get_settings
 from app.core.database import close_db, init_db
+
+settings = get_settings()
 
 
 @asynccontextmanager
@@ -27,10 +30,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration for development
+# CORS configuration - origins from environment variable
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_origins=[origin.strip() for origin in settings.cors_origins.split(",")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

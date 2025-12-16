@@ -3,6 +3,7 @@
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationResponse,
+    ConversationSummary,
     ConversationWithMessages,
 )
 from app.schemas.message import MessageCreate, MessageResponse
@@ -20,6 +21,7 @@ from app.schemas.thinker import (
 __all__ = [
     "ConversationCreate",
     "ConversationResponse",
+    "ConversationSummary",
     "ConversationWithMessages",
     "MessageCreate",
     "MessageResponse",

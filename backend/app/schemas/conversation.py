@@ -29,7 +29,15 @@ class ConversationResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ConversationSummary(ConversationResponse):
+    """Schema for conversation list with message count and cost."""
+
+    message_count: int = 0
+    total_cost: float = 0.0
+
+
 class ConversationWithMessages(ConversationResponse):
     """Schema for conversation with messages."""
 
     messages: list[MessageResponse]
+    total_cost: float = 0.0

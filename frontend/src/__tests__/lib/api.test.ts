@@ -116,7 +116,7 @@ describe('API Client', () => {
     });
 
     it('gets all conversations', async () => {
-      // Backend returns conversations with thinkers array
+      // Backend returns conversations with thinkers array and counts
       const mockBackendResponse = [
         {
           id: 'conv-1',
@@ -126,6 +126,8 @@ describe('API Client', () => {
           is_active: true,
           created_at: '2024-01-01T00:00:00Z',
           thinkers: [{ name: 'Socrates', bio: 'bio', positions: 'pos', style: 'style', color: '#fff' }],
+          message_count: 5,
+          total_cost: 0.123,
         },
       ];
       (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -141,8 +143,8 @@ describe('API Client', () => {
           id: 'conv-1',
           topic: 'Philosophy',
           thinker_names: ['Socrates'],
-          message_count: 0,
-          total_cost: 0,
+          message_count: 5,
+          total_cost: 0.123,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
         },

@@ -12,6 +12,7 @@ from app.models.message import SenderType
 from app.schemas import (
     ConversationCreate,
     ConversationResponse,
+    ConversationSummary,
     ConversationWithMessages,
     MessageCreate,
     MessageResponse,
@@ -57,19 +58,41 @@ async def create_conversation(
     return conversation
 
 
-@router.get("", response_model=list[ConversationResponse])
+@router.get("", response_model=list[ConversationSummary])
 async def list_conversations(
     session: Session = Depends(get_or_create_session),
     db: AsyncSession = Depends(get_db),
-) -> list[Conversation]:
-    """List all conversations for the current session."""
+) -> list[ConversationSummary]:
+    """List all conversations for the current session with message counts."""
     result = await db.execute(
         select(Conversation)
         .where(Conversation.session_id == session.id)
-        .options(selectinload(Conversation.thinkers))
+        .options(
+            selectinload(Conversation.thinkers),
+            selectinload(Conversation.messages),
+        )
         .order_by(Conversation.created_at.desc())
     )
-    return list(result.scalars().all())
+    conversations = result.scalars().all()
+
+    # Build summaries with message counts and costs
+    summaries = []
+    for conv in conversations:
+        total_cost = sum(msg.cost or 0.0 for msg in conv.messages)
+        summaries.append(
+            ConversationSummary(
+                id=conv.id,
+                session_id=conv.session_id,
+                topic=conv.topic,
+                title=conv.title,
+                is_active=conv.is_active,
+                created_at=conv.created_at,
+                thinkers=conv.thinkers,
+                message_count=len(conv.messages),
+                total_cost=total_cost,
+            )
+        )
+    return summaries
 
 
 @router.get("/{conversation_id}", response_model=ConversationWithMessages)
@@ -94,6 +117,28 @@ async def get_conversation(
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
+
+
+@router.delete("/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    session: Session = Depends(get_or_create_session),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    """Delete a conversation and all its messages."""
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.session_id == session.id,
+        )
+    )
+    conversation = result.scalar_one_or_none()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    await db.delete(conversation)
+    await db.flush()
+    return {"status": "deleted"}
 
 
 @router.post("/{conversation_id}/messages", response_model=MessageResponse)

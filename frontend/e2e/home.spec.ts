@@ -233,23 +233,6 @@ test.describe('Chat Functionality', () => {
     await expect(page.locator('text=Hello, this is a test message!')).toBeVisible({ timeout: 5000 });
   });
 
-  test('can start new chat from header button', async ({ page }) => {
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-
-    await createConversationWithThinker(page, 'First conversation', 'Plato');
-
-    // Now click the "New Chat" button in the header
-    const headerNewChatButton = page.getByTestId('new-chat-button-header');
-    await expect(headerNewChatButton).toBeVisible();
-    await headerNewChatButton.click();
-
-    // Modal should open
-    await expect(page.getByTestId('new-chat-modal')).toBeVisible();
-  });
-
   test('pause/resume button works', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());

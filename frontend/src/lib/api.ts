@@ -85,8 +85,8 @@ export async function ensureSession(): Promise<Session> {
 
 // Conversation API
 
-// Backend response format (different from frontend ConversationSummary)
-interface BackendConversationResponse {
+// Backend response format for conversation list
+interface BackendConversationSummary {
   id: string;
   session_id: string;
   topic: string;
@@ -94,19 +94,21 @@ interface BackendConversationResponse {
   is_active: boolean;
   created_at: string;
   thinkers: Array<{ name: string; bio: string; positions: string; style: string; color: string }>;
+  message_count: number;
+  total_cost: number;
 }
 
 export async function getConversations(): Promise<ConversationSummary[]> {
-  const response = await fetchWithSession<BackendConversationResponse[]>('/api/conversations');
+  const response = await fetchWithSession<BackendConversationSummary[]>('/api/conversations');
   // Transform backend response to frontend ConversationSummary format
   return response.map((conv) => ({
     id: conv.id,
     topic: conv.topic,
     thinker_names: conv.thinkers.map((t) => t.name),
-    message_count: 0, // Backend doesn't return this in list endpoint
-    total_cost: 0, // Backend doesn't return this in list endpoint
+    message_count: conv.message_count,
+    total_cost: conv.total_cost,
     created_at: conv.created_at,
-    updated_at: conv.created_at, // Backend doesn't have updated_at, use created_at
+    updated_at: conv.created_at, // Backend doesn't have updated_at yet
   }));
 }
 

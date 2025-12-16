@@ -94,14 +94,20 @@ async def suggest_thinkers(
 
     Uses Claude API if configured, otherwise returns mock suggestions.
     """
+    from app.services.thinker import thinker_service
+
     settings = get_settings()
 
     if not settings.anthropic_api_key:
         # Return mock suggestions for development
         return get_mock_suggestions(data.topic, data.count)
 
-    # TODO: Implement Claude API call for real suggestions
-    # For now, return mock suggestions
+    # Use the thinker service to get real suggestions
+    suggestions = await thinker_service.suggest_thinkers(data.topic, data.count)
+    if suggestions:
+        return suggestions
+
+    # Fallback to mock suggestions if API call fails
     return get_mock_suggestions(data.topic, data.count)
 
 
@@ -113,6 +119,8 @@ async def validate_thinker(
 
     Uses Claude API if configured, otherwise uses mock validation.
     """
+    from app.services.thinker import thinker_service
+
     settings = get_settings()
     name_lower = data.name.lower()
 
@@ -132,9 +140,17 @@ async def validate_thinker(
             error=f"Unknown thinker: {data.name}. Try one of: Socrates, Aristotle, Marie Curie, Albert Einstein, Maya Angelou, Confucius",
         )
 
-    # TODO: Implement Claude API call for real validation
+    # Use the thinker service to validate
+    is_valid, profile = await thinker_service.validate_thinker(data.name)
+    if is_valid and profile:
+        return ThinkerValidateResponse(
+            valid=True,
+            name=profile.name,
+            profile=profile,
+        )
+
     return ThinkerValidateResponse(
         valid=False,
         name=data.name,
-        error="Thinker validation not yet implemented",
+        error=f"Could not validate '{data.name}' as a real historical or contemporary figure",
     )

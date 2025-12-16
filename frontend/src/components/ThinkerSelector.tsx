@@ -18,7 +18,9 @@ export interface ThinkerSelectorProps {
   onSelect: (thinker: SelectedThinker) => void;
   onRemove: (name: string) => void;
   onValidateCustom: (name: string) => Promise<ThinkerProfile | null>;
+  onRequestMore?: () => Promise<void>;
   isLoading?: boolean;
+  isLoadingMore?: boolean;
   maxThinkers?: number;
 }
 
@@ -28,17 +30,27 @@ export function ThinkerSelector({
   onSelect,
   onRemove,
   onValidateCustom,
+  onRequestMore,
   isLoading = false,
+  isLoadingMore = false,
   maxThinkers = 5,
 }: ThinkerSelectorProps) {
   const [customName, setCustomName] = useState('');
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dismissedNames, setDismissedNames] = useState<Set<string>>(new Set());
 
   const selectedNames = new Set(
     selectedThinkers.map((t) => t.name.toLowerCase())
   );
   const canAddMore = selectedThinkers.length < maxThinkers;
+
+  // Filter out selected and dismissed suggestions
+  const visibleSuggestions = suggestions.filter(
+    (s) =>
+      !selectedNames.has(s.name.toLowerCase()) &&
+      !dismissedNames.has(s.name.toLowerCase())
+  );
 
   const handleAddCustom = useCallback(async () => {
     if (!customName.trim() || validating || !canAddMore) return;
@@ -60,6 +72,20 @@ export function ThinkerSelector({
       setValidating(false);
     }
   }, [customName, validating, canAddMore, onValidateCustom, onSelect]);
+
+  const handleDismiss = useCallback((name: string) => {
+    setDismissedNames((prev) => new Set([...prev, name.toLowerCase()]));
+  }, []);
+
+  const handleAccept = useCallback(
+    (suggestion: ThinkerSuggestion) => {
+      onSelect({
+        name: suggestion.name,
+        profile: suggestion.profile,
+      });
+    },
+    [onSelect]
+  );
 
   return (
     <div className="space-y-4" data-testid="thinker-selector">
@@ -98,7 +124,7 @@ export function ThinkerSelector({
       )}
 
       {/* Suggestions */}
-      {canAddMore && suggestions.length > 0 && (
+      {canAddMore && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Suggested thinkers
@@ -107,31 +133,107 @@ export function ThinkerSelector({
             <div className="text-sm text-zinc-500 dark:text-zinc-400">
               Loading suggestions...
             </div>
-          ) : (
+          ) : visibleSuggestions.length > 0 ? (
             <div className="space-y-2">
-              {suggestions
-                .filter((s) => !selectedNames.has(s.name.toLowerCase()))
-                .map((suggestion) => (
-                  <button
-                    key={suggestion.name}
-                    onClick={() =>
-                      onSelect({
-                        name: suggestion.name,
-                        profile: suggestion.profile,
-                      })
-                    }
-                    className="w-full text-left p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                    data-testid="thinker-suggestion"
-                  >
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                      {suggestion.name}
+              {visibleSuggestions.map((suggestion) => (
+                <div
+                  key={suggestion.name}
+                  className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                  data-testid="thinker-suggestion"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {suggestion.name}
+                      </div>
+                      <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                        {suggestion.reason}
+                      </div>
                     </div>
-                    <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                      {suggestion.reason}
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => handleAccept(suggestion)}
+                        className="p-1.5 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                        aria-label={`Add ${suggestion.name}`}
+                        title="Add to conversation"
+                        data-testid="accept-suggestion"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDismiss(suggestion.name)}
+                        className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:text-zinc-300 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                        aria-label={`Dismiss ${suggestion.name}`}
+                        title="Get a different suggestion"
+                        data-testid="dismiss-suggestion"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                        </svg>
+                      </button>
                     </div>
-                  </button>
-                ))}
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : (
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">
+              No more suggestions available.
+            </div>
+          )}
+
+          {/* Suggest More button */}
+          {onRequestMore && !isLoading && (
+            <button
+              onClick={onRequestMore}
+              disabled={isLoadingMore}
+              className="w-full py-2 px-4 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="suggest-more-button"
+            >
+              {isLoadingMore ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Loading more suggestions...
+                </span>
+              ) : (
+                '+ Suggest More Thinkers'
+              )}
+            </button>
           )}
         </div>
       )}

@@ -3,12 +3,23 @@
 import asyncio
 import json
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models import Conversation, Message
+from app.models.message import SenderType
+
+if TYPE_CHECKING:
+    pass
 
 router = APIRouter()
 
@@ -22,6 +33,8 @@ class WSMessageType(str, Enum):
     USER_MESSAGE = "user_message"
     TYPING_START = "typing_start"
     TYPING_STOP = "typing_stop"
+    PAUSE = "pause"
+    RESUME = "resume"
 
     # Server -> Client
     MESSAGE = "message"
@@ -29,6 +42,8 @@ class WSMessageType(str, Enum):
     THINKER_STOPPED_TYPING = "thinker_stopped_typing"
     USER_JOINED = "user_joined"
     USER_LEFT = "user_left"
+    PAUSED = "paused"
+    RESUMED = "resumed"
     ERROR = "error"
 
 
@@ -161,6 +176,35 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def get_messages_for_conversation(
+    conversation_id: str, db: AsyncSession
+) -> Sequence[Message]:
+    """Get all messages for a conversation."""
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at)
+    )
+    return result.scalars().all()
+
+
+async def save_thinker_message(
+    conversation_id: str, thinker_name: str, content: str, cost: float, db: AsyncSession
+) -> Message:
+    """Save a thinker's message to the database."""
+    message = Message(
+        conversation_id=conversation_id,
+        sender_type=SenderType.THINKER,
+        sender_name=thinker_name,
+        content=content,
+        cost=cost,
+    )
+    db.add(message)
+    await db.commit()
+    await db.refresh(message)
+    return message
+
+
 @router.websocket("/ws/{conversation_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
@@ -173,6 +217,9 @@ async def websocket_endpoint(
     - Typing indicators
     - User join/leave events
     """
+    # Import here to avoid circular imports
+    from app.services.thinker import thinker_service
+
     await manager.connect(websocket, conversation_id)
 
     # Notify others that a user joined
@@ -183,6 +230,42 @@ async def websocket_endpoint(
             conversation_id=conversation_id,
         ),
     )
+
+    # Get the conversation and start thinker agents
+    # We need to create a new db session for the agent callbacks
+    from app.core.database import async_session_maker
+
+    async with async_session_maker() as db:
+        # Load conversation with thinkers
+        result = await db.execute(
+            select(Conversation)
+            .where(Conversation.id == conversation_id)
+            .options(selectinload(Conversation.thinkers))
+        )
+        conversation = result.scalar_one_or_none()
+
+        if conversation and conversation.thinkers:
+            # Create callback functions that use their own db sessions
+            async def get_messages(conv_id: str) -> Sequence[Message]:
+                async with async_session_maker() as session:
+                    return await get_messages_for_conversation(conv_id, session)
+
+            async def save_message(
+                conv_id: str, thinker_name: str, content: str, cost: float
+            ) -> Message:
+                async with async_session_maker() as session:
+                    return await save_thinker_message(
+                        conv_id, thinker_name, content, cost, session
+                    )
+
+            # Start thinker agents
+            await thinker_service.start_conversation_agents(
+                conversation_id,
+                list(conversation.thinkers),
+                conversation.topic,
+                get_messages,
+                save_message,
+            )
 
     try:
         while True:
@@ -198,6 +281,26 @@ async def websocket_endpoint(
                 elif message_type == WSMessageType.TYPING_STOP:
                     # User stopped typing
                     pass
+                elif message_type == WSMessageType.PAUSE.value:
+                    # Pause thinker agents
+                    thinker_service.pause_conversation(conversation_id)
+                    await manager.broadcast_to_conversation(
+                        conversation_id,
+                        WSMessage(
+                            type=WSMessageType.PAUSED,
+                            conversation_id=conversation_id,
+                        ),
+                    )
+                elif message_type == WSMessageType.RESUME.value:
+                    # Resume thinker agents
+                    thinker_service.resume_conversation(conversation_id)
+                    await manager.broadcast_to_conversation(
+                        conversation_id,
+                        WSMessage(
+                            type=WSMessageType.RESUMED,
+                            conversation_id=conversation_id,
+                        ),
+                    )
                 elif message_type == WSMessageType.USER_MESSAGE:
                     # User sent a message - broadcast to all
                     # Note: The actual message storage is handled by the REST API
@@ -223,6 +326,8 @@ async def websocket_endpoint(
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket, conversation_id)
+        # Stop thinker agents when user disconnects
+        await thinker_service.stop_conversation_agents(conversation_id)
         # Notify others that a user left
         await manager.broadcast_to_conversation(
             conversation_id,

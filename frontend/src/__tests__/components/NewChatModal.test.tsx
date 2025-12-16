@@ -145,18 +145,25 @@ describe('NewChatModal', () => {
     await user.type(screen.getByTestId('topic-input'), 'Philosophy');
     await user.click(screen.getByTestId('next-button'));
 
-    // Wait for suggestions and select one
+    // Wait for suggestions and click the accept button
     await waitFor(() => {
       expect(screen.getByTestId('thinker-suggestion')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByTestId('thinker-suggestion'));
+    await user.click(screen.getByTestId('accept-suggestion'));
 
     // Create conversation
     await user.click(screen.getByTestId('create-button'));
 
     await waitFor(() => {
-      expect(onCreate).toHaveBeenCalledWith('Philosophy', ['Socrates']);
+      expect(onCreate).toHaveBeenCalledWith('Philosophy', [
+        {
+          name: 'Socrates',
+          bio: 'Bio of Socrates',
+          positions: 'Some positions',
+          style: 'Some style',
+        },
+      ]);
     });
   });
 

@@ -53,7 +53,7 @@ describe('ThinkerSelector', () => {
     expect(screen.getByText('Plato')).toBeInTheDocument();
   });
 
-  it('calls onSelect when suggestion is clicked', () => {
+  it('calls onSelect when accept button is clicked', () => {
     const onSelect = jest.fn();
     const suggestions = [createSuggestion('Socrates')];
     render(
@@ -64,7 +64,7 @@ describe('ThinkerSelector', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('thinker-suggestion'));
+    fireEvent.click(screen.getByTestId('accept-suggestion'));
     expect(onSelect).toHaveBeenCalledWith({
       name: 'Socrates',
       profile: suggestions[0].profile,

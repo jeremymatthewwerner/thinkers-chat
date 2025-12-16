@@ -82,8 +82,9 @@ describe('ChatArea', () => {
       />
     );
 
-    expect(screen.getByTestId('typing-indicator')).toBeInTheDocument();
-    expect(screen.getByText('Socrates is thinking...')).toBeInTheDocument();
+    expect(screen.getByTestId('thinker-typing-indicator')).toBeInTheDocument();
+    expect(screen.getByText('Thinking...')).toBeInTheDocument();
+    expect(screen.getByText('Socrates')).toBeInTheDocument();
   });
 
   it('renders cost meter', () => {

@@ -26,10 +26,13 @@ export default function Home() {
   // WebSocket connection
   const {
     isConnected,
+    isPaused,
     typingThinkers,
     sendUserMessage,
     sendTypingStart,
     sendTypingStop,
+    sendPause,
+    sendResume,
   } = useWebSocket({
     conversationId: currentConversation?.id || null,
     onMessage: useCallback((message: Message) => {
@@ -105,11 +108,15 @@ export default function Home() {
 
   // Create new conversation
   const handleCreateConversation = useCallback(
-    async (topic: string, thinkerNames: string[]) => {
+    async (
+      topic: string,
+      thinkers: { name: string; bio: string; positions: string; style: string }[]
+    ) => {
       const conv = await api.createConversation({
         topic,
-        thinker_names: thinkerNames,
+        thinkers,
       });
+      // Update conversations list with summary
       setConversations((prev) => [
         {
           id: conv.id,
@@ -118,12 +125,13 @@ export default function Home() {
           message_count: 0,
           total_cost: 0,
           created_at: conv.created_at,
-          updated_at: conv.updated_at,
+          updated_at: conv.created_at, // Use created_at since updated_at may not be in response
         },
         ...prev,
       ]);
-      setCurrentConversation(conv);
-      setMessages(conv.messages);
+      // Set current conversation - add empty messages array since create endpoint doesn't return messages
+      setCurrentConversation({ ...conv, messages: [], total_cost: 0 });
+      setMessages([]); // New conversation has no messages
       setTotalCost(0);
       setSidebarOpen(false);
     },
@@ -176,6 +184,9 @@ export default function Home() {
         onTypingStart={sendTypingStart}
         onTypingStop={sendTypingStop}
         isConnected={isConnected}
+        isPaused={isPaused}
+        onPause={sendPause}
+        onResume={sendResume}
       />
 
       <NewChatModal

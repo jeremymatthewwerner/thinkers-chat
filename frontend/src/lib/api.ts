@@ -92,9 +92,17 @@ export async function getConversation(id: string): Promise<Conversation> {
   return fetchWithSession<Conversation>(`/api/conversations/${id}`);
 }
 
+export interface ThinkerCreateData {
+  name: string;
+  bio: string;
+  positions: string;
+  style: string;
+  color?: string;
+}
+
 export interface CreateConversationData {
   topic: string;
-  thinker_names: string[];
+  thinkers: ThinkerCreateData[];
 }
 
 export async function createConversation(

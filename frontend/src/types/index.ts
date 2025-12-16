@@ -73,6 +73,10 @@ export type WSMessageType =
   | 'thinker_stopped_typing'
   | 'user_joined'
   | 'user_left'
+  | 'pause'
+  | 'resume'
+  | 'paused'
+  | 'resumed'
   | 'error';
 
 export interface WSMessage {

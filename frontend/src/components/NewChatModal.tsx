@@ -14,10 +14,17 @@ import {
 import type { ThinkerProfile, ThinkerSuggestion } from '@/types';
 import { type SelectedThinker, ThinkerSelector } from './ThinkerSelector';
 
+export interface ThinkerData {
+  name: string;
+  bio: string;
+  positions: string;
+  style: string;
+}
+
 export interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (topic: string, thinkerNames: string[]) => Promise<void>;
+  onCreate: (topic: string, thinkers: ThinkerData[]) => Promise<void>;
   onSuggestThinkers: (topic: string) => Promise<ThinkerSuggestion[]>;
   onValidateThinker: (name: string) => Promise<ThinkerProfile | null>;
 }
@@ -36,6 +43,7 @@ export function NewChatModal({
     []
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +63,7 @@ export function NewChatModal({
       setSuggestions([]);
       setSelectedThinkers([]);
       setError(null);
+      setIsLoadingMore(false);
     }
   }, [isOpen]);
 
@@ -91,7 +100,12 @@ export function NewChatModal({
     try {
       await onCreate(
         topic.trim(),
-        selectedThinkers.map((t) => t.name)
+        selectedThinkers.map((t) => ({
+          name: t.profile.name,
+          bio: t.profile.bio,
+          positions: t.profile.positions,
+          style: t.profile.style,
+        }))
       );
       onClose();
     } catch {
@@ -108,6 +122,29 @@ export function NewChatModal({
   const handleRemoveThinker = useCallback((name: string) => {
     setSelectedThinkers((prev) => prev.filter((t) => t.name !== name));
   }, []);
+
+  const handleRequestMore = useCallback(async () => {
+    if (!topic.trim() || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    setError(null);
+
+    try {
+      const results = await onSuggestThinkers(topic.trim());
+      // Append new suggestions, filtering out any we already have
+      setSuggestions((prev) => {
+        const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
+        const newSuggestions = results.filter(
+          (s) => !existingNames.has(s.name.toLowerCase())
+        );
+        return [...prev, ...newSuggestions];
+      });
+    } catch {
+      setError('Failed to get more suggestions');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [topic, isLoadingMore, onSuggestThinkers]);
 
   if (!isOpen) return null;
 
@@ -184,7 +221,9 @@ export function NewChatModal({
                 onSelect={handleSelectThinker}
                 onRemove={handleRemoveThinker}
                 onValidateCustom={onValidateThinker}
+                onRequestMore={handleRequestMore}
                 isLoading={isLoading}
+                isLoadingMore={isLoadingMore}
               />
 
               {error && (

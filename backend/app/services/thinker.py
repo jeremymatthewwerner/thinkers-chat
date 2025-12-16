@@ -28,6 +28,7 @@ class ThinkerService:
         self.settings = get_settings()
         self._client: AsyncAnthropic | None = None
         self._active_tasks: dict[str, dict[str, asyncio.Task[None]]] = {}
+        self._paused_conversations: set[str] = set()
 
     @property
     def client(self) -> AsyncAnthropic | None:
@@ -40,12 +41,62 @@ class ThinkerService:
         """Suggest diverse thinkers for a given topic.
 
         Uses Claude to suggest thinkers who would have interesting,
-        diverse perspectives on the topic.
+        diverse perspectives on the topic. Makes parallel API calls for speed.
         """
         if not self.client:
             return []
 
-        prompt = f"""Suggest {count} historical or contemporary thinkers who would have interesting and diverse perspectives on this topic: "{topic}"
+        # For counts > 2, make parallel calls for faster response
+        if count > 2:
+            # Split into parallel tasks asking for 1-2 thinkers each
+            tasks = []
+            remaining = count
+            task_num = 0
+            perspectives = [
+                "scientific or analytical",
+                "philosophical or ethical",
+                "artistic or creative",
+                "political or social",
+                "religious or spiritual",
+            ]
+            while remaining > 0:
+                batch_size = min(2, remaining)
+                perspective_hint = perspectives[task_num % len(perspectives)]
+                tasks.append(self._suggest_single_batch(topic, batch_size, perspective_hint))
+                remaining -= batch_size
+                task_num += 1
+
+            # Run all tasks in parallel
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Combine results, filtering out errors
+            all_suggestions: list[ThinkerSuggestion] = []
+            seen_names: set[str] = set()
+            for result in results:
+                if isinstance(result, list):
+                    for suggestion in result:
+                        # Deduplicate by name
+                        if suggestion.name.lower() not in seen_names:
+                            seen_names.add(suggestion.name.lower())
+                            all_suggestions.append(suggestion)
+
+            return all_suggestions[:count]
+
+        # For small counts, single call is fine
+        return await self._suggest_single_batch(topic, count)
+
+    async def _suggest_single_batch(
+        self, topic: str, count: int, perspective_hint: str | None = None
+    ) -> list[ThinkerSuggestion]:
+        """Make a single API call to get thinker suggestions."""
+        if not self.client:
+            return []
+
+        perspective_text = ""
+        if perspective_hint:
+            perspective_text = f"\nFocus on thinkers with a {perspective_hint} perspective."
+
+        prompt = f"""Suggest {count} historical or contemporary thinkers who would have interesting and diverse perspectives on this topic: "{topic}"{perspective_text}
 
 For each thinker, provide:
 1. Their full name
@@ -77,7 +128,7 @@ Return ONLY the JSON array, no other text."""
         try:
             response = await self.client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=2000,
+                max_tokens=1000,
                 messages=[{"role": "user", "content": prompt}],
             )
 
@@ -165,8 +216,14 @@ Return ONLY the JSON, no other text."""
             return "", 0.0
 
         # Build conversation context
+        # sender_type can be either string or enum depending on how SQLAlchemy returns it
+        def get_sender_label(msg: "Message") -> str:
+            sender = msg.sender_type
+            is_user = (hasattr(sender, 'value') and sender.value == 'user') or sender == 'user'
+            return 'User' if is_user else (msg.sender_name or 'Unknown')
+
         conversation_history = "\n".join(
-            f"{'User' if m.sender_type.value == 'user' else m.sender_name}: {m.content}"
+            f"{get_sender_label(m)}: {m.content}"
             for m in messages[-20:]  # Last 20 messages for context
         )
 
@@ -253,6 +310,20 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
             del self._active_tasks[conversation_id]
+        # Clean up paused state
+        self._paused_conversations.discard(conversation_id)
+
+    def pause_conversation(self, conversation_id: str) -> None:
+        """Pause all thinker agents for a conversation."""
+        self._paused_conversations.add(conversation_id)
+
+    def resume_conversation(self, conversation_id: str) -> None:
+        """Resume all thinker agents for a conversation."""
+        self._paused_conversations.discard(conversation_id)
+
+    def is_paused(self, conversation_id: str) -> bool:
+        """Check if a conversation is paused."""
+        return conversation_id in self._paused_conversations
 
     async def _run_thinker_agent(
         self,
@@ -275,6 +346,12 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 if not manager.is_conversation_active(conversation_id):
                     # Wait for users to reconnect
                     await asyncio.sleep(1)
+                    continue
+
+                # Check if conversation is paused
+                if self.is_paused(conversation_id):
+                    # Wait while paused
+                    await asyncio.sleep(0.5)
                     continue
 
                 # Get current messages

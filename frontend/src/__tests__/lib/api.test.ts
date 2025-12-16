@@ -164,7 +164,14 @@ describe('API Client', () => {
 
       const conversation = await api.createConversation({
         topic: 'Science',
-        thinker_names: ['Einstein'],
+        thinkers: [
+          {
+            name: 'Albert Einstein',
+            bio: 'Theoretical physicist',
+            positions: 'Relativity theory',
+            style: 'Thoughtful and curious',
+          },
+        ],
       });
 
       expect(conversation).toEqual(mockConversation);
@@ -174,7 +181,14 @@ describe('API Client', () => {
           method: 'POST',
           body: JSON.stringify({
             topic: 'Science',
-            thinker_names: ['Einstein'],
+            thinkers: [
+              {
+                name: 'Albert Einstein',
+                bio: 'Theoretical physicist',
+                positions: 'Relativity theory',
+                style: 'Thoughtful and curious',
+              },
+            ],
           }),
         })
       );

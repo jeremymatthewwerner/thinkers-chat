@@ -17,10 +17,13 @@ export interface UseWebSocketOptions {
 
 export interface UseWebSocketReturn {
   isConnected: boolean;
+  isPaused: boolean;
   typingThinkers: Set<string>;
   sendUserMessage: (content: string) => void;
   sendTypingStart: () => void;
   sendTypingStop: () => void;
+  sendPause: () => void;
+  sendResume: () => void;
 }
 
 export function useWebSocket({
@@ -31,6 +34,7 @@ export function useWebSocket({
   onError,
 }: UseWebSocketOptions): UseWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [typingThinkers, setTypingThinkers] = useState<Set<string>>(new Set());
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -113,6 +117,14 @@ export function useWebSocket({
               }
               break;
 
+            case 'paused':
+              setIsPaused(true);
+              break;
+
+            case 'resumed':
+              setIsPaused(false);
+              break;
+
             case 'error':
               onError?.(data.content || 'Unknown error');
               break;
@@ -176,11 +188,28 @@ export function useWebSocket({
     });
   }, [conversationId, sendMessage]);
 
+  const sendPause = useCallback(() => {
+    sendMessage({
+      type: 'pause',
+      conversation_id: conversationId || undefined,
+    });
+  }, [conversationId, sendMessage]);
+
+  const sendResume = useCallback(() => {
+    sendMessage({
+      type: 'resume',
+      conversation_id: conversationId || undefined,
+    });
+  }, [conversationId, sendMessage]);
+
   return {
     isConnected,
+    isPaused,
     typingThinkers,
     sendUserMessage,
     sendTypingStart,
     sendTypingStop,
+    sendPause,
+    sendResume,
   };
 }

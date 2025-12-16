@@ -1,7 +1,7 @@
 """Tests for the ThinkerService."""
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from anthropic.types import TextBlock
 
@@ -74,10 +74,11 @@ class TestSuggestThinkers:
     async def test_suggest_returns_empty_without_client(self) -> None:
         """Test that suggest_thinkers returns empty list without client."""
         service = ThinkerService()
-        service._client = None
-
-        result = await service.suggest_thinkers("philosophy", 3)
-        assert result == []
+        # Mock the client property to return None
+        with patch.object(type(service), 'client', new_callable=PropertyMock) as mock_client:
+            mock_client.return_value = None
+            result = await service.suggest_thinkers("philosophy", 3)
+            assert result == []
 
     async def test_suggest_with_mock_client(self) -> None:
         """Test suggest_thinkers with mocked API response."""
@@ -119,11 +120,12 @@ class TestValidateThinker:
     async def test_validate_returns_false_without_client(self) -> None:
         """Test that validate_thinker returns False without client."""
         service = ThinkerService()
-        service._client = None
-
-        is_valid, profile = await service.validate_thinker("Socrates")
-        assert is_valid is False
-        assert profile is None
+        # Mock the client property to return None
+        with patch.object(type(service), 'client', new_callable=PropertyMock) as mock_client:
+            mock_client.return_value = None
+            is_valid, profile = await service.validate_thinker("Socrates")
+            assert is_valid is False
+            assert profile is None
 
     async def test_validate_with_valid_response(self) -> None:
         """Test validate_thinker with valid API response."""
@@ -186,14 +188,16 @@ class TestGenerateResponse:
     async def test_generate_returns_empty_without_client(self) -> None:
         """Test that generate_response returns empty without client."""
         service = ThinkerService()
-        service._client = None
 
         thinker = MagicMock()
         messages: Any = []
 
-        response, cost = await service.generate_response(thinker, messages, "test")
-        assert response == ""
-        assert cost == 0.0
+        # Mock the client property to return None
+        with patch.object(type(service), 'client', new_callable=PropertyMock) as mock_client:
+            mock_client.return_value = None
+            response, cost = await service.generate_response(thinker, messages, "test")
+            assert response == ""
+            assert cost == 0.0
 
     async def test_generate_with_mock_response(self) -> None:
         """Test generate_response with mocked API response."""

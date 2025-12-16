@@ -131,11 +131,16 @@ export function NewChatModal({
 
     try {
       const results = await onSuggestThinkers(topic.trim());
-      // Append new suggestions, filtering out any we already have
+      // Append new suggestions, filtering out any we already have or have selected
       setSuggestions((prev) => {
         const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
+        const selectedNames = new Set(
+          selectedThinkers.map((t) => t.name.toLowerCase())
+        );
         const newSuggestions = results.filter(
-          (s) => !existingNames.has(s.name.toLowerCase())
+          (s) =>
+            !existingNames.has(s.name.toLowerCase()) &&
+            !selectedNames.has(s.name.toLowerCase())
         );
         return [...prev, ...newSuggestions];
       });
@@ -144,7 +149,43 @@ export function NewChatModal({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [topic, isLoadingMore, onSuggestThinkers]);
+  }, [topic, isLoadingMore, onSuggestThinkers, selectedThinkers]);
+
+  const handleRefreshSuggestion = useCallback(
+    async (nameToReplace: string) => {
+      if (!topic.trim()) return;
+
+      try {
+        const results = await onSuggestThinkers(topic.trim());
+        // Find a suggestion that's not already in our list or selected
+        setSuggestions((prev) => {
+          const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
+          const selectedNames = new Set(
+            selectedThinkers.map((t) => t.name.toLowerCase())
+          );
+
+          // Find a new suggestion that's unique
+          const replacement = results.find(
+            (s) =>
+              !existingNames.has(s.name.toLowerCase()) &&
+              !selectedNames.has(s.name.toLowerCase())
+          );
+
+          if (replacement) {
+            // Replace the old suggestion with the new one
+            return prev.map((s) =>
+              s.name === nameToReplace ? replacement : s
+            );
+          }
+          // If no unique replacement found, just remove the old one
+          return prev.filter((s) => s.name !== nameToReplace);
+        });
+      } catch {
+        setError('Failed to get replacement suggestion');
+      }
+    },
+    [topic, onSuggestThinkers, selectedThinkers]
+  );
 
   if (!isOpen) return null;
 
@@ -222,6 +263,7 @@ export function NewChatModal({
                 onRemove={handleRemoveThinker}
                 onValidateCustom={onValidateThinker}
                 onRequestMore={handleRequestMore}
+                onRefreshSuggestion={handleRefreshSuggestion}
                 isLoading={isLoading}
                 isLoadingMore={isLoadingMore}
               />

@@ -71,6 +71,23 @@ describe('ThinkerSelector', () => {
     });
   });
 
+  it('calls onRefreshSuggestion when refresh button is clicked', async () => {
+    const onRefreshSuggestion = jest.fn().mockResolvedValue(undefined);
+    const suggestions = [createSuggestion('Socrates')];
+    render(
+      <ThinkerSelector
+        {...defaultProps}
+        suggestions={suggestions}
+        onRefreshSuggestion={onRefreshSuggestion}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('refresh-suggestion'));
+    await waitFor(() => {
+      expect(onRefreshSuggestion).toHaveBeenCalledWith('Socrates');
+    });
+  });
+
   it('renders selected thinkers', () => {
     const selectedThinkers = [createSelectedThinker('Socrates')];
     render(

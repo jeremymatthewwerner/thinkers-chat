@@ -19,6 +19,7 @@ export interface ThinkerSelectorProps {
   onRemove: (name: string) => void;
   onValidateCustom: (name: string) => Promise<ThinkerProfile | null>;
   onRequestMore?: () => Promise<void>;
+  onRefreshSuggestion?: (name: string) => Promise<void>;
   isLoading?: boolean;
   isLoadingMore?: boolean;
   maxThinkers?: number;
@@ -31,6 +32,7 @@ export function ThinkerSelector({
   onRemove,
   onValidateCustom,
   onRequestMore,
+  onRefreshSuggestion,
   isLoading = false,
   isLoadingMore = false,
   maxThinkers = 5,
@@ -38,18 +40,16 @@ export function ThinkerSelector({
   const [customName, setCustomName] = useState('');
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dismissedNames, setDismissedNames] = useState<Set<string>>(new Set());
+  const [refreshingNames, setRefreshingNames] = useState<Set<string>>(new Set());
 
   const selectedNames = new Set(
     selectedThinkers.map((t) => t.name.toLowerCase())
   );
   const canAddMore = selectedThinkers.length < maxThinkers;
 
-  // Filter out selected and dismissed suggestions
+  // Filter out selected suggestions
   const visibleSuggestions = suggestions.filter(
-    (s) =>
-      !selectedNames.has(s.name.toLowerCase()) &&
-      !dismissedNames.has(s.name.toLowerCase())
+    (s) => !selectedNames.has(s.name.toLowerCase())
   );
 
   const handleAddCustom = useCallback(async () => {
@@ -73,9 +73,23 @@ export function ThinkerSelector({
     }
   }, [customName, validating, canAddMore, onValidateCustom, onSelect]);
 
-  const handleDismiss = useCallback((name: string) => {
-    setDismissedNames((prev) => new Set([...prev, name.toLowerCase()]));
-  }, []);
+  const handleRefresh = useCallback(
+    async (name: string) => {
+      if (!onRefreshSuggestion || refreshingNames.has(name)) return;
+
+      setRefreshingNames((prev) => new Set([...prev, name]));
+      try {
+        await onRefreshSuggestion(name);
+      } finally {
+        setRefreshingNames((prev) => {
+          const next = new Set(prev);
+          next.delete(name);
+          return next;
+        });
+      }
+    },
+    [onRefreshSuggestion, refreshingNames]
+  );
 
   const handleAccept = useCallback(
     (suggestion: ThinkerSuggestion) => {
@@ -171,22 +185,52 @@ export function ThinkerSelector({
                           />
                         </svg>
                       </button>
-                      <button
-                        onClick={() => handleDismiss(suggestion.name)}
-                        className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:text-zinc-300 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                        aria-label={`Dismiss ${suggestion.name}`}
-                        title="Get a different suggestion"
-                        data-testid="dismiss-suggestion"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          className="w-5 h-5"
+                      {onRefreshSuggestion && (
+                        <button
+                          onClick={() => handleRefresh(suggestion.name)}
+                          disabled={refreshingNames.has(suggestion.name)}
+                          className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:text-zinc-300 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                          aria-label={`Get different suggestion for ${suggestion.name}`}
+                          title="Get a different suggestion"
+                          data-testid="refresh-suggestion"
                         >
-                          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                        </svg>
-                      </button>
+                          {refreshingNames.has(suggestion.name) ? (
+                            <svg
+                              className="animate-spin w-5 h-5"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="w-5 h-5"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

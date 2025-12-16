@@ -66,7 +66,10 @@ export default function Home() {
       setCurrentConversation(conv);
       setMessages(conv.messages);
       setTotalCost(conv.total_cost);
-      setSidebarOpen(false); // Close sidebar on mobile
+      // Only close sidebar on mobile (window width < 1024px)
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
     } catch (error) {
       console.error('Failed to load conversation:', error);
     }
@@ -133,7 +136,10 @@ export default function Home() {
       setCurrentConversation({ ...conv, messages: [], total_cost: 0 });
       setMessages([]); // New conversation has no messages
       setTotalCost(0);
-      setSidebarOpen(false);
+      // Only close sidebar on mobile (window width < 1024px)
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
     },
     []
   );

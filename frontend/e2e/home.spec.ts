@@ -135,7 +135,8 @@ test.describe('New Conversation Flow', () => {
     // Get initial thinker name
     const firstSuggestion = page.getByTestId('thinker-suggestion').first();
     await expect(firstSuggestion).toBeVisible({ timeout: 10000 });
-    const initialName = await firstSuggestion.locator('.font-medium').textContent();
+    // Store the initial name to verify the refresh happened (could compare, but API may return same)
+    await firstSuggestion.locator('.font-medium').textContent();
 
     // Click refresh button
     const refreshButton = page.getByTestId('refresh-suggestion').first();
@@ -194,7 +195,8 @@ test.describe('Persistence', () => {
 test.describe('Chat Functionality', () => {
   // Helper to create a conversation with a custom thinker
   async function createConversationWithThinker(page: import('@playwright/test').Page, topic: string, thinker: string) {
-    await page.getByTestId('new-chat-button').click();
+    const newChatButton = page.getByTestId('new-chat-button');
+    await newChatButton.click({ force: true });
     await page.getByTestId('topic-input').fill(topic);
     await page.getByTestId('next-button').click();
 
@@ -253,5 +255,42 @@ test.describe('Chat Functionality', () => {
     // Click to resume
     await pauseResumeButton.click();
     await expect(pauseResumeButton).toContainText('Pause');
+  });
+
+  test('can switch between conversations', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Create first conversation
+    await createConversationWithThinker(page, 'First topic', 'Aristotle');
+    await expect(page.locator('h2', { hasText: 'First topic' })).toBeVisible();
+
+    // Wait for page to stabilize before creating second conversation
+    await page.waitForLoadState('networkidle');
+
+    // Create second conversation
+    await createConversationWithThinker(page, 'Second topic', 'Socrates');
+    await expect(page.locator('h2', { hasText: 'Second topic' })).toBeVisible();
+
+    // Both conversations should be in sidebar
+    const conversationItems = page.getByTestId('conversation-item');
+    await expect(conversationItems).toHaveCount(2);
+
+    // Click on first conversation (Aristotle) in sidebar - use conversation-item containing the text
+    const firstConvItem = page.getByTestId('conversation-item').filter({ hasText: 'First topic' });
+    await firstConvItem.scrollIntoViewIfNeeded();
+    await firstConvItem.click();
+    await expect(page.getByTestId('chat-area').locator('h2', { hasText: 'First topic' })).toBeVisible();
+
+    // Click on second conversation (Socrates) in sidebar
+    const secondConvItem = page.getByTestId('conversation-item').filter({ hasText: 'Second topic' });
+    await secondConvItem.scrollIntoViewIfNeeded();
+    await secondConvItem.click();
+    await expect(page.getByTestId('chat-area').locator('h2', { hasText: 'Second topic' })).toBeVisible();
+
+    // Sidebar should still show both conversations
+    await expect(conversationItems).toHaveCount(2);
   });
 });

@@ -1,65 +1,190 @@
-import Image from 'next/image';
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import type {
+  Conversation,
+  ConversationSummary,
+  Message,
+  ThinkerProfile,
+  ThinkerSuggestion,
+} from '@/types';
+import { ChatArea, NewChatModal, Sidebar } from '@/components';
+import { useWebSocket } from '@/hooks';
+import * as api from '@/lib/api';
 
 export default function Home() {
+  // State
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [currentConversation, setCurrentConversation] =
+    useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [totalCost, setTotalCost] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // WebSocket connection
+  const {
+    isConnected,
+    typingThinkers,
+    sendUserMessage,
+    sendTypingStart,
+    sendTypingStop,
+  } = useWebSocket({
+    conversationId: currentConversation?.id || null,
+    onMessage: useCallback((message: Message) => {
+      setMessages((prev) => [...prev, message]);
+      if (message.cost) {
+        setTotalCost((prev) => prev + message.cost!);
+      }
+    }, []),
+  });
+
+  // Initialize session and load conversations
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await api.ensureSession();
+        const convs = await api.getConversations();
+        setConversations(convs);
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // Load conversation when selected
+  const handleSelectConversation = useCallback(async (id: string) => {
+    try {
+      const conv = await api.getConversation(id);
+      setCurrentConversation(conv);
+      setMessages(conv.messages);
+      setTotalCost(conv.total_cost);
+      setSidebarOpen(false); // Close sidebar on mobile
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+    }
+  }, []);
+
+  // Delete conversation
+  const handleDeleteConversation = useCallback(
+    async (id: string) => {
+      try {
+        await api.deleteConversation(id);
+        setConversations((prev) => prev.filter((c) => c.id !== id));
+        if (currentConversation?.id === id) {
+          setCurrentConversation(null);
+          setMessages([]);
+          setTotalCost(0);
+        }
+      } catch (error) {
+        console.error('Failed to delete conversation:', error);
+      }
+    },
+    [currentConversation]
+  );
+
+  // Send message
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      if (!currentConversation) return;
+
+      try {
+        const message = await api.sendMessage(currentConversation.id, content);
+        setMessages((prev) => [...prev, message]);
+        sendUserMessage(content); // Notify via WebSocket
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      }
+    },
+    [currentConversation, sendUserMessage]
+  );
+
+  // Create new conversation
+  const handleCreateConversation = useCallback(
+    async (topic: string, thinkerNames: string[]) => {
+      const conv = await api.createConversation({
+        topic,
+        thinker_names: thinkerNames,
+      });
+      setConversations((prev) => [
+        {
+          id: conv.id,
+          topic: conv.topic,
+          thinker_names: conv.thinkers.map((t) => t.name),
+          message_count: 0,
+          total_cost: 0,
+          created_at: conv.created_at,
+          updated_at: conv.updated_at,
+        },
+        ...prev,
+      ]);
+      setCurrentConversation(conv);
+      setMessages(conv.messages);
+      setTotalCost(0);
+      setSidebarOpen(false);
+    },
+    []
+  );
+
+  // Suggest thinkers for topic
+  const handleSuggestThinkers = useCallback(
+    async (topic: string): Promise<ThinkerSuggestion[]> => {
+      return api.suggestThinkers(topic);
+    },
+    []
+  );
+
+  // Validate custom thinker
+  const handleValidateThinker = useCallback(
+    async (name: string): Promise<ThinkerProfile | null> => {
+      const result = await api.validateThinker(name);
+      return result.valid && result.profile ? result.profile : null;
+    },
+    []
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+        <div className="text-zinc-500 dark:text-zinc-400">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{' '}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{' '}
-            or the{' '}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{' '}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-900">
+      <Sidebar
+        conversations={conversations}
+        selectedId={currentConversation?.id || null}
+        onSelectConversation={handleSelectConversation}
+        onDeleteConversation={handleDeleteConversation}
+        onNewChat={() => setModalOpen(true)}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
+
+      <ChatArea
+        conversation={currentConversation}
+        messages={messages}
+        typingThinkers={Array.from(typingThinkers)}
+        totalCost={totalCost}
+        onSendMessage={handleSendMessage}
+        onTypingStart={sendTypingStart}
+        onTypingStop={sendTypingStop}
+        isConnected={isConnected}
+      />
+
+      <NewChatModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreate={handleCreateConversation}
+        onSuggestThinkers={handleSuggestThinkers}
+        onValidateThinker={handleValidateThinker}
+      />
     </div>
   );
 }

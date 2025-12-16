@@ -17,6 +17,7 @@ const config = {
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/layout.tsx',
+    '!src/types/**/*',
   ],
   coverageThreshold: {
     global: {

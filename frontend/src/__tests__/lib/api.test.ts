@@ -1,0 +1,301 @@
+// Isolate tests with jest.resetModules
+let api: typeof import('@/lib/api');
+
+beforeEach(async () => {
+  jest.clearAllMocks();
+  localStorage.clear();
+  (global.fetch as jest.Mock).mockReset();
+  (localStorage.getItem as jest.Mock).mockReturnValue(null);
+  // Reset module to clear internal sessionId state
+  jest.resetModules();
+  api = await import('@/lib/api');
+});
+
+describe('API Client', () => {
+  describe('Session API', () => {
+    it('creates a session and stores the ID', async () => {
+      const mockSession = {
+        id: 'session-123',
+        created_at: '2024-01-15T10:00:00Z',
+      };
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockSession),
+      });
+
+      const session = await api.createSession();
+
+      expect(session).toEqual(mockSession);
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'session_id',
+        'session-123'
+      );
+    });
+
+    it('gets existing session by ID', async () => {
+      const mockSession = {
+        id: 'session-123',
+        created_at: '2024-01-15T10:00:00Z',
+      };
+      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockSession),
+      });
+
+      const session = await api.getSession();
+
+      expect(session).toEqual(mockSession);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/sessions/session-123'),
+        expect.any(Object)
+      );
+    });
+
+    it('returns null when no session ID exists', async () => {
+      (localStorage.getItem as jest.Mock).mockReturnValue(null);
+
+      const session = await api.getSession();
+
+      expect(session).toBeNull();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('returns null when session fetch fails', async () => {
+      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ detail: 'Not found' }),
+      });
+
+      const session = await api.getSession();
+
+      expect(session).toBeNull();
+    });
+
+    it('ensures session creates new if none exists', async () => {
+      const mockSession = {
+        id: 'new-session',
+        created_at: '2024-01-15T10:00:00Z',
+      };
+      (localStorage.getItem as jest.Mock).mockReturnValue(null);
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockSession),
+      });
+
+      const session = await api.ensureSession();
+
+      expect(session).toEqual(mockSession);
+    });
+
+    it('ensures session returns existing if valid', async () => {
+      const mockSession = {
+        id: 'existing-session',
+        created_at: '2024-01-15T10:00:00Z',
+      };
+      (localStorage.getItem as jest.Mock).mockReturnValue('existing-session');
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockSession),
+      });
+
+      const session = await api.ensureSession();
+
+      expect(session).toEqual(mockSession);
+    });
+  });
+
+  describe('Conversation API', () => {
+    beforeEach(() => {
+      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+    });
+
+    it('gets all conversations', async () => {
+      const mockConversations = [
+        { id: 'conv-1', topic: 'Philosophy', thinker_names: ['Socrates'] },
+      ];
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConversations),
+      });
+
+      const conversations = await api.getConversations();
+
+      expect(conversations).toEqual(mockConversations);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/conversations'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Session-ID': 'session-123',
+          }),
+        })
+      );
+    });
+
+    it('gets a specific conversation', async () => {
+      const mockConversation = {
+        id: 'conv-1',
+        topic: 'Philosophy',
+        thinkers: [],
+        messages: [],
+      };
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConversation),
+      });
+
+      const conversation = await api.getConversation('conv-1');
+
+      expect(conversation).toEqual(mockConversation);
+    });
+
+    it('creates a conversation', async () => {
+      const mockConversation = {
+        id: 'new-conv',
+        topic: 'Science',
+        thinkers: [{ name: 'Einstein' }],
+        messages: [],
+      };
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockConversation),
+      });
+
+      const conversation = await api.createConversation({
+        topic: 'Science',
+        thinker_names: ['Einstein'],
+      });
+
+      expect(conversation).toEqual(mockConversation);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/conversations'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            topic: 'Science',
+            thinker_names: ['Einstein'],
+          }),
+        })
+      );
+    });
+
+    it('deletes a conversation', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      await api.deleteConversation('conv-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/conversations/conv-1'),
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+  });
+
+  describe('Message API', () => {
+    beforeEach(() => {
+      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+    });
+
+    it('sends a message', async () => {
+      const mockMessage = {
+        id: 'msg-1',
+        content: 'Hello',
+        sender_type: 'user',
+      };
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockMessage),
+      });
+
+      const message = await api.sendMessage('conv-1', 'Hello');
+
+      expect(message).toEqual(mockMessage);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/conversations/conv-1/messages'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ content: 'Hello' }),
+        })
+      );
+    });
+  });
+
+  describe('Thinker API', () => {
+    beforeEach(() => {
+      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+    });
+
+    it('suggests thinkers for a topic', async () => {
+      const mockSuggestions = [
+        { name: 'Socrates', reason: 'Great philosopher', profile: {} },
+      ];
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockSuggestions),
+      });
+
+      const suggestions = await api.suggestThinkers('philosophy', 3);
+
+      expect(suggestions).toEqual(mockSuggestions);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/thinkers/suggest'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ topic: 'philosophy', count: 3 }),
+        })
+      );
+    });
+
+    it('validates a thinker name', async () => {
+      const mockResponse = {
+        valid: true,
+        name: 'Socrates',
+        profile: { name: 'Socrates', bio: 'Philosopher' },
+      };
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const response = await api.validateThinker('Socrates');
+
+      expect(response).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/thinkers/validate'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ name: 'Socrates' }),
+        })
+      );
+    });
+  });
+
+  describe('Error Handling', () => {
+    beforeEach(() => {
+      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+    });
+
+    it('throws error with detail from response', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ detail: 'Not authorized' }),
+      });
+
+      await expect(api.getConversations()).rejects.toThrow('Not authorized');
+    });
+
+    it('throws error with status code when no detail', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.reject(new Error('Parse error')),
+      });
+
+      await expect(api.getConversations()).rejects.toThrow('Unknown error');
+    });
+  });
+});

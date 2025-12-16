@@ -1,0 +1,91 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { Sidebar } from '@/components/Sidebar';
+import type { ConversationSummary } from '@/types';
+
+const createConversation = (
+  id: string,
+  topic: string
+): ConversationSummary => ({
+  id,
+  topic,
+  thinker_names: ['Socrates'],
+  message_count: 5,
+  total_cost: 0.01,
+  created_at: '2024-01-15T10:00:00Z',
+  updated_at: new Date().toISOString(),
+});
+
+describe('Sidebar', () => {
+  const defaultProps = {
+    conversations: [] as ConversationSummary[],
+    selectedId: null,
+    onSelectConversation: jest.fn(),
+    onNewChat: jest.fn(),
+    isOpen: true,
+    onToggle: jest.fn(),
+  };
+
+  it('renders sidebar with title', () => {
+    render(<Sidebar {...defaultProps} />);
+    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
+    expect(screen.getByText('Thinkers Chat')).toBeInTheDocument();
+  });
+
+  it('renders new chat button', () => {
+    render(<Sidebar {...defaultProps} />);
+    expect(screen.getByTestId('new-chat-button')).toBeInTheDocument();
+    expect(screen.getByText('New Conversation')).toBeInTheDocument();
+  });
+
+  it('calls onNewChat when new chat button is clicked', () => {
+    const onNewChat = jest.fn();
+    render(<Sidebar {...defaultProps} onNewChat={onNewChat} />);
+
+    fireEvent.click(screen.getByTestId('new-chat-button'));
+    expect(onNewChat).toHaveBeenCalled();
+  });
+
+  it('renders conversation list', () => {
+    const conversations = [
+      createConversation('1', 'Philosophy'),
+      createConversation('2', 'Science'),
+    ];
+    render(<Sidebar {...defaultProps} conversations={conversations} />);
+
+    expect(screen.getByText('Philosophy')).toBeInTheDocument();
+    expect(screen.getByText('Science')).toBeInTheDocument();
+  });
+
+  it('passes onSelect to conversation list', () => {
+    const onSelectConversation = jest.fn();
+    const conversations = [createConversation('1', 'Philosophy')];
+    render(
+      <Sidebar
+        {...defaultProps}
+        conversations={conversations}
+        onSelectConversation={onSelectConversation}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Philosophy'));
+    expect(onSelectConversation).toHaveBeenCalledWith('1');
+  });
+
+  it('toggles mobile overlay', () => {
+    render(<Sidebar {...defaultProps} isOpen={true} />);
+    expect(screen.getByTestId('sidebar-overlay')).toBeInTheDocument();
+  });
+
+  it('calls onToggle when overlay is clicked', () => {
+    const onToggle = jest.fn();
+    render(<Sidebar {...defaultProps} isOpen={true} onToggle={onToggle} />);
+
+    fireEvent.click(screen.getByTestId('sidebar-overlay'));
+    expect(onToggle).toHaveBeenCalled();
+  });
+
+  it('shows menu button when closed on mobile', () => {
+    render(<Sidebar {...defaultProps} isOpen={false} />);
+    expect(screen.getByTestId('menu-button')).toBeInTheDocument();
+  });
+});

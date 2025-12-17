@@ -1,16 +1,16 @@
-# Railway deploy trigger
+# Railway deploy - builds from repo root context
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files (paths from repo root)
+COPY frontend/package*.json ./
 
 # Install dependencies
 RUN npm ci
 
 # Copy source code
-COPY . .
+COPY frontend/. .
 
 # Build arguments for environment variables (needed at build time for Next.js)
 ARG NEXT_PUBLIC_API_URL

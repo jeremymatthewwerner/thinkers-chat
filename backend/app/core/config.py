@@ -14,8 +14,20 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    # Database - SQLite for MVP, can switch to PostgreSQL later
+    # Database - SQLite for local dev, PostgreSQL for production
     database_url: str = "sqlite+aiosqlite:///./thinkers_chat.db"
+
+    @property
+    def async_database_url(self) -> str:
+        """Get database URL with async driver for SQLAlchemy."""
+        url = self.database_url
+        # Convert Railway's postgresql:// to postgresql+asyncpg://
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        # Convert postgres:// (also valid) to postgresql+asyncpg://
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url
 
     # Anthropic API
     anthropic_api_key: str = ""

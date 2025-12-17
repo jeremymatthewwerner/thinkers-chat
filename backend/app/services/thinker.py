@@ -508,11 +508,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                         elif hasattr(delta, "text") and delta.text:
                             # Accumulate response text
                             response_text += delta.text
-                    elif (
-                        event.type == "message_delta"
-                        and hasattr(event, "usage")
-                        and event.usage
-                    ):
+                    elif event.type == "message_delta" and hasattr(event, "usage") and event.usage:
                         # Final usage info
                         output_tokens = event.usage.output_tokens
 

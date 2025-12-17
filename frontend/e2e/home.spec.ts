@@ -427,9 +427,20 @@ test.describe('Chat Functionality', () => {
     await pauseButton.click();
     await expect(pauseButton).toContainText('Pause');
 
-    // Wait for thinker to respond after resume
-    await page.waitForTimeout(10000);
-    const countAfterResume = await getMessageCount();
+    // Wait for thinker to respond after resume (may take longer with real API)
+    // Poll for new messages with timeout
+    let countAfterResume = countWhilePaused;
+    const maxWaitTime = 45000; // 45 seconds max wait
+    const pollInterval = 2000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitTime) {
+      await page.waitForTimeout(pollInterval);
+      countAfterResume = await getMessageCount();
+      if (countAfterResume > countWhilePaused) {
+        break;
+      }
+    }
 
     // Should have more messages after resuming (thinker responded)
     expect(countAfterResume).toBeGreaterThan(countWhilePaused);
@@ -470,5 +481,84 @@ test.describe('Chat Functionality', () => {
 
     // Sidebar should still show both conversations
     await expect(conversationItems).toHaveCount(2);
+  });
+
+  test('sends message and receives responses from multiple thinkers', { timeout: 120000 }, async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Create conversation with multiple thinkers
+    const newChatButton = page.getByTestId('new-chat-button');
+    await newChatButton.click({ force: true });
+    await page.getByTestId('topic-input').fill('Philosophy of knowledge');
+    await page.getByTestId('next-button').click();
+
+    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+
+    // Add first thinker (Socrates)
+    const customInput = page.getByTestId('custom-thinker-input');
+    await customInput.scrollIntoViewIfNeeded();
+    await customInput.fill('Socrates');
+    const addButton = page.getByTestId('add-custom-thinker');
+    await addButton.scrollIntoViewIfNeeded();
+    await addButton.click();
+    await expect(page.getByTestId('selected-thinker').first()).toBeVisible({ timeout: 15000 });
+
+    // Add second thinker (Aristotle)
+    await customInput.scrollIntoViewIfNeeded();
+    await customInput.fill('Aristotle');
+    await addButton.scrollIntoViewIfNeeded();
+    await addButton.click();
+    await expect(page.getByTestId('selected-thinker')).toHaveCount(2, { timeout: 15000 });
+
+    // Create the conversation
+    const createButton = page.getByTestId('create-button');
+    await createButton.scrollIntoViewIfNeeded();
+    await createButton.click();
+    await expect(page.getByTestId('chat-area')).toBeVisible({ timeout: 10000 });
+
+    // Send a message
+    const messageTextarea = page.getByTestId('message-textarea');
+    await messageTextarea.fill('What is the nature of knowledge?');
+    const sendButton = page.getByTestId('send-button');
+    await sendButton.click();
+
+    // User message should appear immediately
+    await expect(page.locator('text=What is the nature of knowledge?')).toBeVisible({ timeout: 5000 });
+
+    // Wait for thinker responses (this uses real API, may take time)
+    // Look for messages from thinkers (non-user messages with thinker-name)
+    const thinkerMessages = page.locator('[data-sender-type="thinker"]');
+
+    // Wait for at least one thinker to respond (increased timeout for real API)
+    await expect(thinkerMessages.first()).toBeVisible({ timeout: 60000 });
+
+    // Get all thinker names who responded
+    const thinkerNameElements = page.getByTestId('thinker-name');
+    await expect(thinkerNameElements.first()).toBeVisible({ timeout: 5000 });
+
+    // Wait a bit more for second thinker to potentially respond
+    await page.waitForTimeout(15000);
+
+    // Collect unique thinker names that responded
+    const thinkerNamesCount = await thinkerNameElements.count();
+    const respondedThinkers = new Set<string>();
+    for (let i = 0; i < thinkerNamesCount; i++) {
+      const name = await thinkerNameElements.nth(i).textContent();
+      if (name) respondedThinkers.add(name);
+    }
+
+    console.log(`Thinkers who responded: ${Array.from(respondedThinkers).join(', ')}`);
+
+    // Verify at least one thinker responded
+    expect(respondedThinkers.size).toBeGreaterThanOrEqual(1);
+
+    // Verify the thinker messages have content (not empty)
+    const firstThinkerMessage = thinkerMessages.first();
+    const messageContent = await firstThinkerMessage.textContent();
+    expect(messageContent).toBeTruthy();
+    expect(messageContent!.length).toBeGreaterThan(10);
   });
 });

@@ -103,34 +103,26 @@ case $choice in
     2)
         echo ""
         echo -e "${GREEN}=== Deploying Backend ===${NC}"
-        echo -e "${YELLOW}Deploying from backend/ directory to 'backend' service...${NC}"
-        cd backend
-        railway up --service backend
-        cd ..
+        echo -e "${YELLOW}Uploading backend/ as root directory...${NC}"
+        railway up backend --service backend --path-as-root
         echo -e "${GREEN}Backend deployed!${NC}"
         ;;
     3)
         echo ""
         echo -e "${GREEN}=== Deploying Frontend ===${NC}"
-        echo -e "${YELLOW}Deploying from frontend/ directory to 'frontend' service...${NC}"
-        cd frontend
-        railway up --service frontend
-        cd ..
+        echo -e "${YELLOW}Uploading frontend/ as root directory...${NC}"
+        railway up frontend --service frontend --path-as-root
         echo -e "${GREEN}Frontend deployed!${NC}"
         ;;
     4)
         echo ""
         echo -e "${GREEN}=== Deploying Both Services ===${NC}"
         echo ""
-        echo -e "${YELLOW}Deploying backend from backend/ directory...${NC}"
-        cd backend
-        railway up --service backend --detach
-        cd ..
+        echo -e "${YELLOW}Deploying backend...${NC}"
+        railway up backend --service backend --path-as-root --detach
         echo ""
-        echo -e "${YELLOW}Deploying frontend from frontend/ directory...${NC}"
-        cd frontend
-        railway up --service frontend --detach
-        cd ..
+        echo -e "${YELLOW}Deploying frontend...${NC}"
+        railway up frontend --service frontend --path-as-root --detach
         echo ""
         echo -e "${GREEN}Both services deploying! Check Railway dashboard for build status.${NC}"
         railway open 2>/dev/null || echo "Visit: https://railway.app/dashboard"

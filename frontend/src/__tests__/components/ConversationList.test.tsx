@@ -9,6 +9,10 @@ const createConversation = (
   id,
   topic,
   thinker_names: ['Socrates', 'Plato'],
+  thinkers: [
+    { name: 'Socrates', image_url: null },
+    { name: 'Plato', image_url: null },
+  ],
   message_count: 10,
   total_cost: 0.05,
   created_at: '2024-01-15T10:00:00Z',
@@ -46,7 +50,7 @@ describe('ConversationList', () => {
     expect(screen.getByText('Science')).toBeInTheDocument();
   });
 
-  it('shows thinker names', () => {
+  it('shows thinker avatars', () => {
     const conversations = [createConversation('1', 'Philosophy')];
     render(
       <ConversationList
@@ -56,7 +60,9 @@ describe('ConversationList', () => {
       />
     );
 
-    expect(screen.getByText('Socrates, Plato')).toBeInTheDocument();
+    // Avatars have the thinker name as title
+    expect(screen.getByTitle('Socrates')).toBeInTheDocument();
+    expect(screen.getByTitle('Plato')).toBeInTheDocument();
   });
 
   it('shows message count', () => {

@@ -125,6 +125,7 @@ export default function Home() {
           id: conv.id,
           topic: conv.topic,
           thinker_names: conv.thinkers.map((t) => t.name),
+          thinkers: conv.thinkers.map((t) => ({ name: t.name, image_url: t.image_url })),
           message_count: 0,
           total_cost: 0,
           created_at: conv.created_at,

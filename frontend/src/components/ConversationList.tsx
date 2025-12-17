@@ -5,6 +5,7 @@
 'use client';
 
 import type { ConversationSummary } from '@/types';
+import { ThinkerAvatar } from './ThinkerAvatar';
 
 export interface ConversationListProps {
   conversations: ConversationSummary[];
@@ -95,9 +96,21 @@ export function ConversationList({
               )}
             </div>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-            {conv.thinker_names.join(', ')}
-          </p>
+          <div className="flex items-center gap-1 mt-1">
+            {conv.thinkers.slice(0, 3).map((thinker) => (
+              <ThinkerAvatar
+                key={thinker.name}
+                name={thinker.name}
+                imageUrl={thinker.image_url}
+                size="sm"
+              />
+            ))}
+            {conv.thinkers.length > 3 && (
+              <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-1">
+                +{conv.thinkers.length - 3}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-zinc-400 dark:text-zinc-500">
               {conv.message_count} messages

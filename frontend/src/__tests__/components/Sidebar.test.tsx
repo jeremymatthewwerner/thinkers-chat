@@ -9,6 +9,7 @@ const createConversation = (
   id,
   topic,
   thinker_names: ['Socrates'],
+  thinkers: [{ name: 'Socrates', image_url: null }],
   message_count: 5,
   total_cost: 0.01,
   created_at: '2024-01-15T10:00:00Z',

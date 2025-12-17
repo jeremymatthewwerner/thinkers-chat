@@ -122,13 +122,16 @@ class ThinkerService:
             # Combine results, filtering out errors
             all_suggestions: list[ThinkerSuggestion] = []
             seen_names: set[str] = set()
-            for result in results:
+            for i, result in enumerate(results):
                 if isinstance(result, list):
                     for suggestion in result:
                         # Deduplicate by name
                         if suggestion.name.lower() not in seen_names:
                             seen_names.add(suggestion.name.lower())
                             all_suggestions.append(suggestion)
+                elif isinstance(result, Exception):
+                    import logging
+                    logging.warning(f"Parallel suggestion task {i} failed: {result}")
 
             return all_suggestions[:count]
 
@@ -187,9 +190,28 @@ Return ONLY the JSON array, no other text."""
 
             first_block = response.content[0]
             if not isinstance(first_block, TextBlock):
+                import logging
+                logging.warning(f"Claude returned non-text block: {type(first_block)}")
                 return []
-            content = first_block.text
-            data = json.loads(content)
+            raw_content = first_block.text
+            content = raw_content.strip()
+            if not content:
+                import logging
+                logging.warning("Claude returned empty response")
+                return []
+            # Strip markdown code fences if present
+            if content.startswith("```"):
+                # Remove opening fence (```json or ```)
+                content = content.split("\n", 1)[1] if "\n" in content else content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError as e:
+                import logging
+                logging.warning(f"Failed to parse JSON: {e}. Raw: {repr(raw_content[:300])} | After strip: {repr(content[:300])}")
+                return []
 
             # Build suggestions with image URLs (fetched in parallel)
             suggestions = []
@@ -210,7 +232,9 @@ Return ONLY the JSON array, no other text."""
                     )
                 )
             return suggestions
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to get thinker suggestions: {e}")
             return []
 
     async def validate_thinker(self, name: str) -> tuple[bool, ThinkerProfile | None]:

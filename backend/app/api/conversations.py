@@ -48,6 +48,7 @@ async def create_conversation(
             color=thinker_data.color
             if thinker_data.color != "#6366f1"
             else colors[i % len(colors)],
+            image_url=thinker_data.image_url,
         )
         db.add(thinker)
 

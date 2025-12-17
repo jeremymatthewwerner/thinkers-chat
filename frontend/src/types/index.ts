@@ -53,10 +53,16 @@ export interface Conversation {
   updated_at: string;
 }
 
+export interface ThinkerSummary {
+  name: string;
+  image_url?: string | null;
+}
+
 export interface ConversationSummary {
   id: string;
   topic: string;
   thinker_names: string[];
+  thinkers: ThinkerSummary[];
   message_count: number;
   total_cost: number;
   created_at: string;

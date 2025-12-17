@@ -14,8 +14,10 @@ RUN uv sync --frozen --no-dev --no-install-project
 # Copy application code
 COPY app ./app
 
-# Expose port
-EXPOSE 8000
+# Railway sets PORT env var, default to 8000 for local
+ENV PORT=8000
+EXPOSE $PORT
 
 # Run using the venv's Python directly (since project isn't installed)
-CMD [".venv/bin/python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use shell form to expand $PORT
+CMD .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT

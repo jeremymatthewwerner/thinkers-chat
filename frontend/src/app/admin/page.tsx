@@ -44,14 +44,18 @@ export default function AdminPage() {
   }
 
   async function handleDeleteUser(userId: string, username: string) {
-    if (!confirm(`Are you sure you want to delete user "${username}"? This will delete all their conversations and cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete user "${username}"? This will delete all their conversations and cannot be undone.`
+      )
+    ) {
       return;
     }
 
     try {
       setDeletingId(userId);
       await deleteUser(userId);
-      setUsers(users.filter(u => u.id !== userId));
+      setUsers(users.filter((u) => u.id !== userId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete user');
     } finally {
@@ -87,7 +91,10 @@ export default function AdminPage() {
   }
 
   const totalSpend = users.reduce((sum, u) => sum + u.total_spend, 0);
-  const totalConversations = users.reduce((sum, u) => sum + u.conversation_count, 0);
+  const totalConversations = users.reduce(
+    (sum, u) => sum + u.conversation_count,
+    0
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
@@ -184,7 +191,10 @@ export default function AdminPage() {
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
                 {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                  <tr
+                    key={u.id}
+                    className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30"
+                  >
                     <td className="whitespace-nowrap px-6 py-4">
                       <div className="flex items-center">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
@@ -240,7 +250,10 @@ export default function AdminPage() {
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-zinc-500 dark:text-zinc-400">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-8 text-center text-zinc-500 dark:text-zinc-400"
+                    >
                       No users found
                     </td>
                   </tr>

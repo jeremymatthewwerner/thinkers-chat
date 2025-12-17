@@ -477,9 +477,7 @@ async def create_admin_user(
 class TestAdminAPI:
     """Tests for admin endpoints."""
 
-    async def test_list_users_as_admin(
-        self, client: AsyncClient, db_session: AsyncSession
-    ) -> None:
+    async def test_list_users_as_admin(self, client: AsyncClient, db_session: AsyncSession) -> None:
         """Test that admins can list all users."""
         admin_data = await create_admin_user(client, db_session)
         headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
@@ -556,7 +554,5 @@ class TestAdminAPI:
         admin_data = await create_admin_user(client, db_session)
         headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
 
-        response = await client.delete(
-            "/api/admin/users/nonexistent-id", headers=headers
-        )
+        response = await client.delete("/api/admin/users/nonexistent-id", headers=headers)
         assert response.status_code == 404

@@ -103,7 +103,9 @@ describe('Sidebar', () => {
 
   it('calls onLogout when logout button is clicked', () => {
     const onLogout = jest.fn();
-    render(<Sidebar {...defaultProps} username="testuser" onLogout={onLogout} />);
+    render(
+      <Sidebar {...defaultProps} username="testuser" onLogout={onLogout} />
+    );
 
     fireEvent.click(screen.getByTestId('logout-button'));
     expect(onLogout).toHaveBeenCalled();
@@ -111,6 +113,8 @@ describe('Sidebar', () => {
 
   it('shows default footer text when no username', () => {
     render(<Sidebar {...defaultProps} />);
-    expect(screen.getByText('Discuss ideas with AI-simulated thinkers')).toBeInTheDocument();
+    expect(
+      screen.getByText('Discuss ideas with AI-simulated thinkers')
+    ).toBeInTheDocument();
   });
 });

@@ -124,7 +124,10 @@ class TestWebSocketEndpoint:
         """Test that multiple clients receive broadcast messages."""
         token1 = get_test_token("user-1")
         token2 = get_test_token("user-2")
-        with TestClient(app) as test_client, test_client.websocket_connect(f"/ws/multi-test?token={token1}") as ws1:
+        with (
+            TestClient(app) as test_client,
+            test_client.websocket_connect(f"/ws/multi-test?token={token1}") as ws1,
+        ):
             # Skip join message for ws1
             ws1.receive_json()
 

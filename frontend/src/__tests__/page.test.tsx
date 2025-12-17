@@ -29,14 +29,21 @@ jest.mock('@/lib/api', () => ({
 const mockLogout = jest.fn();
 jest.mock('@/contexts', () => ({
   useAuth: jest.fn(() => ({
-    user: { id: 'user-1', username: 'testuser', is_admin: false, total_spend: 0 },
+    user: {
+      id: 'user-1',
+      username: 'testuser',
+      is_admin: false,
+      total_spend: 0,
+    },
     isLoading: false,
     isAuthenticated: true,
     login: jest.fn(),
     register: jest.fn(),
     logout: mockLogout,
   })),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;

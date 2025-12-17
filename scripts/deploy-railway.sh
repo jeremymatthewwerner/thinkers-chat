@@ -70,20 +70,32 @@ case $choice in
         echo ""
         echo "1. Go to https://railway.app/new"
         echo "2. Click 'Empty Project'"
-        echo "3. Add PostgreSQL: Click '+ New' → 'Database' → 'Add PostgreSQL'"
-        echo "4. Add Backend service:"
+        echo ""
+        echo -e "${CYAN}3. Add PostgreSQL:${NC}"
+        echo "   - Click '+ New' → 'Database' → 'Add PostgreSQL'"
+        echo ""
+        echo -e "${CYAN}4. Add Backend service:${NC}"
         echo "   - Click '+ New' → 'GitHub Repo' → Select this repo"
-        echo "   - Set root directory to 'backend'"
-        echo "   - Add variables:"
-        echo "     - ANTHROPIC_API_KEY=<your-key>"
-        echo "     - DATABASE_URL=\${{Postgres.DATABASE_URL}}"
-        echo "     - CORS_ORIGINS=https://<your-frontend>.up.railway.app"
-        echo "5. Add Frontend service:"
+        echo "   - Name it 'backend'"
+        echo "   - Go to Settings → Build → Root Directory → set to 'backend'"
+        echo "   - Go to Variables and add:"
+        echo "     ANTHROPIC_API_KEY=<your-key>"
+        echo "     DATABASE_URL=\${{Postgres.DATABASE_URL}}"
+        echo "     CORS_ORIGINS=https://<frontend-url>.up.railway.app"
+        echo ""
+        echo -e "${CYAN}5. Add Frontend service:${NC}"
         echo "   - Click '+ New' → 'GitHub Repo' → Select this repo"
-        echo "   - Set root directory to 'frontend'"
-        echo "   - Add variables:"
-        echo "     - NEXT_PUBLIC_API_URL=https://<your-backend>.up.railway.app"
-        echo "     - NEXT_PUBLIC_WS_URL=wss://<your-backend>.up.railway.app"
+        echo "   - Name it 'frontend'"
+        echo "   - Go to Settings → Build → Root Directory → set to 'frontend'"
+        echo "   - Go to Variables and add:"
+        echo "     NEXT_PUBLIC_API_URL=https://<backend-url>.up.railway.app"
+        echo "     NEXT_PUBLIC_WS_URL=wss://<backend-url>.up.railway.app"
+        echo ""
+        echo -e "${CYAN}6. Generate domains:${NC}"
+        echo "   - For each service: Settings → Networking → Generate Domain"
+        echo "   - Update the CORS_ORIGINS and API URLs with the generated domains"
+        echo ""
+        echo -e "${RED}IMPORTANT: The Root Directory setting is required for monorepos!${NC}"
         echo ""
         echo -e "${YELLOW}Opening Railway dashboard...${NC}"
         open "https://railway.app/new" 2>/dev/null || echo "Visit: https://railway.app/new"
@@ -91,16 +103,18 @@ case $choice in
     2)
         echo ""
         echo -e "${GREEN}=== Deploying Backend ===${NC}"
+        echo -e "${YELLOW}Deploying from backend/ directory to 'backend' service...${NC}"
         cd backend
-        railway up
+        railway up --service backend
         cd ..
         echo -e "${GREEN}Backend deployed!${NC}"
         ;;
     3)
         echo ""
         echo -e "${GREEN}=== Deploying Frontend ===${NC}"
+        echo -e "${YELLOW}Deploying from frontend/ directory to 'frontend' service...${NC}"
         cd frontend
-        railway up
+        railway up --service frontend
         cd ..
         echo -e "${GREEN}Frontend deployed!${NC}"
         ;;
@@ -108,17 +122,18 @@ case $choice in
         echo ""
         echo -e "${GREEN}=== Deploying Both Services ===${NC}"
         echo ""
-        echo -e "${YELLOW}Deploying backend...${NC}"
+        echo -e "${YELLOW}Deploying backend from backend/ directory...${NC}"
         cd backend
-        railway up
+        railway up --service backend --detach
         cd ..
         echo ""
-        echo -e "${YELLOW}Deploying frontend...${NC}"
+        echo -e "${YELLOW}Deploying frontend from frontend/ directory...${NC}"
         cd frontend
-        railway up
+        railway up --service frontend --detach
         cd ..
         echo ""
-        echo -e "${GREEN}Both services deployed!${NC}"
+        echo -e "${GREEN}Both services deploying! Check Railway dashboard for build status.${NC}"
+        railway open 2>/dev/null || echo "Visit: https://railway.app/dashboard"
         ;;
     5)
         echo ""

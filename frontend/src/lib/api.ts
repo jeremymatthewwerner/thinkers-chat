@@ -11,6 +11,7 @@ import type {
   ThinkerProfile,
   ThinkerSuggestion,
   User,
+  UserWithStats,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -266,6 +267,17 @@ export async function validateThinker(
   return fetchWithAuth<ValidateThinkerResponse>('/api/thinkers/validate', {
     method: 'POST',
     body: JSON.stringify({ name }),
+  });
+}
+
+// Admin API
+export async function getAdminUsers(): Promise<UserWithStats[]> {
+  return fetchWithAuth<UserWithStats[]>('/api/admin/users');
+}
+
+export async function deleteUser(userId: string): Promise<{ message: string }> {
+  return fetchWithAuth<{ message: string }>(`/api/admin/users/${userId}`, {
+    method: 'DELETE',
   });
 }
 

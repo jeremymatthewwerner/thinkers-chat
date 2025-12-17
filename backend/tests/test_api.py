@@ -451,3 +451,111 @@ class TestThinkerAPI:
         assert response.status_code == 503
         data = response.json()
         assert "API credit limit reached" in data["detail"]
+
+
+async def create_admin_user(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> dict[str, Any]:
+    """Helper to create an admin user for testing."""
+    from app.models import User
+    from sqlalchemy import update
+
+    # Register a regular user first
+    data = await register_and_get_token(client, "adminuser", "adminpass123")
+
+    # Make them an admin directly in the database
+    await db_session.execute(
+        update(User).where(User.id == data["user"]["id"]).values(is_admin=True)
+    )
+    await db_session.commit()
+
+    return data
+
+
+class TestAdminAPI:
+    """Tests for admin endpoints."""
+
+    async def test_list_users_as_admin(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test that admins can list all users."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        # Create some additional users
+        await register_and_get_token(client, "user1", "password123")
+        await register_and_get_token(client, "user2", "password123")
+
+        response = await client.get("/api/admin/users", headers=headers)
+        assert response.status_code == 200
+        users = response.json()
+        assert len(users) >= 3  # admin + 2 users
+        assert all("username" in u for u in users)
+        assert all("conversation_count" in u for u in users)
+
+    async def test_list_users_as_non_admin(self, client: AsyncClient) -> None:
+        """Test that non-admins cannot list users."""
+        headers = await get_auth_headers(client, "regularuser", "password123")
+        response = await client.get("/api/admin/users", headers=headers)
+        assert response.status_code == 403
+
+    async def test_list_users_no_auth(self, client: AsyncClient) -> None:
+        """Test that unauthenticated requests are rejected."""
+        response = await client.get("/api/admin/users")
+        assert response.status_code == 401
+
+    async def test_delete_user_as_admin(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test that admins can delete users."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        # Create a user to delete
+        user_data = await register_and_get_token(client, "todelete", "password123")
+        user_id = user_data["user"]["id"]
+
+        # Delete the user
+        response = await client.delete(f"/api/admin/users/{user_id}", headers=headers)
+        assert response.status_code == 200
+        assert "deleted successfully" in response.json()["message"]
+
+        # Verify user is gone from list
+        response = await client.get("/api/admin/users", headers=headers)
+        users = response.json()
+        assert all(u["id"] != user_id for u in users)
+
+    async def test_delete_self_as_admin(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test that admins cannot delete themselves."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+        admin_id = admin_data["user"]["id"]
+
+        response = await client.delete(f"/api/admin/users/{admin_id}", headers=headers)
+        assert response.status_code == 400
+        assert "Cannot delete your own account" in response.json()["detail"]
+
+    async def test_delete_user_as_non_admin(self, client: AsyncClient) -> None:
+        """Test that non-admins cannot delete users."""
+        headers = await get_auth_headers(client, "nonadmin", "password123")
+        user_data = await register_and_get_token(client, "victim", "password123")
+
+        response = await client.delete(
+            f"/api/admin/users/{user_data['user']['id']}", headers=headers
+        )
+        assert response.status_code == 403
+
+    async def test_delete_nonexistent_user(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test deleting a non-existent user."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        response = await client.delete(
+            "/api/admin/users/nonexistent-id", headers=headers
+        )
+        assert response.status_code == 404

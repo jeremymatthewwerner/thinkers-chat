@@ -17,6 +17,10 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface UserWithStats extends User {
+  conversation_count: number;
+}
+
 export interface Session {
   id: string;
   created_at: string;

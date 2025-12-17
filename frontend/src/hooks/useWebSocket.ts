@@ -88,7 +88,10 @@ export function useWebSocket({
           const data: WSMessage = JSON.parse(event.data);
 
           // Only process messages for this conversation
-          if (data.conversation_id && data.conversation_id !== thisConversationId) {
+          if (
+            data.conversation_id &&
+            data.conversation_id !== thisConversationId
+          ) {
             return;
           }
 

@@ -127,7 +127,13 @@ export default function Home() {
   const handleCreateConversation = useCallback(
     async (
       topic: string,
-      thinkers: { name: string; bio: string; positions: string; style: string; image_url?: string | null }[]
+      thinkers: {
+        name: string;
+        bio: string;
+        positions: string;
+        style: string;
+        image_url?: string | null;
+      }[]
     ) => {
       const conv = await api.createConversation({
         topic,
@@ -139,7 +145,10 @@ export default function Home() {
           id: conv.id,
           topic: conv.topic,
           thinker_names: conv.thinkers.map((t) => t.name),
-          thinkers: conv.thinkers.map((t) => ({ name: t.name, image_url: t.image_url })),
+          thinkers: conv.thinkers.map((t) => ({
+            name: t.name,
+            image_url: t.image_url,
+          })),
           message_count: 0,
           total_cost: 0,
           created_at: conv.created_at,
@@ -160,7 +169,11 @@ export default function Home() {
 
   // Suggest thinkers for topic
   const handleSuggestThinkers = useCallback(
-    async (topic: string, count: number = 5, exclude: string[] = []): Promise<ThinkerSuggestion[]> => {
+    async (
+      topic: string,
+      count: number = 5,
+      exclude: string[] = []
+    ): Promise<ThinkerSuggestion[]> => {
       return api.suggestThinkers(topic, count, exclude);
     },
     []

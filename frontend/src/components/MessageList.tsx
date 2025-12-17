@@ -53,7 +53,9 @@ export function MessageList({
       data-testid="message-list"
     >
       {messages.map((msg) => {
-        const thinker = msg.sender_name ? thinkerMap[msg.sender_name] : undefined;
+        const thinker = msg.sender_name
+          ? thinkerMap[msg.sender_name]
+          : undefined;
         return (
           <Message
             key={msg.id}
@@ -67,47 +69,47 @@ export function MessageList({
       {typingThinkers.map((name) => {
         const thinker = thinkerMap[name];
         return (
-        <div
-          key={`typing-${name}`}
-          className="mb-4 flex items-start gap-3"
-          data-testid="thinker-typing-indicator"
-        >
-          <ThinkerAvatar
-            name={name}
-            imageUrl={thinker?.image_url}
-            size="md"
-            color={thinker?.color}
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className="text-sm font-medium"
-                style={{ color: thinker?.color || '#6b7280' }}
-              >
-                {name}
-              </span>
-            </div>
-            <div className="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 inline-block">
-              <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500">
-                <span className="text-sm italic">Thinking...</span>
-                <div className="flex gap-1">
-                  <span
-                    className="w-1.5 h-1.5 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce"
-                    style={{ animationDelay: '0ms' }}
-                  />
-                  <span
-                    className="w-1.5 h-1.5 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce"
-                    style={{ animationDelay: '150ms' }}
-                  />
-                  <span
-                    className="w-1.5 h-1.5 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce"
-                    style={{ animationDelay: '300ms' }}
-                  />
+          <div
+            key={`typing-${name}`}
+            className="mb-4 flex items-start gap-3"
+            data-testid="thinker-typing-indicator"
+          >
+            <ThinkerAvatar
+              name={name}
+              imageUrl={thinker?.image_url}
+              size="md"
+              color={thinker?.color}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: thinker?.color || '#6b7280' }}
+                >
+                  {name}
+                </span>
+              </div>
+              <div className="bg-zinc-100 dark:bg-zinc-800 rounded-lg px-4 py-3 inline-block">
+                <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500">
+                  <span className="text-sm italic">Thinking...</span>
+                  <div className="flex gap-1">
+                    <span
+                      className="w-1.5 h-1.5 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce"
+                      style={{ animationDelay: '0ms' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce"
+                      style={{ animationDelay: '150ms' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce"
+                      style={{ animationDelay: '300ms' }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         );
       })}
       <div ref={bottomRef} />

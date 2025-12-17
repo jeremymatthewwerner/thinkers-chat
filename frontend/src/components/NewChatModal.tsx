@@ -26,7 +26,11 @@ export interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (topic: string, thinkers: ThinkerData[]) => Promise<void>;
-  onSuggestThinkers: (topic: string, count?: number, exclude?: string[]) => Promise<ThinkerSuggestion[]>;
+  onSuggestThinkers: (
+    topic: string,
+    count?: number,
+    exclude?: string[]
+  ) => Promise<ThinkerSuggestion[]>;
   onValidateThinker: (name: string) => Promise<ThinkerProfile | null>;
 }
 
@@ -80,7 +84,10 @@ export function NewChatModal({
         setSuggestions(results);
         setStep('thinkers');
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to get thinker suggestions';
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Failed to get thinker suggestions';
         setError(message);
       } finally {
         setIsLoading(false);
@@ -111,7 +118,8 @@ export function NewChatModal({
       );
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create conversation';
+      const message =
+        err instanceof Error ? err.message : 'Failed to create conversation';
       setError(message);
     } finally {
       setIsCreating(false);
@@ -133,12 +141,18 @@ export function NewChatModal({
             thinker.name,
           ];
           // Request just 1 replacement suggestion for faster response
-          const results = await onSuggestThinkers(topic.trim(), 1, excludeNames);
+          const results = await onSuggestThinkers(
+            topic.trim(),
+            1,
+            excludeNames
+          );
 
           // Add the new suggestion if valid
           if (results.length > 0) {
             setSuggestions((prev) => {
-              const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
+              const existingNames = new Set(
+                prev.map((s) => s.name.toLowerCase())
+              );
               const newSuggestion = results.find(
                 (s) => !existingNames.has(s.name.toLowerCase())
               );
@@ -169,7 +183,9 @@ export function NewChatModal({
       try {
         // Build exclude list: all current suggestions (except the one being replaced) + selected thinkers
         const excludeNames = [
-          ...suggestions.filter((s) => s.name !== nameToReplace).map((s) => s.name),
+          ...suggestions
+            .filter((s) => s.name !== nameToReplace)
+            .map((s) => s.name),
           ...selectedThinkers.map((t) => t.name),
         ];
         // Request just 1 replacement suggestion
@@ -198,7 +214,10 @@ export function NewChatModal({
           return prev.filter((s) => s.name !== nameToReplace);
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to get replacement suggestion';
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Failed to get replacement suggestion';
         setError(message);
       }
     },
@@ -242,7 +261,9 @@ export function NewChatModal({
         </div>
 
         {/* Content */}
-        <div className={`px-6 py-4 flex-1 min-h-0 ${step === 'topic' ? 'overflow-y-auto' : 'overflow-hidden flex flex-col'}`}>
+        <div
+          className={`px-6 py-4 flex-1 min-h-0 ${step === 'topic' ? 'overflow-y-auto' : 'overflow-hidden flex flex-col'}`}
+        >
           {step === 'topic' ? (
             <form onSubmit={handleTopicSubmit}>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">

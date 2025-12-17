@@ -93,19 +93,30 @@ interface BackendConversationSummary {
   title: string | null;
   is_active: boolean;
   created_at: string;
-  thinkers: Array<{ name: string; bio: string; positions: string; style: string; color: string; image_url?: string | null }>;
+  thinkers: Array<{
+    name: string;
+    bio: string;
+    positions: string;
+    style: string;
+    color: string;
+    image_url?: string | null;
+  }>;
   message_count: number;
   total_cost: number;
 }
 
 export async function getConversations(): Promise<ConversationSummary[]> {
-  const response = await fetchWithSession<BackendConversationSummary[]>('/api/conversations');
+  const response =
+    await fetchWithSession<BackendConversationSummary[]>('/api/conversations');
   // Transform backend response to frontend ConversationSummary format
   return response.map((conv) => ({
     id: conv.id,
     topic: conv.topic,
     thinker_names: conv.thinkers.map((t) => t.name),
-    thinkers: conv.thinkers.map((t) => ({ name: t.name, image_url: t.image_url })),
+    thinkers: conv.thinkers.map((t) => ({
+      name: t.name,
+      image_url: t.image_url,
+    })),
     message_count: conv.message_count,
     total_cost: conv.total_cost,
     created_at: conv.created_at,

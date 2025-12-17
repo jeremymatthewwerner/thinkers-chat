@@ -42,7 +42,9 @@ function getColorFromName(name: string): string {
     '#8B5CF6', // violet
     '#EC4899', // pink
   ];
-  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = name
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }
 

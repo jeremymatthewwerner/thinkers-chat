@@ -41,7 +41,9 @@ export function ThinkerSelector({
   const [customName, setCustomName] = useState('');
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshingNames, setRefreshingNames] = useState<Set<string>>(new Set());
+  const [refreshingNames, setRefreshingNames] = useState<Set<string>>(
+    new Set()
+  );
 
   const selectedNames = new Set(
     selectedThinkers.map((t) => t.name.toLowerCase())
@@ -68,7 +70,8 @@ export function ThinkerSelector({
         setError(`Could not find "${customName}". Try a different name.`);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to validate thinker';
+      const message =
+        err instanceof Error ? err.message : 'Failed to validate thinker';
       setError(message);
     } finally {
       setValidating(false);
@@ -104,7 +107,10 @@ export function ThinkerSelector({
   );
 
   return (
-    <div className="flex flex-col flex-1 min-h-0" data-testid="thinker-selector">
+    <div
+      className="flex flex-col flex-1 min-h-0"
+      data-testid="thinker-selector"
+    >
       {/* Pinned header section */}
       <div className="flex-shrink-0 space-y-3 pb-3 border-b border-zinc-200 dark:border-zinc-700">
         {/* Topic */}

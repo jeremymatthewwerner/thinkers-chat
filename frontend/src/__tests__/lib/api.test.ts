@@ -125,7 +125,16 @@ describe('API Client', () => {
           title: null,
           is_active: true,
           created_at: '2024-01-01T00:00:00Z',
-          thinkers: [{ name: 'Socrates', bio: 'bio', positions: 'pos', style: 'style', color: '#fff', image_url: 'https://example.com/socrates.jpg' }],
+          thinkers: [
+            {
+              name: 'Socrates',
+              bio: 'bio',
+              positions: 'pos',
+              style: 'style',
+              color: '#fff',
+              image_url: 'https://example.com/socrates.jpg',
+            },
+          ],
           message_count: 5,
           total_cost: 0.123,
         },
@@ -143,7 +152,9 @@ describe('API Client', () => {
           id: 'conv-1',
           topic: 'Philosophy',
           thinker_names: ['Socrates'],
-          thinkers: [{ name: 'Socrates', image_url: 'https://example.com/socrates.jpg' }],
+          thinkers: [
+            { name: 'Socrates', image_url: 'https://example.com/socrates.jpg' },
+          ],
           message_count: 5,
           total_cost: 0.123,
           created_at: '2024-01-01T00:00:00Z',

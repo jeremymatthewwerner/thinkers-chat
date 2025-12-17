@@ -7,13 +7,11 @@
 import type { Conversation, Message } from '@/types';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
-import { CostMeter } from './CostMeter';
 
 export interface ChatAreaProps {
   conversation: Conversation | null;
   messages: Message[];
   typingThinkers: string[];
-  totalCost: number;
   onSendMessage: (content: string) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
@@ -27,7 +25,6 @@ export function ChatArea({
   conversation,
   messages,
   typingThinkers,
-  totalCost,
   onSendMessage,
   onTypingStart,
   onTypingStop,
@@ -113,7 +110,6 @@ export function ChatArea({
               )}
             </button>
           )}
-          <CostMeter totalCost={totalCost} />
           {!isConnected && (
             <span
               className="text-xs text-orange-500"

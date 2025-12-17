@@ -6,6 +6,7 @@
 
 import type { ConversationSummary } from '@/types';
 import { ConversationList } from './ConversationList';
+import { CostMeter } from './CostMeter';
 
 export interface SidebarProps {
   conversations: ConversationSummary[];
@@ -17,6 +18,7 @@ export interface SidebarProps {
   onToggle: () => void;
   isConnected?: boolean;
   isPaused?: boolean;
+  sessionCost?: number;
 }
 
 export function Sidebar({
@@ -29,6 +31,7 @@ export function Sidebar({
   onToggle,
   isConnected = false,
   isPaused = false,
+  sessionCost = 0,
 }: SidebarProps) {
   return (
     <>
@@ -50,28 +53,31 @@ export function Sidebar({
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-200 dark:border-zinc-800">
-            <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-              Thinkers Chat
-            </h1>
-            <button
-              onClick={onToggle}
-              className="lg:hidden p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-              aria-label="Close sidebar"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-5 h-5 text-zinc-500"
+          <div className="px-4 py-4 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                Thinkers Chat
+              </h1>
+              <button
+                onClick={onToggle}
+                className="lg:hidden p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                aria-label="Close sidebar"
               >
-                <path
-                  fillRule="evenodd"
-                  d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5 text-zinc-500"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+            <CostMeter totalCost={sessionCost} className="mt-2" />
           </div>
 
           {/* New chat button */}

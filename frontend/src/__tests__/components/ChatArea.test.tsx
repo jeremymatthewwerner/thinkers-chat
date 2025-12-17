@@ -37,7 +37,6 @@ describe('ChatArea', () => {
     conversation: null as Conversation | null,
     messages: [] as Message[],
     typingThinkers: [] as string[],
-    totalCost: 0,
     onSendMessage: jest.fn(),
     isConnected: true,
   };
@@ -85,19 +84,6 @@ describe('ChatArea', () => {
     expect(screen.getByTestId('thinker-typing-indicator')).toBeInTheDocument();
     expect(screen.getByText('Thinking...')).toBeInTheDocument();
     expect(screen.getByText('Socrates')).toBeInTheDocument();
-  });
-
-  it('renders cost meter', () => {
-    const conversation = createConversation();
-    render(
-      <ChatArea
-        {...defaultProps}
-        conversation={conversation}
-        totalCost={0.05}
-      />
-    );
-
-    expect(screen.getByTestId('cost-meter')).toBeInTheDocument();
   });
 
   it('renders message input', () => {

@@ -193,13 +193,13 @@ export default function Home() {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         isConnected={isConnected}
         isPaused={isPaused}
+        sessionCost={sessionCost}
       />
 
       <ChatArea
         conversation={currentConversation}
         messages={messages}
         typingThinkers={Array.from(typingThinkers)}
-        totalCost={sessionCost}
         onSendMessage={handleSendMessage}
         onTypingStart={sendTypingStart}
         onTypingStop={sendTypingStop}

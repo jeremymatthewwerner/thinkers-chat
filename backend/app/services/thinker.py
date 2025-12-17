@@ -359,6 +359,116 @@ Return ONLY the JSON, no other text."""
             logging.warning(f"Failed to validate thinker: {e}")
             return False, None
 
+    def _choose_response_style(
+        self,
+        thinker: "ConversationThinker",
+        messages: Sequence["Message"],
+    ) -> tuple[str, int]:
+        """Choose a response style based on conversation context.
+
+        Returns (style_instruction, max_tokens).
+        Styles: 'brief' (quick reaction), 'normal' (substantive), 'extended' (deep exploration)
+        """
+        # Analyze recent messages to decide style
+        recent_messages = messages[-5:] if messages else []
+
+        # Check if this thinker just spoke (might want a follow-up)
+        just_spoke = recent_messages and recent_messages[-1].sender_name == thinker.name
+
+        # Check if addressed directly
+        was_addressed = any(
+            thinker.name.lower() in m.content.lower()
+            for m in recent_messages[-2:]
+        )
+
+        # Random selection weighted by context
+        roll = random.random()
+
+        if just_spoke and roll < 0.3:
+            # Follow-up thought - brief
+            return (
+                "Respond with a VERY brief follow-up thought (1 short sentence, like 'Though I should add...' or 'Actually, on reflection...')",
+                80
+            )
+        elif was_addressed:
+            # More likely to give a fuller response when addressed
+            if roll < 0.2:
+                return (
+                    "Give a brief, direct response (1 sentence)",
+                    80
+                )
+            elif roll < 0.85:
+                return (
+                    "Give a substantive response (2-4 sentences)",
+                    300
+                )
+            else:
+                return (
+                    "Give a more extended response exploring the idea deeply (4-6 sentences)",
+                    500
+                )
+        else:
+            # Not addressed - more variety
+            if roll < 0.25:
+                # Quick reaction
+                return (
+                    "Give a brief reaction or agreement/disagreement (1 short sentence, like 'I couldn't agree more' or 'That's precisely my concern')",
+                    80
+                )
+            elif roll < 0.85:
+                return (
+                    "Give a substantive response (2-4 sentences)",
+                    300
+                )
+            else:
+                return (
+                    "Give a more extended response (4-6 sentences)",
+                    500
+                )
+
+    async def generate_thinking_preview(
+        self,
+        thinker: "ConversationThinker",
+        messages: Sequence["Message"],
+        topic: str,
+    ) -> str:
+        """Generate a brief thinking preview for the typing indicator.
+
+        Returns a short phrase describing what the thinker is considering.
+        """
+        if not self.client:
+            return "Thinking..."
+
+        # Build minimal context
+        recent = messages[-3:] if messages else []
+        context = "\n".join(
+            f"{m.sender_name or 'User'}: {m.content[:100]}"
+            for m in recent
+        )
+
+        prompt = f"""You are {thinker.name}. Based on this conversation snippet about "{topic}":
+
+{context}
+
+Write a VERY brief phrase (5-10 words) describing what you're thinking about before responding.
+Examples: "Considering the ethical implications...", "Recalling my experiments with...", "Weighing both perspectives..."
+
+Respond with ONLY the thinking phrase, nothing else."""
+
+        try:
+            response = await self.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=30,
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            first_block = response.content[0]
+            if isinstance(first_block, TextBlock):
+                return first_block.text.strip()
+            return "Thinking..."
+        except Exception:
+            return "Thinking..."
+
     async def generate_response(
         self,
         thinker: "ConversationThinker",
@@ -371,6 +481,9 @@ Return ONLY the JSON, no other text."""
         """
         if not self.client:
             return "", 0.0
+
+        # Choose response style based on context
+        style_instruction, max_tokens = self._choose_response_style(thinker, messages)
 
         # Build conversation context
         # sender_type can be either string or enum depending on how SQLAlchemy returns it
@@ -401,16 +514,17 @@ Now respond as {thinker.name} would. Guidelines:
 - Use modern English regardless of their era
 - If discussing something that didn't exist in their time, acknowledge it (e.g., "In my era we didn't have X, but...")
 - Engage with what others have said - agree, disagree, build on ideas
-- Be concise but substantive (2-4 sentences typically)
 - Don't be preachy or lecture-like
 - Show personality through your response style
+
+RESPONSE STYLE: {style_instruction}
 
 Respond with ONLY what {thinker.name} would say, nothing else."""
 
         try:
             response = await self.client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=300,
+                max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
 
@@ -494,8 +608,10 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
         The agent monitors the conversation and responds when appropriate.
         It pauses when no users are connected and resumes when they return.
+        Uses variable timing for more natural conversation flow.
         """
         last_response_count = 0
+        consecutive_silence = 0  # Track how long since last response
 
         while True:
             try:
@@ -515,14 +631,34 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 messages = await get_messages(conversation_id)
 
                 # Decide whether to respond
-                should_respond = self._should_respond(thinker, messages, last_response_count)
+                should_respond = self._should_respond(
+                    thinker, messages, last_response_count, consecutive_silence
+                )
 
                 if should_respond:
+                    consecutive_silence = 0
+
                     # Show typing indicator
                     await manager.send_thinker_typing(conversation_id, thinker.name)
 
-                    # Simulate typing delay (more natural)
-                    typing_delay = random.uniform(2.0, 5.0)
+                    # Variable typing delay based on response type
+                    # Quick reactions: 1-3s, Normal: 3-8s, Thoughtful: 8-15s
+                    response_complexity = random.random()
+                    if response_complexity < 0.3:
+                        typing_delay = random.uniform(1.0, 3.0)  # Quick reaction
+                    elif response_complexity < 0.8:
+                        typing_delay = random.uniform(3.0, 8.0)  # Normal
+                    else:
+                        typing_delay = random.uniform(8.0, 15.0)  # Thoughtful
+
+                    # Generate thinking preview while "typing"
+                    thinking_preview = await self.generate_thinking_preview(
+                        thinker, messages, topic
+                    )
+                    await manager.send_thinker_thinking(
+                        conversation_id, thinker.name, thinking_preview
+                    )
+
                     await asyncio.sleep(typing_delay)
 
                     # Check pause state again before generating (prevents spend during pause)
@@ -557,11 +693,42 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                         )
 
                         last_response_count = len(messages) + 1
+
+                        # Chance to send a follow-up thought (consecutive message)
+                        if random.random() < 0.15:  # 15% chance of follow-up
+                            await asyncio.sleep(random.uniform(2.0, 5.0))
+                            if not self.is_paused(conversation_id):
+                                # Get updated messages including our first response
+                                updated_messages = await get_messages(conversation_id)
+                                followup_text, followup_cost = await self.generate_response(
+                                    thinker, updated_messages, topic
+                                )
+                                if followup_text:
+                                    followup_msg = await save_message(
+                                        conversation_id,
+                                        thinker.name,
+                                        followup_text,
+                                        followup_cost,
+                                    )
+                                    await manager.send_thinker_message(
+                                        conversation_id,
+                                        thinker.name,
+                                        followup_text,
+                                        followup_msg.id,
+                                        followup_cost,
+                                    )
+                                    last_response_count = len(updated_messages) + 1
                     else:
                         await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                else:
+                    consecutive_silence += 1
 
-                # Wait before checking again
-                wait_time = random.uniform(3.0, 8.0)
+                # Variable wait before checking again
+                # Shorter waits when conversation is active, longer when quiet
+                if consecutive_silence > 3:
+                    wait_time = random.uniform(5.0, 12.0)  # Quiet conversation
+                else:
+                    wait_time = random.uniform(2.0, 6.0)  # Active conversation
                 await asyncio.sleep(wait_time)
 
             except asyncio.CancelledError:
@@ -575,6 +742,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         thinker: "ConversationThinker",
         messages: Sequence["Message"],
         last_response_count: int,
+        consecutive_silence: int = 0,
     ) -> bool:
         """Decide if a thinker should respond to the current conversation state.
 
@@ -582,6 +750,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         - Respond after new messages arrive
         - Don't respond too frequently
         - Higher chance to respond when addressed or when topic is relevant
+        - May stay silent for multiple turns (more realistic)
         """
         if not messages:
             return False
@@ -596,15 +765,23 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         was_addressed = any(thinker.name.lower() in m.content.lower() for m in last_messages)
 
         # Base probability increases with new messages
-        base_probability = min(0.3 + (new_message_count * 0.15), 0.8)
+        base_probability = min(0.25 + (new_message_count * 0.12), 0.7)
 
         # Higher probability if addressed
         if was_addressed:
-            base_probability = min(base_probability + 0.4, 0.95)
+            base_probability = min(base_probability + 0.5, 0.95)
 
-        # Don't respond to your own message immediately
+        # Increase probability if been silent for a while (should eventually respond)
+        if consecutive_silence > 2:
+            base_probability = min(base_probability + (consecutive_silence * 0.1), 0.9)
+
+        # Don't respond to your own message immediately (but allow follow-ups handled elsewhere)
         if messages and messages[-1].sender_name == thinker.name:
-            base_probability = 0.1
+            base_probability = 0.05  # Very low - follow-ups handled separately
+
+        # Sometimes stay completely silent for variety (unless addressed)
+        if not was_addressed and random.random() < 0.15:
+            return False
 
         return random.random() < base_probability
 

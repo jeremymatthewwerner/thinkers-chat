@@ -12,6 +12,8 @@ export interface ChatAreaProps {
   conversation: Conversation | null;
   messages: Message[];
   typingThinkers: string[];
+  /** Map of thinker names to their thinking preview content */
+  thinkingContent?: Map<string, string>;
   onSendMessage: (content: string) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
@@ -25,6 +27,7 @@ export function ChatArea({
   conversation,
   messages,
   typingThinkers,
+  thinkingContent,
   onSendMessage,
   onTypingStart,
   onTypingStop,
@@ -126,6 +129,7 @@ export function ChatArea({
         messages={messages}
         thinkers={conversation.thinkers}
         typingThinkers={typingThinkers}
+        thinkingContent={thinkingContent}
       />
 
       {/* Input */}

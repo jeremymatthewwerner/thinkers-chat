@@ -11,6 +11,7 @@ export interface UseWebSocketOptions {
   conversationId: string | null;
   onMessage?: (message: Message) => void;
   onThinkerTyping?: (thinkerName: string) => void;
+  onThinkerThinking?: (thinkerName: string, thinkingContent: string) => void;
   onThinkerStoppedTyping?: (thinkerName: string) => void;
   onError?: (error: string) => void;
 }
@@ -19,6 +20,7 @@ export interface UseWebSocketReturn {
   isConnected: boolean;
   isPaused: boolean;
   typingThinkers: Set<string>;
+  thinkingContent: Map<string, string>; // thinker name -> thinking preview
   sendUserMessage: (content: string) => void;
   sendTypingStart: () => void;
   sendTypingStop: () => void;
@@ -30,12 +32,16 @@ export function useWebSocket({
   conversationId,
   onMessage,
   onThinkerTyping,
+  onThinkerThinking,
   onThinkerStoppedTyping,
   onError,
 }: UseWebSocketOptions): UseWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [typingThinkers, setTypingThinkers] = useState<Set<string>>(new Set());
+  const [thinkingContent, setThinkingContent] = useState<Map<string, string>>(
+    new Map()
+  );
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -119,10 +125,26 @@ export function useWebSocket({
               }
               break;
 
+            case 'thinker_thinking':
+              if (data.sender_name && data.content && isActive) {
+                setThinkingContent((prev) => {
+                  const next = new Map(prev);
+                  next.set(data.sender_name!, data.content!);
+                  return next;
+                });
+                onThinkerThinking?.(data.sender_name, data.content);
+              }
+              break;
+
             case 'thinker_stopped_typing':
               if (data.sender_name && isActive) {
                 setTypingThinkers((prev) => {
                   const next = new Set(prev);
+                  next.delete(data.sender_name!);
+                  return next;
+                });
+                setThinkingContent((prev) => {
+                  const next = new Map(prev);
                   next.delete(data.sender_name!);
                   return next;
                 });
@@ -163,6 +185,7 @@ export function useWebSocket({
       }
       // Reset state on cleanup (before next effect runs with new conversationId)
       setTypingThinkers(new Set());
+      setThinkingContent(new Map());
       setIsPaused(false);
       setIsConnected(false);
     };
@@ -170,6 +193,7 @@ export function useWebSocket({
     conversationId,
     onMessage,
     onThinkerTyping,
+    onThinkerThinking,
     onThinkerStoppedTyping,
     onError,
   ]);
@@ -223,6 +247,7 @@ export function useWebSocket({
     isConnected,
     isPaused,
     typingThinkers,
+    thinkingContent,
     sendUserMessage,
     sendTypingStart,
     sendTypingStop,

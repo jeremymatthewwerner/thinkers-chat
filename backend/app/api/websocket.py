@@ -39,6 +39,7 @@ class WSMessageType(str, Enum):
     # Server -> Client
     MESSAGE = "message"
     THINKER_TYPING = "thinker_typing"
+    THINKER_THINKING = "thinker_thinking"  # Shows what thinker is thinking about
     THINKER_STOPPED_TYPING = "thinker_stopped_typing"
     USER_JOINED = "user_joined"
     USER_LEFT = "user_left"
@@ -157,6 +158,18 @@ class ConnectionManager:
             type=WSMessageType.THINKER_TYPING,
             conversation_id=conversation_id,
             sender_name=thinker_name,
+        )
+        await self.broadcast_to_conversation(conversation_id, message)
+
+    async def send_thinker_thinking(
+        self, conversation_id: str, thinker_name: str, thinking_content: str
+    ) -> None:
+        """Send what a thinker is thinking about (displayed instead of just 'Thinking...')."""
+        message = WSMessage(
+            type=WSMessageType.THINKER_THINKING,
+            conversation_id=conversation_id,
+            sender_name=thinker_name,
+            content=thinking_content,
         )
         await self.broadcast_to_conversation(conversation_id, message)
 

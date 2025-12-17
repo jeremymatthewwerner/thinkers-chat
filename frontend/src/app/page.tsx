@@ -28,6 +28,7 @@ export default function Home() {
     isConnected,
     isPaused,
     typingThinkers,
+    thinkingContent,
     sendUserMessage,
     sendTypingStart,
     sendTypingStop,
@@ -215,6 +216,7 @@ export default function Home() {
         conversation={currentConversation}
         messages={messages}
         typingThinkers={Array.from(typingThinkers)}
+        thinkingContent={thinkingContent}
         onSendMessage={handleSendMessage}
         onTypingStart={sendTypingStart}
         onTypingStop={sendTypingStop}

@@ -78,6 +78,7 @@ export type WSMessageType =
   | 'typing_stop'
   | 'message'
   | 'thinker_typing'
+  | 'thinker_thinking'
   | 'thinker_stopped_typing'
   | 'user_joined'
   | 'user_left'

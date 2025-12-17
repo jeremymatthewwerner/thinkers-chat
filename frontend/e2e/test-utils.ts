@@ -48,7 +48,7 @@ export async function registerUser(
       localStorage.setItem('access_token', token);
       localStorage.setItem('user', JSON.stringify(user));
     },
-    [data.access_token, data.user]
+    [data.access_token, data.user] as [string, { id: string; username: string }]
   );
 
   return data;
@@ -79,7 +79,7 @@ export async function loginUser(
       localStorage.setItem('access_token', token);
       localStorage.setItem('user', JSON.stringify(user));
     },
-    [data.access_token, data.user]
+    [data.access_token, data.user] as [string, { id: string; username: string }]
   );
 
   return data;

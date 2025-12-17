@@ -14,12 +14,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    result: bool = pwd_context.verify(plain_password, hashed_password)
+    return result
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password for storage."""
-    return pwd_context.hash(password)
+    hashed: str = pwd_context.hash(password)
+    return hashed
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:

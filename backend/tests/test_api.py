@@ -83,7 +83,8 @@ async def register_and_get_token(
         json={"username": username, "password": password},
     )
     assert response.status_code == 200
-    return response.json()
+    data: dict[str, Any] = response.json()
+    return data
 
 
 async def get_auth_headers(

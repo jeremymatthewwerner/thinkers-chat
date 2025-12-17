@@ -45,6 +45,7 @@ export function NewChatModal({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -117,9 +118,44 @@ export function NewChatModal({
     }
   }, [topic, selectedThinkers, onCreate, onClose]);
 
-  const handleSelectThinker = useCallback((thinker: SelectedThinker) => {
-    setSelectedThinkers((prev) => [...prev, thinker]);
-  }, []);
+  const handleSelectThinker = useCallback(
+    async (thinker: SelectedThinker) => {
+      setSelectedThinkers((prev) => [...prev, thinker]);
+
+      // Auto-fetch a new suggestion to replace the one just selected
+      if (topic.trim()) {
+        setIsFetchingMore(true);
+        try {
+          // Build exclude list: all current suggestions + all selected thinkers + the one just selected
+          const excludeNames = [
+            ...suggestions.map((s) => s.name),
+            ...selectedThinkers.map((t) => t.name),
+            thinker.name,
+          ];
+          const results = await onSuggestThinkers(topic.trim(), excludeNames);
+
+          // Add the first new unique suggestion
+          if (results.length > 0) {
+            setSuggestions((prev) => {
+              const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
+              const newSuggestion = results.find(
+                (s) => !existingNames.has(s.name.toLowerCase())
+              );
+              if (newSuggestion) {
+                return [...prev, newSuggestion];
+              }
+              return prev;
+            });
+          }
+        } catch {
+          // Silently fail - not critical if we can't fetch a replacement
+        } finally {
+          setIsFetchingMore(false);
+        }
+      }
+    },
+    [topic, suggestions, selectedThinkers, onSuggestThinkers]
+  );
 
   const handleRemoveThinker = useCallback((name: string) => {
     setSelectedThinkers((prev) => prev.filter((t) => t.name !== name));
@@ -236,6 +272,7 @@ export function NewChatModal({
                 onValidateCustom={onValidateThinker}
                 onRefreshSuggestion={handleRefreshSuggestion}
                 isLoading={isLoading}
+                isFetchingMore={isFetchingMore}
               />
               {error && (
                 <p className="flex-shrink-0 text-sm text-red-600 dark:text-red-400 mt-2">
@@ -267,10 +304,36 @@ export function NewChatModal({
               <button
                 onClick={(e) => handleTopicSubmit(e as unknown as FormEvent)}
                 disabled={!topic.trim() || isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 data-testid="next-button"
               >
-                {isLoading ? 'Loading...' : 'Next'}
+                {isLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  'Next'
+                )}
               </button>
             ) : (
               <button

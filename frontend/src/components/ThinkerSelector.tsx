@@ -22,6 +22,7 @@ export interface ThinkerSelectorProps {
   onValidateCustom: (name: string) => Promise<ThinkerProfile | null>;
   onRefreshSuggestion?: (name: string) => Promise<void>;
   isLoading?: boolean;
+  isFetchingMore?: boolean;
   maxThinkers?: number;
 }
 
@@ -34,6 +35,7 @@ export function ThinkerSelector({
   onValidateCustom,
   onRefreshSuggestion,
   isLoading = false,
+  isFetchingMore = false,
   maxThinkers = 5,
 }: ThinkerSelectorProps) {
   const [customName, setCustomName] = useState('');
@@ -225,100 +227,113 @@ export function ThinkerSelector({
             <div className="text-sm text-zinc-500 dark:text-zinc-400">
               Loading suggestions...
             </div>
-          ) : visibleSuggestions.length > 0 ? (
-            visibleSuggestions.map((suggestion) => (
-              <div
-                key={suggestion.name}
-                className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700"
-                data-testid="thinker-suggestion"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <ThinkerAvatar
-                      name={suggestion.name}
-                      imageUrl={suggestion.profile.image_url}
-                      size="lg"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {suggestion.name}
-                      </div>
-                      <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                        {suggestion.reason}
+          ) : visibleSuggestions.length > 0 || isFetchingMore ? (
+            <>
+              {visibleSuggestions.map((suggestion) => (
+                <div
+                  key={suggestion.name}
+                  className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                  data-testid="thinker-suggestion"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <ThinkerAvatar
+                        name={suggestion.name}
+                        imageUrl={suggestion.profile.image_url}
+                        size="lg"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                          {suggestion.name}
+                        </div>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                          {suggestion.reason}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => handleAccept(suggestion)}
-                      className="p-1.5 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30 rounded-lg transition-colors"
-                      aria-label={`Add ${suggestion.name}`}
-                      title="Add to conversation"
-                      data-testid="accept-suggestion"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-5 h-5"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                    {onRefreshSuggestion && (
+                    <div className="flex gap-1 flex-shrink-0">
                       <button
-                        onClick={() => handleRefresh(suggestion.name)}
-                        disabled={refreshingNames.has(suggestion.name)}
-                        className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:text-zinc-300 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
-                        aria-label={`Get different suggestion for ${suggestion.name}`}
-                        title="Get a different suggestion"
-                        data-testid="refresh-suggestion"
+                        onClick={() => handleAccept(suggestion)}
+                        className="p-1.5 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                        aria-label={`Add ${suggestion.name}`}
+                        title="Add to conversation"
+                        data-testid="accept-suggestion"
                       >
-                        {refreshingNames.has(suggestion.name) ? (
-                          <svg
-                            className="animate-spin w-5 h-5"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="w-5 h-5"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
                       </button>
-                    )}
+                      {onRefreshSuggestion && (
+                        <button
+                          onClick={() => handleRefresh(suggestion.name)}
+                          disabled={refreshingNames.has(suggestion.name)}
+                          className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:text-zinc-300 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                          aria-label={`Get different suggestion for ${suggestion.name}`}
+                          title="Get a different suggestion"
+                          data-testid="refresh-suggestion"
+                        >
+                          {refreshingNames.has(suggestion.name) ? (
+                            <svg
+                              className="animate-spin w-5 h-5"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="w-5 h-5"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+              {isFetchingMore && (
+                <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 border-dashed animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-700 rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3 mb-2" />
+                      <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-2/3" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-sm text-zinc-500 dark:text-zinc-400">
               No suggestions available.

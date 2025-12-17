@@ -525,8 +525,18 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                     typing_delay = random.uniform(2.0, 5.0)
                     await asyncio.sleep(typing_delay)
 
+                    # Check pause state again before generating (prevents spend during pause)
+                    if self.is_paused(conversation_id):
+                        await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                        continue
+
                     # Generate response
                     response_text, cost = await self.generate_response(thinker, messages, topic)
+
+                    # Check pause state again before saving (in case paused during generation)
+                    if self.is_paused(conversation_id):
+                        await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                        continue
 
                     if response_text:
                         # Save and broadcast the message

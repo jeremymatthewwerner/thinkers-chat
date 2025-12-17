@@ -16,6 +16,10 @@ COPY frontend/. .
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
 
+# Convert ARGs to ENVs so Next.js can read them during build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+
 # Build the application
 RUN npm run build
 

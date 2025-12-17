@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import Home from '../app/page';
+import { useAuth } from '@/contexts';
 
 // Mock next/navigation
 const mockPush = jest.fn();
@@ -38,14 +39,15 @@ jest.mock('@/contexts', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+
 describe('Home', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders the page with loading state when auth is loading', async () => {
-    const { useAuth } = require('@/contexts');
-    useAuth.mockReturnValueOnce({
+    mockUseAuth.mockReturnValueOnce({
       user: null,
       isLoading: true,
       isAuthenticated: false,
@@ -58,8 +60,7 @@ describe('Home', () => {
   });
 
   it('redirects to login when not authenticated', async () => {
-    const { useAuth } = require('@/contexts');
-    useAuth.mockReturnValueOnce({
+    mockUseAuth.mockReturnValueOnce({
       user: null,
       isLoading: false,
       isAuthenticated: false,

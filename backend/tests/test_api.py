@@ -458,8 +458,9 @@ async def create_admin_user(
     db_session: AsyncSession,
 ) -> dict[str, Any]:
     """Helper to create an admin user for testing."""
-    from app.models import User
     from sqlalchemy import update
+
+    from app.models import User
 
     # Register a regular user first
     data = await register_and_get_token(client, "adminuser", "adminpass123")

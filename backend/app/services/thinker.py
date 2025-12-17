@@ -370,7 +370,7 @@ Return ONLY the JSON, no other text."""
         """Choose a response style based on conversation context.
 
         Returns (style_instruction, max_tokens).
-        Styles: 'brief' (quick reaction), 'normal' (substantive), 'extended' (deep exploration)
+        Uses high variance for natural messaging feel - short quips to longer thoughts.
         """
         # Analyze recent messages to decide style
         recent_messages = messages[-5:] if messages else []
@@ -381,38 +381,51 @@ Return ONLY the JSON, no other text."""
         # Check if addressed directly
         was_addressed = any(thinker.name.lower() in m.content.lower() for m in recent_messages[-2:])
 
-        # Random selection weighted by context
+        # Random selection with HIGH variance for natural feel
         roll = random.random()
 
-        if just_spoke and roll < 0.3:
-            # Follow-up thought - brief
+        if just_spoke and roll < 0.4:
+            # Follow-up thought - very brief
             return (
-                "Respond with a VERY brief follow-up thought (1 short sentence, like 'Though I should add...' or 'Actually, on reflection...')",
-                80,
+                "Respond with a VERY brief follow-up (just a few words to one short sentence, like 'Exactly.' or 'Though I wonder...' or 'Hmm, fair point.')",
+                50,
             )
         elif was_addressed:
-            # More likely to give a fuller response when addressed
-            if roll < 0.2:
-                return ("Give a brief, direct response (1 sentence)", 80)
-            elif roll < 0.85:
-                return ("Give a substantive response (2-4 sentences)", 300)
+            # When addressed, still vary response length significantly
+            if roll < 0.15:
+                return ("Respond with just 2-5 words - a quick acknowledgment or reaction", 30)
+            elif roll < 0.35:
+                return ("Give a brief, direct response (1 short sentence, around 10-15 words)", 60)
+            elif roll < 0.55:
+                return ("Give a medium response (1-2 sentences)", 120)
+            elif roll < 0.80:
+                return ("Give a substantive response (2-3 sentences)", 200)
             else:
                 return (
-                    "Give a more extended response exploring the idea deeply (4-6 sentences)",
-                    500,
+                    "Give a fuller response exploring the idea (3-5 sentences)",
+                    350,
                 )
         else:
-            # Not addressed - more variety
-            if roll < 0.25:
-                # Quick reaction
+            # Not addressed - even MORE variety, skewing shorter
+            if roll < 0.20:
+                # Very quick reaction - like real texting
                 return (
-                    "Give a brief reaction or agreement/disagreement (1 short sentence, like 'I couldn't agree more' or 'That's precisely my concern')",
-                    80,
+                    "Give a very brief reaction (2-6 words only, like 'Absolutely.' or 'I'm not so sure.' or 'Ha! Yes.')",
+                    30,
                 )
-            elif roll < 0.85:
-                return ("Give a substantive response (2-4 sentences)", 300)
+            elif roll < 0.40:
+                # Quick thought
+                return (
+                    "Give a brief reaction (1 short sentence, around 8-12 words)",
+                    60,
+                )
+            elif roll < 0.60:
+                # Medium response
+                return ("Give a medium response (1-2 sentences)", 120)
+            elif roll < 0.80:
+                return ("Give a substantive response (2-3 sentences)", 200)
             else:
-                return ("Give a more extended response (4-6 sentences)", 500)
+                return ("Give a more developed response (3-4 sentences)", 300)
 
     async def generate_response_with_streaming_thinking(
         self,
@@ -541,17 +554,36 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
     def _split_response_into_bubbles(self, response_text: str) -> list[str]:
         """Split a response into multiple chat bubbles for natural conversation flow.
 
-        Splits at natural boundaries like sentence endings and thought transitions.
-        Target: Most bubbles should be 1-2 sentences.
+        Uses variable splitting strategy for natural message size variety:
+        - Sometimes keeps longer responses as single bubbles
+        - Sometimes splits aggressively into many small bubbles
+        - Target bubble sizes vary randomly
         """
         if not response_text:
             return []
 
         text = response_text.strip()
 
-        # If already short, return as single bubble
-        if len(text) < 100:
+        # Very short responses always stay as single bubble
+        if len(text) < 60:
             return [text]
+
+        # Random splitting strategy for variety
+        strategy_roll = random.random()
+
+        # 25% chance: Keep as single bubble even if longer (up to ~250 chars)
+        if strategy_roll < 0.25 and len(text) < 250:
+            return [text]
+
+        # 20% chance: Aggressive splitting (small bubbles ~80-120 chars)
+        # 35% chance: Normal splitting (~120-180 chars)
+        # 20% chance: Relaxed splitting (~180-250 chars)
+        if strategy_roll < 0.45:
+            target_size = random.randint(80, 120)  # Small bubbles
+        elif strategy_roll < 0.80:
+            target_size = random.randint(120, 180)  # Normal bubbles
+        else:
+            target_size = random.randint(180, 250)  # Larger bubbles
 
         bubbles: list[str] = []
         current_bubble = ""
@@ -579,9 +611,9 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
             ]
             starts_with_transition = any(sentence.startswith(tw) for tw in transition_words)
 
-            # If current bubble + new sentence would be too long, or new sentence starts a transition
+            # Split if current bubble would exceed target or starts with transition
             if current_bubble and (
-                len(current_bubble) + len(sentence) > 150 or starts_with_transition
+                len(current_bubble) + len(sentence) > target_size or starts_with_transition
             ):
                 bubbles.append(current_bubble.strip())
                 current_bubble = sentence
@@ -595,9 +627,8 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         if current_bubble:
             bubbles.append(current_bubble.strip())
 
-        # If we ended up with just one bubble, that's fine
-        # But try to ensure we have at least 2 if the original was long enough
-        if len(bubbles) == 1 and len(text) > 200:
+        # If we ended up with just one bubble but text is very long, force split
+        if len(bubbles) == 1 and len(text) > 300:
             # Force a split at roughly the middle sentence boundary
             mid = len(text) // 2
             # Find the nearest sentence end after mid

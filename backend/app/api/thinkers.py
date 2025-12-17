@@ -129,9 +129,7 @@ async def suggest_thinkers(
 
     # Use the thinker service to get real suggestions
     try:
-        suggestions = await thinker_service.suggest_thinkers(
-            data.topic, data.count, data.exclude
-        )
+        suggestions = await thinker_service.suggest_thinkers(data.topic, data.count, data.exclude)
         if suggestions:
             return suggestions
     except ThinkerAPIError as e:

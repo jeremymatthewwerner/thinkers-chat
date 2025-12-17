@@ -3,6 +3,20 @@
  * These mirror the backend Pydantic schemas.
  */
 
+// Auth types
+export interface User {
+  id: string;
+  username: string;
+  is_admin: boolean;
+  total_spend: number;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  user: User;
+}
+
 export interface Session {
   id: string;
   created_at: string;

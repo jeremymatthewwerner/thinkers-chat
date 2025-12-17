@@ -1,5 +1,13 @@
 """Pydantic schemas for request/response validation."""
 
+from app.schemas.auth import (
+    AuthError,
+    TokenResponse,
+    UserLogin,
+    UserRegister,
+    UserResponse,
+    UserWithStats,
+)
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationResponse,
@@ -19,6 +27,7 @@ from app.schemas.thinker import (
 )
 
 __all__ = [
+    "AuthError",
     "ConversationCreate",
     "ConversationResponse",
     "ConversationSummary",
@@ -34,4 +43,9 @@ __all__ = [
     "ThinkerSuggestRequest",
     "ThinkerValidateRequest",
     "ThinkerValidateResponse",
+    "TokenResponse",
+    "UserLogin",
+    "UserRegister",
+    "UserResponse",
+    "UserWithStats",
 ]

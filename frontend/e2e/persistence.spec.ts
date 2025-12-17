@@ -4,12 +4,11 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { resetPageState } from './test-utils';
+import { setupAuthenticatedUser } from './test-utils';
 
 test.describe('Persistence', () => {
   test('conversations persist across page reload', async ({ page }) => {
-    await page.goto('/');
-    await resetPageState(page);
+    await setupAuthenticatedUser(page);
 
     // Create a conversation
     await page.getByTestId('new-chat-button').click();

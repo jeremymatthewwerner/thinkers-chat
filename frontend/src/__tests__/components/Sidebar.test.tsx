@@ -89,4 +89,28 @@ describe('Sidebar', () => {
     render(<Sidebar {...defaultProps} isOpen={false} />);
     expect(screen.getByTestId('menu-button')).toBeInTheDocument();
   });
+
+  it('displays username when provided', () => {
+    render(<Sidebar {...defaultProps} username="testuser" />);
+    expect(screen.getByText('testuser')).toBeInTheDocument();
+    expect(screen.getByText('T')).toBeInTheDocument(); // Avatar initial
+  });
+
+  it('displays logout button when username is provided', () => {
+    render(<Sidebar {...defaultProps} username="testuser" />);
+    expect(screen.getByTestId('logout-button')).toBeInTheDocument();
+  });
+
+  it('calls onLogout when logout button is clicked', () => {
+    const onLogout = jest.fn();
+    render(<Sidebar {...defaultProps} username="testuser" onLogout={onLogout} />);
+
+    fireEvent.click(screen.getByTestId('logout-button'));
+    expect(onLogout).toHaveBeenCalled();
+  });
+
+  it('shows default footer text when no username', () => {
+    render(<Sidebar {...defaultProps} />);
+    expect(screen.getByText('Discuss ideas with AI-simulated thinkers')).toBeInTheDocument();
+  });
 });

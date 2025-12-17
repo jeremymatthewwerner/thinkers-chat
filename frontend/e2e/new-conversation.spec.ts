@@ -4,12 +4,11 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { resetPageState } from './test-utils';
+import { setupAuthenticatedUser } from './test-utils';
 
 test.describe('New Conversation Flow', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await setupAuthenticatedUser(page);
   });
 
   test('can create a new conversation with suggested thinkers', async ({ page }) => {
@@ -127,8 +126,7 @@ test.describe('New Conversation Flow', () => {
 
 test.describe('Thinker Suggestions', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await setupAuthenticatedUser(page);
   });
 
   test('can refresh a suggestion', async ({ page }) => {

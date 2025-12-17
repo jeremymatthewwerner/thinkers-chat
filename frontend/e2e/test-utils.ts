@@ -11,6 +11,105 @@ export interface ConversationSetup {
   topic: string;
 }
 
+interface AuthResponse {
+  access_token: string;
+  user: {
+    id: string;
+    username: string;
+  };
+}
+
+/**
+ * Registers a new user and stores the auth token in localStorage.
+ * Uses a unique username per test to avoid conflicts.
+ */
+export async function registerUser(
+  page: Page,
+  username?: string
+): Promise<AuthResponse> {
+  // Generate unique username if not provided
+  const uniqueUsername = username || `testuser_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const password = 'testpass123';
+
+  const response = await page.request.post(`${API_BASE}/api/auth/register`, {
+    data: { username: uniqueUsername, password },
+  });
+
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to register: ${error.detail || response.status()}`);
+  }
+
+  const data: AuthResponse = await response.json();
+
+  // Store auth data in localStorage
+  await page.evaluate(
+    ([token, user]) => {
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+    },
+    [data.access_token, data.user]
+  );
+
+  return data;
+}
+
+/**
+ * Logs in an existing user and stores the auth token in localStorage.
+ */
+export async function loginUser(
+  page: Page,
+  username: string,
+  password: string
+): Promise<AuthResponse> {
+  const response = await page.request.post(`${API_BASE}/api/auth/login`, {
+    data: { username, password },
+  });
+
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to login: ${error.detail || response.status()}`);
+  }
+
+  const data: AuthResponse = await response.json();
+
+  // Store auth data in localStorage
+  await page.evaluate(
+    ([token, user]) => {
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+    },
+    [data.access_token, data.user]
+  );
+
+  return data;
+}
+
+/**
+ * Sets up an authenticated user and navigates to the home page.
+ * This should be called at the start of tests that require authentication.
+ */
+export async function setupAuthenticatedUser(page: Page): Promise<AuthResponse> {
+  // First navigate to the page to have a context for localStorage
+  await page.goto('/');
+
+  // Register a new user
+  const auth = await registerUser(page);
+
+  // Reload to pick up the new auth state
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+
+  return auth;
+}
+
+/**
+ * Gets the stored access token from localStorage.
+ */
+export async function getStoredToken(page: Page): Promise<string | null> {
+  return page.evaluate(() => localStorage.getItem('access_token'));
+}
+
 /**
  * Creates a conversation directly via API for faster test setup.
  * Use this when you don't need to test the modal flow itself.
@@ -20,40 +119,33 @@ export async function createConversationViaAPI(
   topic: string,
   thinkerNames: string[] = ['Aristotle']
 ): Promise<ConversationSetup> {
-  // Create conversation via API
-  const createResponse = await page.request.post(`${API_BASE}/conversations`, {
-    data: { topic },
-  });
-  const conversation = await createResponse.json();
-
-  // Add thinkers via API
-  for (const name of thinkerNames) {
-    // Validate thinker first
-    const validateResponse = await page.request.post(
-      `${API_BASE}/thinkers/validate`,
-      {
-        data: { name },
-      }
-    );
-    const validation = await validateResponse.json();
-
-    if (validation.valid) {
-      // Add thinker to conversation
-      await page.request.post(
-        `${API_BASE}/conversations/${conversation.id}/thinkers`,
-        {
-          data: {
-            name: validation.profile.name,
-            bio: validation.profile.bio,
-            positions: validation.profile.positions,
-            style: validation.profile.style,
-            image_url: validation.profile.image_url,
-          },
-        }
-      );
-    }
+  const token = await getStoredToken(page);
+  if (!token) {
+    throw new Error('No auth token found. Call setupAuthenticatedUser first.');
   }
 
+  // Create conversation via API with auth
+  const createResponse = await page.request.post(`${API_BASE}/api/conversations`, {
+    data: {
+      topic,
+      thinkers: thinkerNames.map((name) => ({
+        name,
+        bio: `A notable thinker.`,
+        positions: 'Various positions',
+        style: 'Analytical',
+      })),
+    },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!createResponse.ok()) {
+    const error = await createResponse.json();
+    throw new Error(`Failed to create conversation: ${error.detail || createResponse.status()}`);
+  }
+
+  const conversation = await createResponse.json();
   return { id: conversation.id, topic };
 }
 

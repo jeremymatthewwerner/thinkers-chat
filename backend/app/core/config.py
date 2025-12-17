@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # CORS settings (comma-separated list of allowed origins)
     cors_origins: str = "http://localhost:3000"
 
+    # Authentication
+    jwt_secret_key: str = "dev-secret-key-change-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
+
 
 @lru_cache
 def get_settings() -> Settings:

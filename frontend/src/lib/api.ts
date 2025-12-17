@@ -3,33 +3,69 @@
  */
 
 import type {
+  AuthResponse,
   Conversation,
   ConversationSummary,
   Message,
   Session,
   ThinkerProfile,
   ThinkerSuggestion,
+  User,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-let sessionId: string | null = null;
+// Token management
+let accessToken: string | null = null;
 
-function getSessionId(): string | null {
+export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  if (sessionId) return sessionId;
-  sessionId = localStorage.getItem('session_id');
-  return sessionId;
+  if (accessToken) return accessToken;
+  accessToken = localStorage.getItem('access_token');
+  return accessToken;
 }
 
-function setSessionId(id: string): void {
-  sessionId = id;
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
   if (typeof window !== 'undefined') {
-    localStorage.setItem('session_id', id);
+    if (token) {
+      localStorage.setItem('access_token', token);
+    } else {
+      localStorage.removeItem('access_token');
+    }
   }
 }
 
-async function fetchWithSession<T>(
+export function clearAuth(): void {
+  accessToken = null;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+  }
+}
+
+export function getStoredUser(): User | null {
+  if (typeof window === 'undefined') return null;
+  const userJson = localStorage.getItem('user');
+  if (!userJson) return null;
+  try {
+    return JSON.parse(userJson) as User;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: User | null): void {
+  if (typeof window !== 'undefined') {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
+  }
+}
+
+async function fetchWithAuth<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
@@ -38,9 +74,9 @@ async function fetchWithSession<T>(
     ...(options.headers || {}),
   };
 
-  const sid = getSessionId();
-  if (sid) {
-    (headers as Record<string, string>)['X-Session-ID'] = sid;
+  const token = getAccessToken();
+  if (token) {
+    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -58,29 +94,63 @@ async function fetchWithSession<T>(
   return response.json();
 }
 
-// Session API
-export async function createSession(): Promise<Session> {
-  const session = await fetchWithSession<Session>('/api/sessions', {
+// Auth API
+export async function register(
+  username: string,
+  password: string
+): Promise<AuthResponse> {
+  const response = await fetchWithAuth<AuthResponse>('/api/auth/register', {
     method: 'POST',
+    body: JSON.stringify({ username, password }),
   });
-  setSessionId(session.id);
-  return session;
+  setAccessToken(response.access_token);
+  setStoredUser(response.user);
+  return response;
 }
 
-export async function getSession(): Promise<Session | null> {
-  const sid = getSessionId();
-  if (!sid) return null;
+export async function login(
+  username: string,
+  password: string
+): Promise<AuthResponse> {
+  const response = await fetchWithAuth<AuthResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+  setAccessToken(response.access_token);
+  setStoredUser(response.user);
+  return response;
+}
+
+export async function logout(): Promise<void> {
   try {
-    return await fetchWithSession<Session>('/api/sessions/me');
+    await fetchWithAuth<{ message: string }>('/api/auth/logout', {
+      method: 'POST',
+    });
+  } finally {
+    clearAuth();
+  }
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    return await fetchWithAuth<User>('/api/auth/me');
   } catch {
+    clearAuth();
     return null;
   }
 }
 
-export async function ensureSession(): Promise<Session> {
-  const existing = await getSession();
-  if (existing) return existing;
-  return createSession();
+// Session API
+export async function getSession(): Promise<Session | null> {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    return await fetchWithAuth<Session>('/api/sessions/me');
+  } catch {
+    return null;
+  }
 }
 
 // Conversation API
@@ -107,7 +177,7 @@ interface BackendConversationSummary {
 
 export async function getConversations(): Promise<ConversationSummary[]> {
   const response =
-    await fetchWithSession<BackendConversationSummary[]>('/api/conversations');
+    await fetchWithAuth<BackendConversationSummary[]>('/api/conversations');
   // Transform backend response to frontend ConversationSummary format
   return response.map((conv) => ({
     id: conv.id,
@@ -125,7 +195,7 @@ export async function getConversations(): Promise<ConversationSummary[]> {
 }
 
 export async function getConversation(id: string): Promise<Conversation> {
-  return fetchWithSession<Conversation>(`/api/conversations/${id}`);
+  return fetchWithAuth<Conversation>(`/api/conversations/${id}`);
 }
 
 export interface ThinkerCreateData {
@@ -145,14 +215,14 @@ export interface CreateConversationData {
 export async function createConversation(
   data: CreateConversationData
 ): Promise<Conversation> {
-  return fetchWithSession<Conversation>('/api/conversations', {
+  return fetchWithAuth<Conversation>('/api/conversations', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  await fetchWithSession<{ success: boolean }>(`/api/conversations/${id}`, {
+  await fetchWithAuth<{ success: boolean }>(`/api/conversations/${id}`, {
     method: 'DELETE',
   });
 }
@@ -162,7 +232,7 @@ export async function sendMessage(
   conversationId: string,
   content: string
 ): Promise<Message> {
-  return fetchWithSession<Message>(
+  return fetchWithAuth<Message>(
     `/api/conversations/${conversationId}/messages`,
     {
       method: 'POST',
@@ -177,7 +247,7 @@ export async function suggestThinkers(
   count: number = 3,
   exclude: string[] = []
 ): Promise<ThinkerSuggestion[]> {
-  return fetchWithSession<ThinkerSuggestion[]>('/api/thinkers/suggest', {
+  return fetchWithAuth<ThinkerSuggestion[]>('/api/thinkers/suggest', {
     method: 'POST',
     body: JSON.stringify({ topic, count, exclude }),
   });
@@ -193,11 +263,11 @@ export interface ValidateThinkerResponse {
 export async function validateThinker(
   name: string
 ): Promise<ValidateThinkerResponse> {
-  return fetchWithSession<ValidateThinkerResponse>('/api/thinkers/validate', {
+  return fetchWithAuth<ValidateThinkerResponse>('/api/thinkers/validate', {
     method: 'POST',
     body: JSON.stringify({ name }),
   });
 }
 
 // Export for testing
-export { getSessionId, setSessionId, API_BASE_URL };
+export { API_BASE_URL };

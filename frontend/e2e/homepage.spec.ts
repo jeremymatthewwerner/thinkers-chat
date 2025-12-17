@@ -1,15 +1,18 @@
 /**
  * Homepage E2E tests.
- * These are fast tests that don't require API calls.
+ * Tests the main page functionality after authentication.
  */
 
 import { test, expect } from '@playwright/test';
-import { resetPageState } from './test-utils';
+import { setupAuthenticatedUser, resetPageState } from './test-utils';
 
 test.describe('Homepage', () => {
-  test('loads and shows welcome message', async ({ page }) => {
-    await page.goto('/');
+  test.beforeEach(async ({ page }) => {
+    // Set up authenticated user before each test
+    await setupAuthenticatedUser(page);
+  });
 
+  test('loads and shows welcome message', async ({ page }) => {
     // Should show the welcome message when no conversation selected
     const welcomeText = page.locator('text=Welcome to Thinkers Chat');
     await expect(welcomeText).toBeVisible();
@@ -20,11 +23,77 @@ test.describe('Homepage', () => {
   });
 
   test('sidebar shows empty state initially', async ({ page }) => {
-    await page.goto('/');
-    await resetPageState(page);
-
     // Should show empty conversation list
     const emptyState = page.getByTestId('conversation-list-empty');
     await expect(emptyState).toBeVisible();
+  });
+
+  test('shows username in sidebar', async ({ page }) => {
+    // Should show the username in the sidebar footer
+    const sidebar = page.getByTestId('sidebar');
+    await expect(sidebar).toBeVisible();
+
+    // The username should be displayed (starts with "testuser_")
+    const usernameElement = sidebar.locator('text=/testuser_/');
+    await expect(usernameElement).toBeVisible();
+  });
+
+  test('logout redirects to login page', async ({ page }) => {
+    // Click the logout button
+    const logoutButton = page.getByTestId('logout-button');
+    await logoutButton.click();
+
+    // Should redirect to login page
+    await expect(page).toHaveURL(/\/login/);
+  });
+});
+
+test.describe('Login Page', () => {
+  test('shows login form when not authenticated', async ({ page }) => {
+    // Clear any existing auth
+    await page.goto('/');
+    await resetPageState(page);
+
+    // Should redirect to login
+    await expect(page).toHaveURL(/\/login/);
+
+    // Should show login form
+    await expect(page.locator('h1', { hasText: 'Welcome to Thinkers Chat' })).toBeVisible();
+    await expect(page.locator('#username')).toBeVisible();
+    await expect(page.locator('#password')).toBeVisible();
+  });
+
+  test('can navigate to register page', async ({ page }) => {
+    await page.goto('/login');
+    await page.click('text=Create one');
+    await expect(page).toHaveURL(/\/register/);
+  });
+});
+
+test.describe('Register Page', () => {
+  test('shows register form', async ({ page }) => {
+    await page.goto('/register');
+
+    // Should show register form
+    await expect(page.locator('h1', { hasText: 'Create an Account' })).toBeVisible();
+    await expect(page.locator('#username')).toBeVisible();
+    await expect(page.locator('#password')).toBeVisible();
+    await expect(page.locator('#confirmPassword')).toBeVisible();
+  });
+
+  test('can navigate to login page', async ({ page }) => {
+    await page.goto('/register');
+    await page.click('text=Sign in');
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('shows error for mismatched passwords', async ({ page }) => {
+    await page.goto('/register');
+    await page.fill('#username', 'newuser');
+    await page.fill('#password', 'password123');
+    await page.fill('#confirmPassword', 'different');
+    await page.click('button[type="submit"]');
+
+    await expect(page.locator('text=Passwords do not match')).toBeVisible();
   });
 });

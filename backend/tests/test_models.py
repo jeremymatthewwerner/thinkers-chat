@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.models import Base, Conversation, ConversationThinker, Message, Session
+from app.models import Base, Conversation, ConversationThinker, Message, Session, User
 from app.models.message import SenderType
 
 
@@ -41,22 +41,38 @@ async def db_session(engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+@pytest.fixture
+async def test_user(db_session: AsyncSession) -> User:
+    """Create a test user for testing."""
+    user = User(
+        username="testuser",
+        password_hash="fakehash",
+        is_admin=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user
+
+
 class TestSessionModel:
     """Tests for the Session model."""
 
-    async def test_create_session(self, db_session: AsyncSession) -> None:
+    async def test_create_session(self, db_session: AsyncSession, test_user: User) -> None:
         """Test creating a new session."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         db_session.add(session)
         await db_session.commit()
 
         assert session.id is not None
         assert len(session.id) == 36  # UUID format
         assert session.created_at is not None
+        assert session.user_id == test_user.id
 
-    async def test_session_has_conversations_relationship(self, db_session: AsyncSession) -> None:
+    async def test_session_has_conversations_relationship(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
         """Test that session has conversations relationship."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         db_session.add(session)
         await db_session.commit()
 
@@ -68,9 +84,9 @@ class TestSessionModel:
 class TestConversationModel:
     """Tests for the Conversation model."""
 
-    async def test_create_conversation(self, db_session: AsyncSession) -> None:
+    async def test_create_conversation(self, db_session: AsyncSession, test_user: User) -> None:
         """Test creating a new conversation."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         db_session.add(session)
         await db_session.commit()
 
@@ -88,9 +104,11 @@ class TestConversationModel:
         assert conversation.is_active is True
         assert conversation.created_at is not None
 
-    async def test_conversation_belongs_to_session(self, db_session: AsyncSession) -> None:
+    async def test_conversation_belongs_to_session(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
         """Test conversation-session relationship."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         db_session.add(session)
         await db_session.commit()
 
@@ -111,9 +129,9 @@ class TestConversationModel:
 class TestConversationThinkerModel:
     """Tests for the ConversationThinker model."""
 
-    async def test_create_thinker(self, db_session: AsyncSession) -> None:
+    async def test_create_thinker(self, db_session: AsyncSession, test_user: User) -> None:
         """Test creating a new thinker."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         db_session.add(session)
         await db_session.commit()
 
@@ -137,9 +155,11 @@ class TestConversationThinkerModel:
         assert thinker.bio == "Ancient Greek philosopher from Athens."
         assert thinker.color == "#4f46e5"
 
-    async def test_thinker_belongs_to_conversation(self, db_session: AsyncSession) -> None:
+    async def test_thinker_belongs_to_conversation(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
         """Test thinker-conversation relationship."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         conversation = Conversation(session_id=session.id, topic="Philosophy")
         session.conversations.append(conversation)
         db_session.add(session)
@@ -163,9 +183,9 @@ class TestConversationThinkerModel:
 class TestMessageModel:
     """Tests for the Message model."""
 
-    async def test_create_user_message(self, db_session: AsyncSession) -> None:
+    async def test_create_user_message(self, db_session: AsyncSession, test_user: User) -> None:
         """Test creating a user message."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         conversation = Conversation(session_id=session.id, topic="Test")
         session.conversations.append(conversation)
         db_session.add(session)
@@ -184,9 +204,9 @@ class TestMessageModel:
         assert message.sender_name is None
         assert message.content == "Hello, thinkers!"
 
-    async def test_create_thinker_message(self, db_session: AsyncSession) -> None:
+    async def test_create_thinker_message(self, db_session: AsyncSession, test_user: User) -> None:
         """Test creating a thinker message."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         conversation = Conversation(session_id=session.id, topic="Test")
         session.conversations.append(conversation)
         db_session.add(session)
@@ -206,9 +226,11 @@ class TestMessageModel:
         assert message.sender_name == "Socrates"
         assert message.cost == 0.001
 
-    async def test_messages_ordered_by_created_at(self, db_session: AsyncSession) -> None:
+    async def test_messages_ordered_by_created_at(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
         """Test that messages are ordered by creation time."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         conversation = Conversation(session_id=session.id, topic="Test")
         session.conversations.append(conversation)
         db_session.add(session)
@@ -238,9 +260,11 @@ class TestMessageModel:
 class TestCascadeDelete:
     """Tests for cascade delete behavior."""
 
-    async def test_deleting_session_deletes_conversations(self, db_session: AsyncSession) -> None:
+    async def test_deleting_session_deletes_conversations(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
         """Test that deleting a session deletes its conversations."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         conversation = Conversation(session_id=session.id, topic="Test")
         session.conversations.append(conversation)
         db_session.add(session)
@@ -253,9 +277,11 @@ class TestCascadeDelete:
         result = await db_session.execute(select(Conversation).where(Conversation.id == conv_id))
         assert result.scalar_one_or_none() is None
 
-    async def test_deleting_conversation_deletes_messages(self, db_session: AsyncSession) -> None:
+    async def test_deleting_conversation_deletes_messages(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
         """Test that deleting a conversation deletes its messages."""
-        session = Session()
+        session = Session(user_id=test_user.id)
         conversation = Conversation(session_id=session.id, topic="Test")
         session.conversations.append(conversation)
         db_session.add(session)

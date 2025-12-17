@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Message, WSMessage } from '@/types';
+import { getAccessToken } from '@/lib/api';
 
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
 
@@ -58,7 +59,16 @@ export function useWebSocket({
     const createConnection = () => {
       if (!isActive) return;
 
-      const ws = new WebSocket(`${WS_BASE_URL}/ws/${thisConversationId}`);
+      // Get auth token for WebSocket connection
+      const token = getAccessToken();
+      if (!token) {
+        onError?.('Not authenticated');
+        return;
+      }
+
+      const ws = new WebSocket(
+        `${WS_BASE_URL}/ws/${thisConversationId}?token=${encodeURIComponent(token)}`
+      );
 
       ws.onopen = () => {
         if (!isActive) {

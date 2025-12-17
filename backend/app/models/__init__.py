@@ -5,6 +5,7 @@ from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.session import Session
 from app.models.thinker import ConversationThinker
+from app.models.user import User
 
 __all__ = [
     "Base",
@@ -12,4 +13,5 @@ __all__ = [
     "ConversationThinker",
     "Message",
     "Session",
+    "User",
 ]

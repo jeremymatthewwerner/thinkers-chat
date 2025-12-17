@@ -4,12 +4,11 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { createConversationViaUI, resetPageState } from './test-utils';
+import { createConversationViaUI, setupAuthenticatedUser } from './test-utils';
 
 test.describe('Chat Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await resetPageState(page);
+    await setupAuthenticatedUser(page);
   });
 
   test('can send a message in conversation', async ({ page }) => {
@@ -99,8 +98,7 @@ test.describe('Chat Functionality', () => {
 test.describe('Thinker Responses', () => {
   test('pause actually stops thinker responses', async ({ page }) => {
     test.setTimeout(90000);
-    await page.goto('/');
-    await resetPageState(page);
+    await setupAuthenticatedUser(page);
 
     await createConversationViaUI(page, 'Tell me about ethics', 'Aristotle');
 
@@ -158,8 +156,7 @@ test.describe('Thinker Responses', () => {
 
   test('sends message and receives responses from multiple thinkers', async ({ page }) => {
     test.setTimeout(120000);
-    await page.goto('/');
-    await resetPageState(page);
+    await setupAuthenticatedUser(page);
 
     // Create conversation with multiple thinkers
     const newChatButton = page.getByTestId('new-chat-button');

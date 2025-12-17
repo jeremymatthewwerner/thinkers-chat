@@ -1,6 +1,13 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
+// Mock the api module
+jest.mock('@/lib/api', () => ({
+  getAccessToken: jest.fn(() => 'mock-jwt-token'),
+}));
+
+import * as api from '@/lib/api';
+
 // Enhanced mock WebSocket
 class MockWebSocket {
   static CONNECTING = 0;
@@ -63,6 +70,8 @@ beforeEach(() => {
   jest.useFakeTimers();
   mockWsInstance = new MockWebSocket();
   global.WebSocket = createMockedWebSocket();
+  // Reset the mock to return a token for authentication
+  (api.getAccessToken as jest.Mock).mockReturnValue('mock-jwt-token');
 });
 
 afterEach(() => {
@@ -79,7 +88,7 @@ describe('useWebSocket', () => {
     );
 
     expect(global.WebSocket).toHaveBeenCalledWith(
-      'ws://localhost:8000/ws/conv-123'
+      'ws://localhost:8000/ws/conv-123?token=mock-jwt-token'
     );
   });
 
@@ -90,6 +99,25 @@ describe('useWebSocket', () => {
       })
     );
 
+    expect(global.WebSocket).not.toHaveBeenCalled();
+  });
+
+  it('does not connect when no token is available', async () => {
+    // Mock getAccessToken to return null (no token)
+    (api.getAccessToken as jest.Mock).mockReturnValue(null);
+    const onError = jest.fn();
+
+    renderHook(() =>
+      useWebSocket({
+        conversationId: 'conv-123',
+        onError,
+      })
+    );
+
+    // When no token is available, onError should be called
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Not authenticated');
+    });
     expect(global.WebSocket).not.toHaveBeenCalled();
   });
 

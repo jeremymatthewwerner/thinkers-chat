@@ -1,11 +1,13 @@
 """API routes for conversation management."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.sessions import get_or_create_session
+from app.api.sessions import get_session_from_token
 from app.core.database import get_db
 from app.models import Conversation, ConversationThinker, Message, Session
 from app.models.message import SenderType
@@ -24,7 +26,7 @@ router = APIRouter()
 @router.post("", response_model=ConversationResponse)
 async def create_conversation(
     data: ConversationCreate,
-    session: Session = Depends(get_or_create_session),
+    session: Annotated[Session, Depends(get_session_from_token)],
     db: AsyncSession = Depends(get_db),
 ) -> Conversation:
     """Create a new conversation with thinkers."""
@@ -61,7 +63,7 @@ async def create_conversation(
 
 @router.get("", response_model=list[ConversationSummary])
 async def list_conversations(
-    session: Session = Depends(get_or_create_session),
+    session: Annotated[Session, Depends(get_session_from_token)],
     db: AsyncSession = Depends(get_db),
 ) -> list[ConversationSummary]:
     """List all conversations for the current session with message counts."""
@@ -100,7 +102,7 @@ async def list_conversations(
 @router.get("/{conversation_id}", response_model=ConversationWithMessages)
 async def get_conversation(
     conversation_id: str,
-    session: Session = Depends(get_or_create_session),
+    session: Annotated[Session, Depends(get_session_from_token)],
     db: AsyncSession = Depends(get_db),
 ) -> Conversation:
     """Get a conversation with its messages."""
@@ -124,7 +126,7 @@ async def get_conversation(
 @router.delete("/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
-    session: Session = Depends(get_or_create_session),
+    session: Annotated[Session, Depends(get_session_from_token)],
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     """Delete a conversation and all its messages."""
@@ -147,7 +149,7 @@ async def delete_conversation(
 async def send_message(
     conversation_id: str,
     data: MessageCreate,
-    session: Session = Depends(get_or_create_session),
+    session: Annotated[Session, Depends(get_session_from_token)],
     db: AsyncSession = Depends(get_db),
 ) -> Message:
     """Send a user message to a conversation."""

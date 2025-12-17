@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import type {
   Conversation,
@@ -9,10 +10,14 @@ import type {
   ThinkerSuggestion,
 } from '@/types';
 import { ChatArea, NewChatModal, Sidebar } from '@/components';
+import { useAuth } from '@/contexts';
 import { useWebSocket } from '@/hooks';
 import * as api from '@/lib/api';
 
 export default function Home() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+
   // State
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [currentConversation, setCurrentConversation] =
@@ -59,21 +64,30 @@ export default function Home() {
     }, []),
   });
 
-  // Initialize session and load conversations
+  // Redirect to login if not authenticated
   useEffect(() => {
-    const init = async () => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  // Load conversations when authenticated
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!isAuthenticated) return;
       try {
-        await api.ensureSession();
         const convs = await api.getConversations();
         setConversations(convs);
       } catch (error) {
-        console.error('Failed to initialize:', error);
+        console.error('Failed to load conversations:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    init();
-  }, []);
+    if (isAuthenticated) {
+      loadConversations();
+    }
+  }, [isAuthenticated]);
 
   // Load conversation when selected
   const handleSelectConversation = useCallback(async (id: string) => {
@@ -189,12 +203,22 @@ export default function Home() {
     []
   );
 
-  if (isLoading) {
+  // Handle logout
+  const handleLogout = useCallback(async () => {
+    await logout();
+    router.push('/login');
+  }, [logout, router]);
+
+  if (authLoading || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900">
         <div className="text-zinc-500 dark:text-zinc-400">Loading...</div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect to login
   }
 
   return (
@@ -210,6 +234,8 @@ export default function Home() {
         isConnected={isConnected}
         isPaused={isPaused}
         sessionCost={sessionCost}
+        username={user?.username}
+        onLogout={handleLogout}
       />
 
       <ChatArea

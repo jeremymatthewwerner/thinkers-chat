@@ -222,6 +222,7 @@ async def save_thinker_message(
 async def websocket_endpoint(
     websocket: WebSocket,
     conversation_id: str,
+    token: str | None = None,
 ) -> None:
     """WebSocket endpoint for real-time chat messaging.
 
@@ -229,9 +230,27 @@ async def websocket_endpoint(
     - New messages from thinkers
     - Typing indicators
     - User join/leave events
+
+    Authentication is done via the 'token' query parameter.
     """
     # Import here to avoid circular imports
+    from app.core.auth import decode_access_token
     from app.services.thinker import thinker_service
+
+    # Validate token
+    if not token:
+        await websocket.close(code=4001, reason="Authentication required")
+        return
+
+    payload = decode_access_token(token)
+    if not payload:
+        await websocket.close(code=4001, reason="Invalid token")
+        return
+
+    session_id = payload.get("session_id")
+    if not session_id:
+        await websocket.close(code=4001, reason="Invalid token - no session")
+        return
 
     await manager.connect(websocket, conversation_id)
 

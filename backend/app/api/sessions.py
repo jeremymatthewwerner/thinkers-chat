@@ -1,57 +1,69 @@
 """API routes for session management."""
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import decode_access_token
 from app.core.database import get_db
-from app.models import Session
+from app.models import Session, User
 from app.schemas import SessionResponse
 
 router = APIRouter()
+security = HTTPBearer()
 
 
-async def get_or_create_session(
-    x_session_id: str | None = Header(default=None),
+async def get_session_from_token(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     db: AsyncSession = Depends(get_db),
 ) -> Session:
-    """Get existing session or create a new one.
+    """Get the session from the JWT token.
 
-    Sessions are identified by a UUID sent in the X-Session-ID header.
-    If no header is provided or session doesn't exist, a new one is created.
+    The session_id is encoded in the JWT token when the user logs in.
     """
-    if x_session_id:
-        result = await db.execute(select(Session).where(Session.id == x_session_id))
-        session = result.scalar_one_or_none()
-        if session:
-            return session
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-    # Create new session
-    session = Session()
-    db.add(session)
-    await db.flush()
+    session_id = payload.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Invalid token - no session")
+
+    result = await db.execute(select(Session).where(Session.id == session_id))
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
     return session
 
 
-@router.post("", response_model=SessionResponse)
-async def create_session(
+async def get_current_user_from_token(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     db: AsyncSession = Depends(get_db),
-) -> Session:
-    """Create a new anonymous session."""
-    session = Session()
-    db.add(session)
-    await db.flush()
-    return session
+) -> User:
+    """Get the current user from the JWT token."""
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token - no user")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
 
 
 @router.get("/me", response_model=SessionResponse)
 async def get_current_session(
-    x_session_id: str = Header(...),
-    db: AsyncSession = Depends(get_db),
+    session: Annotated[Session, Depends(get_session_from_token)],
 ) -> Session:
-    """Get current session by ID."""
-    result = await db.execute(select(Session).where(Session.id == x_session_id))
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    """Get current session from JWT token."""
     return session

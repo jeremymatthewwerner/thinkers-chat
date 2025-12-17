@@ -5,7 +5,13 @@ import json
 from starlette.testclient import TestClient
 
 from app.api.websocket import ConnectionManager, WSMessage, WSMessageType
+from app.core.auth import create_access_token
 from app.main import app
+
+
+def get_test_token(user_id: str = "test-user-id", session_id: str = "test-session-id") -> str:
+    """Create a valid JWT token for testing."""
+    return create_access_token({"sub": user_id, "session_id": session_id})
 
 
 class TestConnectionManager:
@@ -62,9 +68,10 @@ class TestWebSocketEndpoint:
 
     def test_websocket_connect(self) -> None:
         """Test WebSocket connection."""
+        token = get_test_token()
         with (
             TestClient(app) as test_client,
-            test_client.websocket_connect("/ws/test-conversation") as websocket,
+            test_client.websocket_connect(f"/ws/test-conversation?token={token}") as websocket,
         ):
             # Should receive user_joined message
             data = websocket.receive_json()
@@ -73,9 +80,10 @@ class TestWebSocketEndpoint:
 
     def test_websocket_send_message(self) -> None:
         """Test sending a message via WebSocket."""
+        token = get_test_token()
         with (
             TestClient(app) as test_client,
-            test_client.websocket_connect("/ws/test-conversation") as websocket,
+            test_client.websocket_connect(f"/ws/test-conversation?token={token}") as websocket,
         ):
             # Skip the join message
             websocket.receive_json()
@@ -96,9 +104,10 @@ class TestWebSocketEndpoint:
 
     def test_websocket_invalid_json(self) -> None:
         """Test handling invalid JSON."""
+        token = get_test_token()
         with (
             TestClient(app) as test_client,
-            test_client.websocket_connect("/ws/test-conversation") as websocket,
+            test_client.websocket_connect(f"/ws/test-conversation?token={token}") as websocket,
         ):
             # Skip the join message
             websocket.receive_json()
@@ -113,11 +122,13 @@ class TestWebSocketEndpoint:
 
     def test_multiple_clients_receive_messages(self) -> None:
         """Test that multiple clients receive broadcast messages."""
-        with TestClient(app) as test_client, test_client.websocket_connect("/ws/multi-test") as ws1:
+        token1 = get_test_token("user-1")
+        token2 = get_test_token("user-2")
+        with TestClient(app) as test_client, test_client.websocket_connect(f"/ws/multi-test?token={token1}") as ws1:
             # Skip join message for ws1
             ws1.receive_json()
 
-            with test_client.websocket_connect("/ws/multi-test") as ws2:
+            with test_client.websocket_connect(f"/ws/multi-test?token={token2}") as ws2:
                 # ws1 should receive user_joined for ws2
                 data = ws1.receive_json()
                 assert data["type"] == "user_joined"
@@ -149,9 +160,10 @@ class TestWebSocketMessageTypes:
 
     def test_typing_start_message(self) -> None:
         """Test typing_start message type."""
+        token = get_test_token()
         with (
             TestClient(app) as test_client,
-            test_client.websocket_connect("/ws/typing-test") as websocket,
+            test_client.websocket_connect(f"/ws/typing-test?token={token}") as websocket,
         ):
             # Skip join message
             websocket.receive_json()
@@ -164,9 +176,10 @@ class TestWebSocketMessageTypes:
 
     def test_typing_stop_message(self) -> None:
         """Test typing_stop message type."""
+        token = get_test_token()
         with (
             TestClient(app) as test_client,
-            test_client.websocket_connect("/ws/typing-test") as websocket,
+            test_client.websocket_connect(f"/ws/typing-test?token={token}") as websocket,
         ):
             # Skip join message
             websocket.receive_json()

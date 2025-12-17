@@ -6,38 +6,124 @@ beforeEach(async () => {
   localStorage.clear();
   (global.fetch as jest.Mock).mockReset();
   (localStorage.getItem as jest.Mock).mockReturnValue(null);
-  // Reset module to clear internal sessionId state
+  // Reset module to clear internal accessToken state
   jest.resetModules();
   api = await import('@/lib/api');
 });
 
 describe('API Client', () => {
-  describe('Session API', () => {
-    it('creates a session and stores the ID', async () => {
-      const mockSession = {
-        id: 'session-123',
-        created_at: '2024-01-15T10:00:00Z',
+  describe('Auth API', () => {
+    it('registers a user and stores token', async () => {
+      const mockResponse = {
+        access_token: 'jwt-token-123',
+        user: {
+          id: 'user-123',
+          username: 'testuser',
+          is_admin: false,
+          total_spend: 0,
+          created_at: '2024-01-15T10:00:00Z',
+        },
       };
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockSession),
+        json: () => Promise.resolve(mockResponse),
       });
 
-      const session = await api.createSession();
+      const response = await api.register('testuser', 'password123');
 
-      expect(session).toEqual(mockSession);
+      expect(response).toEqual(mockResponse);
       expect(localStorage.setItem).toHaveBeenCalledWith(
-        'session_id',
-        'session-123'
+        'access_token',
+        'jwt-token-123'
+      );
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'user',
+        JSON.stringify(mockResponse.user)
       );
     });
 
-    it('gets existing session by ID', async () => {
+    it('logs in a user and stores token', async () => {
+      const mockResponse = {
+        access_token: 'jwt-token-456',
+        user: {
+          id: 'user-123',
+          username: 'testuser',
+          is_admin: false,
+          total_spend: 0.5,
+          created_at: '2024-01-15T10:00:00Z',
+        },
+      };
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const response = await api.login('testuser', 'password123');
+
+      expect(response).toEqual(mockResponse);
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'access_token',
+        'jwt-token-456'
+      );
+    });
+
+    it('logs out and clears auth data', async () => {
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ message: 'Logged out' }),
+      });
+
+      await api.logout();
+
+      expect(localStorage.removeItem).toHaveBeenCalledWith('access_token');
+      expect(localStorage.removeItem).toHaveBeenCalledWith('user');
+    });
+
+    it('gets current user with valid token', async () => {
+      const mockUser = {
+        id: 'user-123',
+        username: 'testuser',
+        is_admin: false,
+        total_spend: 0,
+        created_at: '2024-01-15T10:00:00Z',
+      };
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockUser),
+      });
+
+      const user = await api.getCurrentUser();
+
+      expect(user).toEqual(mockUser);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/auth/me'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer jwt-token-123',
+          }),
+        })
+      );
+    });
+
+    it('returns null when no token exists', async () => {
+      (localStorage.getItem as jest.Mock).mockReturnValue(null);
+
+      const user = await api.getCurrentUser();
+
+      expect(user).toBeNull();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Session API', () => {
+    it('gets session with valid token', async () => {
       const mockSession = {
         id: 'session-123',
         created_at: '2024-01-15T10:00:00Z',
       };
-      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockSession),
@@ -50,13 +136,13 @@ describe('API Client', () => {
         expect.stringContaining('/api/sessions/me'),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'X-Session-ID': 'session-123',
+            Authorization: 'Bearer jwt-token-123',
           }),
         })
       );
     });
 
-    it('returns null when no session ID exists', async () => {
+    it('returns null when no token exists', async () => {
       (localStorage.getItem as jest.Mock).mockReturnValue(null);
 
       const session = await api.getSession();
@@ -66,7 +152,7 @@ describe('API Client', () => {
     });
 
     it('returns null when session fetch fails', async () => {
-      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         json: () => Promise.resolve({ detail: 'Not found' }),
@@ -76,43 +162,11 @@ describe('API Client', () => {
 
       expect(session).toBeNull();
     });
-
-    it('ensures session creates new if none exists', async () => {
-      const mockSession = {
-        id: 'new-session',
-        created_at: '2024-01-15T10:00:00Z',
-      };
-      (localStorage.getItem as jest.Mock).mockReturnValue(null);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockSession),
-      });
-
-      const session = await api.ensureSession();
-
-      expect(session).toEqual(mockSession);
-    });
-
-    it('ensures session returns existing if valid', async () => {
-      const mockSession = {
-        id: 'existing-session',
-        created_at: '2024-01-15T10:00:00Z',
-      };
-      (localStorage.getItem as jest.Mock).mockReturnValue('existing-session');
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockSession),
-      });
-
-      const session = await api.ensureSession();
-
-      expect(session).toEqual(mockSession);
-    });
   });
 
   describe('Conversation API', () => {
     beforeEach(() => {
-      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
     });
 
     it('gets all conversations', async () => {
@@ -165,7 +219,7 @@ describe('API Client', () => {
         expect.stringContaining('/api/conversations'),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'X-Session-ID': 'session-123',
+            Authorization: 'Bearer jwt-token-123',
           }),
         })
       );
@@ -249,7 +303,7 @@ describe('API Client', () => {
 
   describe('Message API', () => {
     beforeEach(() => {
-      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
     });
 
     it('sends a message', async () => {
@@ -278,7 +332,7 @@ describe('API Client', () => {
 
   describe('Thinker API', () => {
     beforeEach(() => {
-      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
     });
 
     it('suggests thinkers for a topic', async () => {
@@ -328,7 +382,7 @@ describe('API Client', () => {
 
   describe('Error Handling', () => {
     beforeEach(() => {
-      (localStorage.getItem as jest.Mock).mockReturnValue('session-123');
+      (localStorage.getItem as jest.Mock).mockReturnValue('jwt-token-123');
     });
 
     it('throws error with detail from response', async () => {

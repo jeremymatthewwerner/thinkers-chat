@@ -1,6 +1,7 @@
 """Tests for API endpoints."""
 
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -71,39 +72,118 @@ async def client(engine: AsyncEngine) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides.clear()
 
 
+async def register_and_get_token(
+    client: AsyncClient,
+    username: str = "testuser",
+    password: str = "testpass123",
+) -> dict[str, Any]:
+    """Helper to register a user and get their auth token."""
+    response = await client.post(
+        "/api/auth/register",
+        json={"username": username, "password": password},
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+async def get_auth_headers(
+    client: AsyncClient,
+    username: str = "testuser",
+    password: str = "testpass123",
+) -> dict[str, str]:
+    """Helper to get authorization headers for an authenticated user."""
+    data = await register_and_get_token(client, username, password)
+    return {"Authorization": f"Bearer {data['access_token']}"}
+
+
+class TestAuthAPI:
+    """Tests for authentication endpoints."""
+
+    async def test_register_user(self, client: AsyncClient) -> None:
+        """Test user registration."""
+        response = await client.post(
+            "/api/auth/register",
+            json={"username": "newuser", "password": "password123"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["user"]["username"] == "newuser"
+        assert data["user"]["is_admin"] is False
+
+    async def test_register_duplicate_username(self, client: AsyncClient) -> None:
+        """Test that duplicate usernames are rejected."""
+        await client.post(
+            "/api/auth/register",
+            json={"username": "testuser", "password": "password123"},
+        )
+        response = await client.post(
+            "/api/auth/register",
+            json={"username": "testuser", "password": "password456"},
+        )
+        assert response.status_code == 400
+        assert "already taken" in response.json()["detail"]
+
+    async def test_login_success(self, client: AsyncClient) -> None:
+        """Test successful login."""
+        # First register
+        await client.post(
+            "/api/auth/register",
+            json={"username": "logintest", "password": "password123"},
+        )
+        # Then login
+        response = await client.post(
+            "/api/auth/login",
+            json={"username": "logintest", "password": "password123"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["user"]["username"] == "logintest"
+
+    async def test_login_invalid_password(self, client: AsyncClient) -> None:
+        """Test login with wrong password."""
+        await client.post(
+            "/api/auth/register",
+            json={"username": "testuser2", "password": "password123"},
+        )
+        response = await client.post(
+            "/api/auth/login",
+            json={"username": "testuser2", "password": "wrongpassword"},
+        )
+        assert response.status_code == 401
+        assert "Invalid" in response.json()["detail"]
+
+    async def test_get_me(self, client: AsyncClient) -> None:
+        """Test getting current user info."""
+        headers = await get_auth_headers(client, "meuser", "password123")
+        response = await client.get("/api/auth/me", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "meuser"
+
+    async def test_get_me_no_token(self, client: AsyncClient) -> None:
+        """Test that /me requires authentication."""
+        response = await client.get("/api/auth/me")
+        assert response.status_code == 401  # Not authenticated
+
+
 class TestSessionAPI:
     """Tests for session endpoints."""
 
-    async def test_create_session(self, client: AsyncClient) -> None:
-        """Test creating a new session."""
-        response = await client.post("/api/sessions")
+    async def test_get_current_session(self, client: AsyncClient) -> None:
+        """Test getting current session from token."""
+        headers = await get_auth_headers(client, "sessionuser", "password123")
+        response = await client.get("/api/sessions/me", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "id" in data
         assert len(data["id"]) == 36  # UUID format
-        assert "created_at" in data
 
-    async def test_get_current_session(self, client: AsyncClient) -> None:
-        """Test getting current session."""
-        # First create a session
-        create_response = await client.post("/api/sessions")
-        session_id = create_response.json()["id"]
-
-        # Then get it
-        response = await client.get(
-            "/api/sessions/me",
-            headers={"X-Session-ID": session_id},
-        )
-        assert response.status_code == 200
-        assert response.json()["id"] == session_id
-
-    async def test_get_session_not_found(self, client: AsyncClient) -> None:
-        """Test getting non-existent session."""
-        response = await client.get(
-            "/api/sessions/me",
-            headers={"X-Session-ID": "non-existent-id"},
-        )
-        assert response.status_code == 404
+    async def test_get_session_no_auth(self, client: AsyncClient) -> None:
+        """Test that session requires authentication."""
+        response = await client.get("/api/sessions/me")
+        assert response.status_code == 401  # Not authenticated
 
 
 class TestConversationAPI:
@@ -111,14 +191,10 @@ class TestConversationAPI:
 
     async def test_create_conversation(self, client: AsyncClient) -> None:
         """Test creating a new conversation."""
-        # First create a session
-        session_response = await client.post("/api/sessions")
-        session_id = session_response.json()["id"]
-
-        # Create conversation
+        headers = await get_auth_headers(client, "convuser1", "password123")
         response = await client.post(
             "/api/conversations",
-            headers={"X-Session-ID": session_id},
+            headers=headers,
             json={
                 "topic": "What is consciousness?",
                 "thinkers": [
@@ -143,36 +219,15 @@ class TestConversationAPI:
         assert len(data["thinkers"]) == 2
         assert data["thinkers"][0]["name"] == "Socrates"
 
-    async def test_create_conversation_creates_session(self, client: AsyncClient) -> None:
-        """Test that creating a conversation auto-creates a session."""
-        response = await client.post(
-            "/api/conversations",
-            json={
-                "topic": "Philosophy",
-                "thinkers": [
-                    {
-                        "name": "Aristotle",
-                        "bio": "Greek philosopher",
-                        "positions": "Virtue ethics",
-                        "style": "Systematic",
-                    },
-                ],
-            },
-        )
-        assert response.status_code == 200
-        assert response.json()["session_id"] is not None
-
     async def test_list_conversations(self, client: AsyncClient) -> None:
         """Test listing conversations for a session."""
-        # Create session
-        session_response = await client.post("/api/sessions")
-        session_id = session_response.json()["id"]
+        headers = await get_auth_headers(client, "listuser", "password123")
 
         # Create conversations
         for topic in ["Topic 1", "Topic 2"]:
             await client.post(
                 "/api/conversations",
-                headers={"X-Session-ID": session_id},
+                headers=headers,
                 json={
                     "topic": topic,
                     "thinkers": [
@@ -187,24 +242,19 @@ class TestConversationAPI:
             )
 
         # List conversations
-        response = await client.get(
-            "/api/conversations",
-            headers={"X-Session-ID": session_id},
-        )
+        response = await client.get("/api/conversations", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
 
     async def test_get_conversation(self, client: AsyncClient) -> None:
         """Test getting a conversation with messages."""
-        # Create session
-        session_response = await client.post("/api/sessions")
-        session_id = session_response.json()["id"]
+        headers = await get_auth_headers(client, "getuser", "password123")
 
         # Create conversation
         conv_response = await client.post(
             "/api/conversations",
-            headers={"X-Session-ID": session_id},
+            headers=headers,
             json={
                 "topic": "Test topic",
                 "thinkers": [
@@ -222,7 +272,7 @@ class TestConversationAPI:
         # Get conversation
         response = await client.get(
             f"/api/conversations/{conv_id}",
-            headers={"X-Session-ID": session_id},
+            headers=headers,
         )
         assert response.status_code == 200
         data = response.json()
@@ -232,24 +282,20 @@ class TestConversationAPI:
 
     async def test_get_conversation_not_found(self, client: AsyncClient) -> None:
         """Test getting non-existent conversation."""
-        session_response = await client.post("/api/sessions")
-        session_id = session_response.json()["id"]
-
+        headers = await get_auth_headers(client, "notfounduser", "password123")
         response = await client.get(
             "/api/conversations/non-existent",
-            headers={"X-Session-ID": session_id},
+            headers=headers,
         )
         assert response.status_code == 404
 
     async def test_send_message(self, client: AsyncClient) -> None:
         """Test sending a user message."""
-        # Create session and conversation
-        session_response = await client.post("/api/sessions")
-        session_id = session_response.json()["id"]
+        headers = await get_auth_headers(client, "msguser", "password123")
 
         conv_response = await client.post(
             "/api/conversations",
-            headers={"X-Session-ID": session_id},
+            headers=headers,
             json={
                 "topic": "Test",
                 "thinkers": [
@@ -267,13 +313,49 @@ class TestConversationAPI:
         # Send message
         response = await client.post(
             f"/api/conversations/{conv_id}/messages",
-            headers={"X-Session-ID": session_id},
+            headers=headers,
             json={"content": "Hello, thinkers!"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["content"] == "Hello, thinkers!"
         assert data["sender_type"] == "user"
+
+    async def test_delete_conversation(self, client: AsyncClient) -> None:
+        """Test deleting a conversation."""
+        headers = await get_auth_headers(client, "deleteuser", "password123")
+
+        # Create conversation
+        conv_response = await client.post(
+            "/api/conversations",
+            headers=headers,
+            json={
+                "topic": "To be deleted",
+                "thinkers": [
+                    {
+                        "name": "Thinker",
+                        "bio": "Bio",
+                        "positions": "Positions",
+                        "style": "Style",
+                    },
+                ],
+            },
+        )
+        conv_id = conv_response.json()["id"]
+
+        # Delete conversation
+        response = await client.delete(
+            f"/api/conversations/{conv_id}",
+            headers=headers,
+        )
+        assert response.status_code == 200
+
+        # Verify deleted
+        response = await client.get(
+            f"/api/conversations/{conv_id}",
+            headers=headers,
+        )
+        assert response.status_code == 404
 
 
 class TestThinkerAPI:

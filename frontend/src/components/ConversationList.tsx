@@ -91,7 +91,10 @@ export function ConversationList({
                 }
                 data-testid="status-indicator"
               />
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">
+              <h3
+                className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate"
+                title={conv.topic}
+              >
                 {conv.topic}
               </h3>
             </div>

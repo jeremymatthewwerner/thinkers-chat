@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import logging
 import random
+import re
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING
 
@@ -537,6 +538,76 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
             logging.warning(f"Error in streaming thinking response: {e}")
             return "", 0.0
 
+    def _split_response_into_bubbles(self, response_text: str) -> list[str]:
+        """Split a response into multiple chat bubbles for natural conversation flow.
+
+        Splits at natural boundaries like sentence endings and thought transitions.
+        Target: Most bubbles should be 1-2 sentences.
+        """
+        if not response_text:
+            return []
+
+        text = response_text.strip()
+
+        # If already short, return as single bubble
+        if len(text) < 100:
+            return [text]
+
+        bubbles: list[str] = []
+        current_bubble = ""
+
+        # Split on sentence endings, keeping the punctuation
+        sentences = re.split(r"(?<=[.!?])\s+", text)
+
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+
+            # Check for thought transitions that should start a new bubble
+            transition_words = [
+                "But ",
+                "However,",
+                "Although ",
+                "On the other hand,",
+                "That said,",
+                "Nevertheless,",
+                "Yet ",
+                "Still,",
+                "Though ",
+                "Conversely,",
+            ]
+            starts_with_transition = any(sentence.startswith(tw) for tw in transition_words)
+
+            # If current bubble + new sentence would be too long, or new sentence starts a transition
+            if current_bubble and (
+                len(current_bubble) + len(sentence) > 150 or starts_with_transition
+            ):
+                bubbles.append(current_bubble.strip())
+                current_bubble = sentence
+            else:
+                if current_bubble:
+                    current_bubble += " " + sentence
+                else:
+                    current_bubble = sentence
+
+        # Don't forget the last bubble
+        if current_bubble:
+            bubbles.append(current_bubble.strip())
+
+        # If we ended up with just one bubble, that's fine
+        # But try to ensure we have at least 2 if the original was long enough
+        if len(bubbles) == 1 and len(text) > 200:
+            # Force a split at roughly the middle sentence boundary
+            mid = len(text) // 2
+            # Find the nearest sentence end after mid
+            for i in range(mid, len(text)):
+                if text[i] in ".!?" and i + 1 < len(text) and text[i + 1] == " ":
+                    bubbles = [text[: i + 1].strip(), text[i + 2 :].strip()]
+                    break
+
+        return [b for b in bubbles if b]  # Filter out empty strings
+
     def _extract_thinking_display(self, thinking_text: str) -> str:
         """Extract a displayable portion of the thinking text.
 
@@ -759,49 +830,48 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                         continue
 
                     if response_text:
-                        # Save and broadcast the message
-                        message = await save_message(
-                            conversation_id,
-                            thinker.name,
-                            response_text,
-                            cost,
-                        )
+                        # Split response into multiple chat bubbles for natural flow
+                        bubbles = self._split_response_into_bubbles(response_text)
 
-                        await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
-                        await manager.send_thinker_message(
-                            conversation_id,
-                            thinker.name,
-                            response_text,
-                            message.id,
-                            cost,
-                        )
+                        # Distribute cost across bubbles
+                        cost_per_bubble = cost / len(bubbles) if bubbles else 0
 
-                        last_response_count = len(messages) + 1
-
-                        # Chance to send a follow-up thought (consecutive message)
-                        if random.random() < 0.15:  # 15% chance of follow-up
-                            await asyncio.sleep(random.uniform(2.0, 5.0))
-                            if not self.is_paused(conversation_id):
-                                # Get updated messages including our first response
-                                updated_messages = await get_messages(conversation_id)
-                                followup_text, followup_cost = await self.generate_response(
-                                    thinker, updated_messages, topic
+                        # Send each bubble with typing delay between them
+                        for i, bubble_text in enumerate(bubbles):
+                            # Check pause state before each bubble
+                            if self.is_paused(conversation_id):
+                                await manager.send_thinker_stopped_typing(
+                                    conversation_id, thinker.name
                                 )
-                                if followup_text:
-                                    followup_msg = await save_message(
-                                        conversation_id,
-                                        thinker.name,
-                                        followup_text,
-                                        followup_cost,
-                                    )
-                                    await manager.send_thinker_message(
-                                        conversation_id,
-                                        thinker.name,
-                                        followup_text,
-                                        followup_msg.id,
-                                        followup_cost,
-                                    )
-                                    last_response_count = len(updated_messages) + 1
+                                break
+
+                            # Save and broadcast the bubble
+                            message = await save_message(
+                                conversation_id,
+                                thinker.name,
+                                bubble_text,
+                                cost_per_bubble,
+                            )
+
+                            # Stop typing indicator before sending message
+                            await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                            await manager.send_thinker_message(
+                                conversation_id,
+                                thinker.name,
+                                bubble_text,
+                                message.id,
+                                cost_per_bubble,
+                            )
+
+                            # If there are more bubbles, show typing and wait
+                            if i < len(bubbles) - 1:
+                                await asyncio.sleep(random.uniform(1.0, 2.5))
+                                # Show typing for next bubble
+                                await manager.send_thinker_typing(conversation_id, thinker.name)
+                                # Brief typing delay
+                                await asyncio.sleep(random.uniform(1.0, 3.0))
+
+                        last_response_count = len(messages) + len(bubbles)
                     else:
                         await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
                 else:

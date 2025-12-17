@@ -65,6 +65,7 @@ export function MessageList({
             message={msg}
             thinkerColor={thinker?.color}
             thinker={thinker}
+            allThinkers={thinkers}
           />
         );
       })}

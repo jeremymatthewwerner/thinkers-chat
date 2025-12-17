@@ -9,6 +9,8 @@ Create an engaging, educational chat experience where users can have real-time g
 ### 2.1 User Interface Structure
 - Sidebar showing list of previous chats (similar to ChatGPT interface)
 - Each chat shows preview/title in sidebar
+  - Long conversation names should be truncated with ellipsis
+  - On hover, show full name in tooltip
 - Affordance to start a new chat prominently displayed
 - Clean, familiar chat interface pattern
 - **Cost meter**: Display running total of LLM costs incurred since page load
@@ -121,14 +123,26 @@ Create an engaging, educational chat experience where users can have real-time g
 
 The goal is to make thinker responses feel like a real group chat, not a mechanical round-robin.
 
-#### 4.3.1 Response Length Variation
-- **Short responses**: Sometimes just a few words or one sentence reacting to someone else
+#### 4.3.1 Response Length and Message Splitting
+Real chat messages are typically short. Long paragraphs feel unnatural in a chat context.
+
+**Message splitting**: Instead of sending one long message, thinkers should split responses into multiple chat bubbles:
+- **Target**: Most messages should be 1-2 sentences (one chat bubble)
+- **Splitting strategy**: When the LLM generates a longer response, split it at natural boundaries:
+  - Sentence endings
+  - Paragraph breaks
+  - Thought transitions (e.g., "But...", "However...", "On the other hand...")
+- **Timing between bubbles**: 1-3 seconds of "typing" delay between consecutive bubbles from same thinker
+- **Interleaving allowed**: Another thinker (or user) may interject between a thinker's bubbles, creating natural conversation flow
+- **Implementation**: Generate full response, then split and send as separate messages with delays
+
+**Response styles**:
+- **Quick reactions**: Just a few words (1 bubble)
   - "I couldn't agree more."
   - "That's precisely my concern."
   - "Interesting—but have you considered the inverse?"
-- **Medium responses**: 2-4 sentences of substantive contribution (most common)
-- **Long responses**: Occasionally deeper explorations when the topic warrants
-- Length should feel organic—not every response needs to be a paragraph
+- **Substantive responses**: 2-4 sentences split across 1-2 bubbles
+- **Extended thoughts**: Longer explorations split across 2-4 bubbles with natural pauses
 
 #### 4.3.2 Thinking Preview (Streaming Extended Thinking)
 Instead of showing just "Thinking...", stream the LLM's actual reasoning process in real-time:
@@ -168,6 +182,18 @@ Model realistic group chat dynamics:
 - **Debate clusters**: Disagreements that draw multiple participants
 - **Topic drift**: Natural tangents that emerge from the conversation
 - **Re-centering**: Occasionally a thinker brings conversation back to the original question
+
+#### 4.3.5 Mention Highlighting
+When a thinker or user mentions another participant by name, highlight the mention visually:
+- **Detection**: Parse message content for participant names (case-insensitive)
+- **Visual treatment**:
+  - Apply distinct styling to mentioned names (bold, colored, or highlighted background)
+  - Display the mentioned person's avatar/icon inline next to their name
+  - Make mentions clickable (future: scroll to that person's last message)
+- **Examples**:
+  - "I agree with **[🖼️] Socrates** on this point" (with Socrates' avatar inline)
+  - "What do you think, **[🖼️] Einstein**?" (with Einstein's avatar inline)
+- **Implementation**: Process message content on render, detect names, wrap in styled component with avatar
 
 ### 4.4 LLM Integration
 - Robust prompt engineering for persona consistency

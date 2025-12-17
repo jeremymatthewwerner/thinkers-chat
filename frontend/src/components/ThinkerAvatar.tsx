@@ -10,17 +10,19 @@ import { useState } from 'react';
 export interface ThinkerAvatarProps {
   name: string;
   imageUrl?: string | null;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   color?: string;
 }
 
 const SIZE_CLASSES = {
+  xs: 'w-4 h-4 text-[8px]',
   sm: 'w-6 h-6 text-xs',
   md: 'w-8 h-8 text-sm',
   lg: 'w-10 h-10 text-base',
 };
 
 const SIZE_PIXELS = {
+  xs: 16,
   sm: 24,
   md: 32,
   lg: 40,

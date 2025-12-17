@@ -230,6 +230,59 @@ class TestGenerateResponse:
         assert cost > 0  # Cost should be calculated
 
 
+class TestSplitResponseIntoBubbles:
+    """Tests for _split_response_into_bubbles helper method."""
+
+    def test_empty_text_returns_empty_list(self) -> None:
+        """Test that empty text returns empty list."""
+        service = ThinkerService()
+        result = service._split_response_into_bubbles("")
+        assert result == []
+
+    def test_short_text_single_bubble(self) -> None:
+        """Test that short text returns single bubble."""
+        service = ThinkerService()
+        result = service._split_response_into_bubbles("This is a short message.")
+        assert len(result) == 1
+        assert result[0] == "This is a short message."
+
+    def test_long_text_splits_at_sentences(self) -> None:
+        """Test that long text splits at sentence boundaries."""
+        service = ThinkerService()
+        # Text must be > 100 chars to trigger splitting
+        text = (
+            "This is the first sentence of my response to your question. "
+            "Now I will continue with a second sentence that adds more detail. "
+            "And here is a third sentence to make it even longer."
+        )
+        result = service._split_response_into_bubbles(text)
+        assert len(result) >= 2
+        # Each bubble should be a complete thought
+        for bubble in result:
+            assert bubble.endswith((".", "!", "?"))
+
+    def test_splits_at_transition_words(self) -> None:
+        """Test that transitions like 'However' start new bubbles."""
+        service = ThinkerService()
+        # Text must be > 100 chars and have transition word
+        text = (
+            "I think this is absolutely true and correct in every way. "
+            "However, there are some notable exceptions we should consider carefully. "
+            "These exceptions are important for our discussion."
+        )
+        result = service._split_response_into_bubbles(text)
+        # Should split at "However"
+        assert len(result) >= 2
+        assert any("However" in b for b in result)
+
+    def test_very_long_text_forces_split(self) -> None:
+        """Test that very long text forces a split even without natural boundaries."""
+        service = ThinkerService()
+        text = "This is a very long sentence that goes on and on. " * 10
+        result = service._split_response_into_bubbles(text)
+        assert len(result) >= 2
+
+
 class TestExtractThinkingDisplay:
     """Tests for _extract_thinking_display helper method."""
 

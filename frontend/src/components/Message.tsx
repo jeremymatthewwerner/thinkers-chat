@@ -13,6 +13,8 @@ export interface MessageProps {
   thinkerColor?: string;
   /** Thinker data for avatar image */
   thinker?: ConversationThinker;
+  /** All thinkers in the conversation for mention detection */
+  allThinkers?: ConversationThinker[];
 }
 
 // Default colors for thinkers if no color specified
@@ -32,7 +34,100 @@ function getColorFromName(name: string): string {
   return DEFAULT_THINKER_COLORS[hash % DEFAULT_THINKER_COLORS.length];
 }
 
-export function Message({ message, thinkerColor, thinker }: MessageProps) {
+/**
+ * Renders message content with highlighted mentions of thinkers.
+ * Mentions are styled with the thinker's color and include their avatar inline.
+ */
+function renderContentWithMentions(
+  content: string,
+  thinkers: ConversationThinker[]
+): React.ReactNode {
+  if (!thinkers || thinkers.length === 0) {
+    return content;
+  }
+
+  // Build a map of names to thinker data (case-insensitive)
+  const thinkerMap = new Map<string, ConversationThinker>();
+  thinkers.forEach((t) => {
+    thinkerMap.set(t.name.toLowerCase(), t);
+    // Also map first name only for partial matches
+    const firstName = t.name.split(' ')[0];
+    if (firstName.length > 2) {
+      thinkerMap.set(firstName.toLowerCase(), t);
+    }
+  });
+
+  // Create regex pattern matching any thinker name (case-insensitive)
+  const names = Array.from(thinkerMap.keys()).sort(
+    (a, b) => b.length - a.length
+  ); // Longest first
+  if (names.length === 0) return content;
+
+  const pattern = new RegExp(
+    `\\b(${names.map(escapeRegex).join('|')})\\b`,
+    'gi'
+  );
+
+  // Split content by mentions
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = pattern.exec(content)) !== null) {
+    // Add text before this match
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+
+    // Add the highlighted mention
+    const matchedName = match[1];
+    const thinker = thinkerMap.get(matchedName.toLowerCase());
+    if (thinker) {
+      const color = thinker.color || getColorFromName(thinker.name);
+      parts.push(
+        <span
+          key={key++}
+          className="inline-flex items-center gap-0.5 font-semibold rounded px-0.5 -mx-0.5"
+          style={{
+            color,
+            backgroundColor: `${color}15`,
+          }}
+        >
+          <ThinkerAvatar
+            name={thinker.name}
+            imageUrl={thinker.image_url}
+            size="xs"
+            color={color}
+          />
+          {matchedName}
+        </span>
+      );
+    } else {
+      parts.push(matchedName);
+    }
+
+    lastIndex = match.index + matchedName.length;
+  }
+
+  // Add remaining text
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : content;
+}
+
+function escapeRegex(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function Message({
+  message,
+  thinkerColor,
+  thinker,
+  allThinkers = [],
+}: MessageProps) {
   const { sender_type, sender_name, content, cost, created_at } = message;
 
   const isUser = sender_type === 'user';
@@ -101,7 +196,7 @@ export function Message({ message, thinkerColor, thinker }: MessageProps) {
         <div
           className={`px-4 ${!isUser && sender_name ? 'pt-0.5' : 'pt-3'} pb-1 whitespace-pre-wrap`}
         >
-          {content}
+          {renderContentWithMentions(content, allThinkers)}
         </div>
 
         {/* Timestamp and cost */}

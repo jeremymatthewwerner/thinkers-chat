@@ -68,6 +68,29 @@ npx playwright test              # e2e tests
 - **E2E**: Playwright
 - Coverage minimum: 80%
 
+### Test Rigor Protocol (MANDATORY)
+
+**Before implementing any non-trivial feature or change:**
+1. **Think deeply about test cases** - Consider what new unit, integration, and E2E tests are needed
+2. **Document in TEST_PLAN.md** - Update the test plan document with new test cases before writing code
+3. **Consider edge cases** - What could go wrong? What are the boundary conditions?
+
+**After implementing:**
+1. **Write tests for all new code** - Don't just test happy paths
+2. **Update existing tests** - If behavior changed, tests should change too
+3. **Run full test suite** - Verify nothing regressed
+
+**Test plan document (TEST_PLAN.md) should include:**
+- Features organized in outline form (features → sub-features)
+- For each feature:
+  - Setup requirements
+  - Happy path test cases
+  - Edge cases and error conditions
+  - Cleanup steps if needed
+- Likely tricky areas that need extra attention
+
+This ensures comprehensive test coverage and prevents regressions.
+
 ## Code Style
 
 - **Python**: ruff (format + lint + isort), mypy strict

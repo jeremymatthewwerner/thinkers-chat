@@ -105,6 +105,8 @@ jobs:
 
       - name: Start backend
         working-directory: backend
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 
       - name: Wait for backend

@@ -100,6 +100,7 @@ Add these secrets in your GitHub repository settings (**Settings** → **Secrets
 
 | Secret | Description | How to get it |
 |--------|-------------|---------------|
+| `ANTHROPIC_API_KEY` | Anthropic API key for E2E tests | https://console.anthropic.com/ |
 | `RAILWAY_TOKEN` | Railway API token for deployments | Railway dashboard → Account Settings → Tokens → Create Token |
 | `PRODUCTION_BACKEND_URL` | Backend URL for smoke tests | Your Railway backend URL (e.g., `https://backend-xxx.up.railway.app`) |
 | `PRODUCTION_FRONTEND_URL` | Frontend URL for smoke tests | Your Railway frontend URL (e.g., `https://frontend-xxx.up.railway.app`) |

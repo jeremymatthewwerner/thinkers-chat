@@ -15,6 +15,8 @@ export interface SidebarProps {
   onNewChat: () => void;
   isOpen: boolean;
   onToggle: () => void;
+  isConnected?: boolean;
+  isPaused?: boolean;
 }
 
 export function Sidebar({
@@ -25,6 +27,8 @@ export function Sidebar({
   onNewChat,
   isOpen,
   onToggle,
+  isConnected = false,
+  isPaused = false,
 }: SidebarProps) {
   return (
     <>
@@ -96,6 +100,8 @@ export function Sidebar({
               selectedId={selectedId}
               onSelect={onSelectConversation}
               onDelete={onDeleteConversation}
+              isConnected={isConnected}
+              isPaused={isPaused}
             />
           </div>
 

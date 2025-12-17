@@ -88,7 +88,8 @@ async def list_conversations(
                 title=conv.title,
                 is_active=conv.is_active,
                 created_at=conv.created_at,
-                thinkers=conv.thinkers,
+                # Pydantic handles ORM model -> schema conversion via from_attributes=True
+                thinkers=conv.thinkers,  # type: ignore[arg-type]
                 message_count=len(conv.messages),
                 total_cost=total_cost,
             )

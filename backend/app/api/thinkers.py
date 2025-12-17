@@ -1,6 +1,6 @@
 """API routes for thinker suggestions and validation."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.core.config import get_settings
 from app.schemas import (
@@ -10,6 +10,7 @@ from app.schemas import (
     ThinkerValidateRequest,
     ThinkerValidateResponse,
 )
+from app.services.thinker import ThinkerAPIError
 
 router = APIRouter()
 
@@ -56,15 +57,32 @@ MOCK_THINKERS: dict[str, ThinkerProfile] = {
 
 async def get_mock_suggestions(_topic: str, count: int) -> list[ThinkerSuggestion]:
     """Get mock thinker suggestions for development with Wikipedia images."""
-    from app.services.thinker import thinker_service
     import asyncio
+
+    from app.services.thinker import thinker_service
 
     base_suggestions = [
         ("Socrates", "socrates", "Master of questioning and examining fundamental assumptions."),
-        ("Albert Einstein", "albert einstein", "Brilliant at connecting abstract concepts to real-world understanding."),
-        ("Maya Angelou", "maya angelou", "Brings wisdom from lived experience and artistic expression."),
-        ("Aristotle", "aristotle", "Systematic thinker who categorizes and builds logical frameworks."),
-        ("Marie Curie", "marie curie", "Represents empirical science and perseverance in discovery."),
+        (
+            "Albert Einstein",
+            "albert einstein",
+            "Brilliant at connecting abstract concepts to real-world understanding.",
+        ),
+        (
+            "Maya Angelou",
+            "maya angelou",
+            "Brings wisdom from lived experience and artistic expression.",
+        ),
+        (
+            "Aristotle",
+            "aristotle",
+            "Systematic thinker who categorizes and builds logical frameworks.",
+        ),
+        (
+            "Marie Curie",
+            "marie curie",
+            "Represents empirical science and perseverance in discovery.",
+        ),
     ]
 
     # Fetch Wikipedia images in parallel for performance
@@ -110,11 +128,16 @@ async def suggest_thinkers(
         return await get_mock_suggestions(data.topic, data.count)
 
     # Use the thinker service to get real suggestions
-    suggestions = await thinker_service.suggest_thinkers(data.topic, data.count)
-    if suggestions:
-        return suggestions
+    try:
+        suggestions = await thinker_service.suggest_thinkers(data.topic, data.count)
+        if suggestions:
+            return suggestions
+    except ThinkerAPIError as e:
+        # Return HTTP error with the API error message
+        status_code = 503 if e.is_quota_error else 502
+        raise HTTPException(status_code=status_code, detail=e.message) from e
 
-    # Fallback to mock suggestions if API call fails
+    # Fallback to mock suggestions if API call fails (but not due to quota)
     return await get_mock_suggestions(data.topic, data.count)
 
 
@@ -158,13 +181,19 @@ async def validate_thinker(
         )
 
     # Use the thinker service to validate
-    is_valid, profile = await thinker_service.validate_thinker(data.name)
-    if is_valid and profile:
-        return ThinkerValidateResponse(
-            valid=True,
-            name=profile.name,
-            profile=profile,
-        )
+    try:
+        is_valid, maybe_profile = await thinker_service.validate_thinker(data.name)
+        if is_valid and maybe_profile:
+            profile = maybe_profile
+            return ThinkerValidateResponse(
+                valid=True,
+                name=profile.name,
+                profile=profile,
+            )
+    except ThinkerAPIError as e:
+        # Return HTTP error with the API error message
+        status_code = 503 if e.is_quota_error else 502
+        raise HTTPException(status_code=status_code, detail=e.message) from e
 
     return ThinkerValidateResponse(
         valid=False,

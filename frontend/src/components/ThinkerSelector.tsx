@@ -67,8 +67,9 @@ export function ThinkerSelector({
       } else {
         setError(`Could not find "${customName}". Try a different name.`);
       }
-    } catch {
-      setError('Failed to validate thinker');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to validate thinker';
+      setError(message);
     } finally {
       setValidating(false);
     }

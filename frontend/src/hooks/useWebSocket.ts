@@ -46,11 +46,13 @@ export function useWebSocket({
     if (!conversationId) return;
 
     let isActive = true;
+    // Track the conversation ID this connection belongs to
+    const thisConversationId = conversationId;
 
     const createConnection = () => {
       if (!isActive) return;
 
-      const ws = new WebSocket(`${WS_BASE_URL}/ws/${conversationId}`);
+      const ws = new WebSocket(`${WS_BASE_URL}/ws/${thisConversationId}`);
 
       ws.onopen = () => {
         if (!isActive) {
@@ -79,15 +81,23 @@ export function useWebSocket({
       };
 
       ws.onmessage = (event) => {
+        // Don't process messages if this connection is no longer active
+        if (!isActive) return;
+
         try {
           const data: WSMessage = JSON.parse(event.data);
+
+          // Only process messages for this conversation
+          if (data.conversation_id && data.conversation_id !== thisConversationId) {
+            return;
+          }
 
           switch (data.type) {
             case 'message':
               if (data.sender_type === 'thinker' && data.message_id) {
                 onMessage?.({
                   id: data.message_id,
-                  conversation_id: data.conversation_id || '',
+                  conversation_id: thisConversationId,
                   sender_type: 'thinker',
                   sender_name: data.sender_name || null,
                   content: data.content || '',
@@ -98,7 +108,7 @@ export function useWebSocket({
               break;
 
             case 'thinker_typing':
-              if (data.sender_name) {
+              if (data.sender_name && isActive) {
                 setTypingThinkers(
                   (prev) => new Set([...prev, data.sender_name!])
                 );
@@ -107,7 +117,7 @@ export function useWebSocket({
               break;
 
             case 'thinker_stopped_typing':
-              if (data.sender_name) {
+              if (data.sender_name && isActive) {
                 setTypingThinkers((prev) => {
                   const next = new Set(prev);
                   next.delete(data.sender_name!);
@@ -148,6 +158,10 @@ export function useWebSocket({
         wsRef.current.close();
         wsRef.current = null;
       }
+      // Reset state on cleanup (before next effect runs with new conversationId)
+      setTypingThinkers(new Set());
+      setIsPaused(false);
+      setIsConnected(false);
     };
   }, [
     conversationId,

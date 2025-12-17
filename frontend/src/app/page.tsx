@@ -180,6 +180,8 @@ export default function Home() {
         onNewChat={() => setModalOpen(true)}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        isConnected={isConnected}
+        isPaused={isPaused}
       />
 
       <ChatArea

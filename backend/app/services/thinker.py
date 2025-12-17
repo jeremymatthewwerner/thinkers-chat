@@ -2,17 +2,28 @@
 
 import asyncio
 import contextlib
+import logging
 import random
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING
 
 import httpx
-from anthropic import AsyncAnthropic
+from anthropic import APIError, AsyncAnthropic
 from anthropic.types import TextBlock
 
 from app.api.websocket import manager
 from app.core.config import get_settings
 from app.schemas import ThinkerProfile, ThinkerSuggestion
+
+
+class ThinkerAPIError(Exception):
+    """Exception raised when the thinker API fails."""
+
+    def __init__(self, message: str, is_quota_error: bool = False):
+        self.message = message
+        self.is_quota_error = is_quota_error
+        super().__init__(message)
+
 
 if TYPE_CHECKING:
     from app.models import ConversationThinker, Message
@@ -52,7 +63,7 @@ class ThinkerService:
             async with httpx.AsyncClient(headers=headers) as client:
                 # First, search for the Wikipedia page title
                 search_url = "https://en.wikipedia.org/w/api.php"
-                search_params = {
+                search_params: dict[str, str | int] = {
                     "action": "query",
                     "list": "search",
                     "srsearch": name,
@@ -68,7 +79,7 @@ class ThinkerService:
                 page_title = data["query"]["search"][0]["title"]
 
                 # Get the page images
-                image_params = {
+                image_params: dict[str, str | int] = {
                     "action": "query",
                     "titles": page_title,
                     "prop": "pageimages",
@@ -81,7 +92,8 @@ class ThinkerService:
                 pages = data.get("query", {}).get("pages", {})
                 for page in pages.values():
                     if "thumbnail" in page:
-                        return page["thumbnail"]["source"]
+                        thumbnail_url: str = page["thumbnail"]["source"]
+                        return thumbnail_url
 
                 return None
         except Exception:
@@ -119,19 +131,30 @@ class ThinkerService:
             # Run all tasks in parallel
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
+            # Check for API errors first - if any task hit quota, propagate error
+            api_error: ThinkerAPIError | None = None
+            for result in results:
+                if isinstance(result, ThinkerAPIError):
+                    api_error = result
+                    break
+
             # Combine results, filtering out errors
             all_suggestions: list[ThinkerSuggestion] = []
             seen_names: set[str] = set()
             for i, result in enumerate(results):
                 if isinstance(result, list):
+                    logging.info(f"Task {i} returned {len(result)} suggestions")
                     for suggestion in result:
                         # Deduplicate by name
                         if suggestion.name.lower() not in seen_names:
                             seen_names.add(suggestion.name.lower())
                             all_suggestions.append(suggestion)
                 elif isinstance(result, Exception):
-                    import logging
                     logging.warning(f"Parallel suggestion task {i} failed: {result}")
+
+            # If we got no suggestions and there was an API error, raise it
+            if not all_suggestions and api_error:
+                raise api_error
 
             return all_suggestions[:count]
 
@@ -191,12 +214,14 @@ Return ONLY the JSON array, no other text."""
             first_block = response.content[0]
             if not isinstance(first_block, TextBlock):
                 import logging
+
                 logging.warning(f"Claude returned non-text block: {type(first_block)}")
                 return []
             raw_content = first_block.text
             content = raw_content.strip()
             if not content:
                 import logging
+
                 logging.warning("Claude returned empty response")
                 return []
             # Strip markdown code fences if present
@@ -210,7 +235,10 @@ Return ONLY the JSON array, no other text."""
                 data = json.loads(content)
             except json.JSONDecodeError as e:
                 import logging
-                logging.warning(f"Failed to parse JSON: {e}. Raw: {repr(raw_content[:300])} | After strip: {repr(content[:300])}")
+
+                logging.warning(
+                    f"Failed to parse JSON: {e}. Raw: {repr(raw_content[:300])} | After strip: {repr(content[:300])}"
+                )
                 return []
 
             # Build suggestions with image URLs (fetched in parallel)
@@ -232,8 +260,18 @@ Return ONLY the JSON array, no other text."""
                     )
                 )
             return suggestions
+        except APIError as e:
+            logging.warning(f"Anthropic API error: {e}")
+            # Check for quota/billing errors
+            error_msg = str(e)
+            is_quota = "credit balance" in error_msg.lower() or "billing" in error_msg.lower()
+            if is_quota:
+                raise ThinkerAPIError(
+                    "API credit limit reached. Please check your Anthropic billing.",
+                    is_quota_error=True,
+                ) from e
+            raise ThinkerAPIError(f"AI service error: {error_msg}") from e
         except Exception as e:
-            import logging
             logging.warning(f"Failed to get thinker suggestions: {e}")
             return []
 
@@ -287,7 +325,18 @@ Return ONLY the JSON, no other text."""
                 image_url = await self.get_wikipedia_image(profile_data["name"])
                 return True, ThinkerProfile(**profile_data, image_url=image_url)
             return False, None
-        except Exception:
+        except APIError as e:
+            logging.warning(f"Anthropic API error in validate_thinker: {e}")
+            error_msg = str(e)
+            is_quota = "credit balance" in error_msg.lower() or "billing" in error_msg.lower()
+            if is_quota:
+                raise ThinkerAPIError(
+                    "API credit limit reached. Please check your Anthropic billing.",
+                    is_quota_error=True,
+                ) from e
+            raise ThinkerAPIError(f"AI service error: {error_msg}") from e
+        except Exception as e:
+            logging.warning(f"Failed to validate thinker: {e}")
             return False, None
 
     async def generate_response(

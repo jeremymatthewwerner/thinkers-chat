@@ -80,8 +80,9 @@ export function NewChatModal({
         const results = await onSuggestThinkers(topic.trim());
         setSuggestions(results);
         setStep('thinkers');
-      } catch {
-        setError('Failed to get thinker suggestions');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to get thinker suggestions';
+        setError(message);
       } finally {
         setIsLoading(false);
       }
@@ -110,8 +111,9 @@ export function NewChatModal({
         }))
       );
       onClose();
-    } catch {
-      setError('Failed to create conversation');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create conversation';
+      setError(message);
     } finally {
       setIsCreating(false);
     }
@@ -146,8 +148,9 @@ export function NewChatModal({
         );
         return [...prev, ...newSuggestions];
       });
-    } catch {
-      setError('Failed to get more suggestions');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to get more suggestions';
+      setError(message);
     } finally {
       setIsLoadingMore(false);
     }
@@ -182,8 +185,9 @@ export function NewChatModal({
           // If no unique replacement found, just remove the old one
           return prev.filter((s) => s.name !== nameToReplace);
         });
-      } catch {
-        setError('Failed to get replacement suggestion');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to get replacement suggestion';
+        setError(message);
       }
     },
     [topic, onSuggestThinkers, selectedThinkers]

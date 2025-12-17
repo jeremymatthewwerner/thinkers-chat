@@ -314,3 +314,58 @@ class TestThinkerAPI:
         data = response.json()
         assert data["valid"] is False
         assert data["error"] is not None
+
+    async def test_suggest_thinkers_api_error(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that API errors are properly returned as HTTP errors."""
+        from app.services.thinker import ThinkerAPIError, thinker_service
+
+        async def mock_suggest(*_args: object, **_kwargs: object) -> None:
+            raise ThinkerAPIError(
+                "API credit limit reached. Please check your Anthropic billing.",
+                is_quota_error=True,
+            )
+
+        monkeypatch.setattr(thinker_service, "suggest_thinkers", mock_suggest)
+        # Also need to set an API key so the real path is taken
+        monkeypatch.setattr(
+            "app.api.thinkers.get_settings",
+            lambda: type("Settings", (), {"anthropic_api_key": "test-key"})(),
+        )
+
+        response = await client.post(
+            "/api/thinkers/suggest",
+            json={"topic": "Philosophy", "count": 3},
+        )
+        assert response.status_code == 503
+        data = response.json()
+        assert "API credit limit reached" in data["detail"]
+
+    async def test_validate_thinker_api_error(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that validation API errors are properly returned as HTTP errors."""
+        from app.services.thinker import ThinkerAPIError, thinker_service
+
+        async def mock_validate(*_args: object, **_kwargs: object) -> None:
+            raise ThinkerAPIError(
+                "API credit limit reached. Please check your Anthropic billing.",
+                is_quota_error=True,
+            )
+
+        monkeypatch.setattr(thinker_service, "validate_thinker", mock_validate)
+        # Also need to set an API key so the real path is taken
+        monkeypatch.setattr(
+            "app.api.thinkers.get_settings",
+            lambda: type("Settings", (), {"anthropic_api_key": "test-key"})(),
+        )
+
+        response = await client.post(
+            "/api/thinkers/validate",
+            # Use a name that's not in the mock thinkers dict to trigger the real path
+            json={"name": "Friedrich Nietzsche"},
+        )
+        assert response.status_code == 503
+        data = response.json()
+        assert "API credit limit reached" in data["detail"]

@@ -12,6 +12,8 @@ export interface ConversationListProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDelete?: (id: string) => void;
+  isConnected?: boolean;
+  isPaused?: boolean;
 }
 
 export function ConversationList({
@@ -19,7 +21,15 @@ export function ConversationList({
   selectedId,
   onSelect,
   onDelete,
+  isConnected = false,
+  isPaused = false,
 }: ConversationListProps) {
+  // Get status for a conversation
+  const getStatus = (convId: string): 'running' | 'paused' | 'inactive' => {
+    if (convId !== selectedId) return 'inactive';
+    if (!isConnected) return 'inactive';
+    return isPaused ? 'paused' : 'running';
+  };
   // Format relative time
   const formatTime = (isoString: string): string => {
     const date = new Date(isoString);
@@ -62,9 +72,29 @@ export function ConversationList({
           data-selected={selectedId === conv.id}
         >
           <div className="flex justify-between items-start mb-1 gap-2">
-            <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate flex-1">
-              {conv.topic}
-            </h3>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {/* Status indicator */}
+              <span
+                className={`flex-shrink-0 w-2 h-2 rounded-full ${
+                  getStatus(conv.id) === 'running'
+                    ? 'bg-green-500 animate-pulse'
+                    : getStatus(conv.id) === 'paused'
+                      ? 'bg-yellow-500'
+                      : 'bg-zinc-400 dark:bg-zinc-600'
+                }`}
+                title={
+                  getStatus(conv.id) === 'running'
+                    ? 'Thinkers are active'
+                    : getStatus(conv.id) === 'paused'
+                      ? 'Conversation paused'
+                      : 'Inactive'
+                }
+                data-testid="status-indicator"
+              />
+              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                {conv.topic}
+              </h3>
+            </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               <span className="text-xs text-zinc-400 dark:text-zinc-500">
                 {formatTime(conv.updated_at)}

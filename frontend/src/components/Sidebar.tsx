@@ -55,9 +55,14 @@ export function Sidebar({
           {/* Header */}
           <div className="px-4 py-4 border-b border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between">
-              <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              <a
+                href="https://github.com/jeremymatthewwerner/thinkers-chat"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-lg font-bold text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
                 Thinkers Chat
-              </h1>
+              </a>
               <button
                 onClick={onToggle}
                 className="lg:hidden p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"

@@ -483,7 +483,8 @@ test.describe('Chat Functionality', () => {
     await expect(conversationItems).toHaveCount(2);
   });
 
-  test('sends message and receives responses from multiple thinkers', { timeout: 120000 }, async ({ page }) => {
+  test('sends message and receives responses from multiple thinkers', async ({ page }) => {
+    test.setTimeout(120000);
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();

@@ -172,6 +172,10 @@ jobs:
             type=raw,value=latest
             type=sha,prefix=
 
+      - name: Derive WebSocket URL from Backend URL
+        id: ws-url
+        run: echo "url=$(echo '${{ secrets.PRODUCTION_BACKEND_URL }}' | sed 's|^https://|wss://|')" >> $GITHUB_OUTPUT
+
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
         with:
@@ -181,8 +185,8 @@ jobs:
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_WS_URL=${{ secrets.NEXT_PUBLIC_WS_URL }}
+            NEXT_PUBLIC_API_URL=${{ secrets.PRODUCTION_BACKEND_URL }}
+            NEXT_PUBLIC_WS_URL=${{ steps.ws-url.outputs.url }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

@@ -102,9 +102,7 @@ Add these secrets in your GitHub repository settings (**Settings** → **Secrets
 |--------|-------------|---------------|
 | `ANTHROPIC_API_KEY` | Anthropic API key for E2E tests | https://console.anthropic.com/ |
 | `RAILWAY_TOKEN` | Railway project token for deployments | Railway dashboard → Project → Settings → Tokens |
-| `NEXT_PUBLIC_API_URL` | Backend API URL for frontend build | Your Railway backend URL (e.g., `https://backend-xxx.up.railway.app`) |
-| `NEXT_PUBLIC_WS_URL` | WebSocket URL for frontend build | Your Railway backend WS URL (e.g., `wss://backend-xxx.up.railway.app`) |
-| `PRODUCTION_BACKEND_URL` | Backend URL for smoke tests | Same as `NEXT_PUBLIC_API_URL` |
+| `PRODUCTION_BACKEND_URL` | Backend URL (used for frontend build & smoke tests) | Your Railway backend URL (e.g., `https://backend-xxx.up.railway.app`) |
 | `PRODUCTION_FRONTEND_URL` | Frontend URL for smoke tests | Your Railway frontend URL (e.g., `https://frontend-xxx.up.railway.app`) |
 
 ### Pipeline Steps

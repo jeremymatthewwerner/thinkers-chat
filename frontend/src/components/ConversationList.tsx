@@ -143,7 +143,7 @@ export function ConversationList({
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-zinc-400 dark:text-zinc-500">
-              {conv.message_count} messages
+              {conv.message_count} thinker messages
             </span>
             {conv.total_cost > 0 && (
               <span className="text-xs text-zinc-400 dark:text-zinc-500">

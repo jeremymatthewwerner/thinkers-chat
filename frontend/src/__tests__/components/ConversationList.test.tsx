@@ -75,7 +75,7 @@ describe('ConversationList', () => {
       />
     );
 
-    expect(screen.getByText('10 messages')).toBeInTheDocument();
+    expect(screen.getByText('10 thinker messages')).toBeInTheDocument();
   });
 
   it('shows total cost', () => {

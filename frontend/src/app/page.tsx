@@ -40,19 +40,21 @@ export default function Home() {
       if (message.cost) {
         setSessionCost((prev) => prev + message.cost!);
       }
-      // Update conversation summary in sidebar (message count and cost)
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.id === message.conversation_id
-            ? {
-                ...conv,
-                message_count: conv.message_count + 1,
-                total_cost: conv.total_cost + (message.cost || 0),
-                updated_at: message.created_at,
-              }
-            : conv
-        )
-      );
+      // Update conversation summary in sidebar (only count thinker messages since user messages are free)
+      if (message.sender_type === 'thinker') {
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === message.conversation_id
+              ? {
+                  ...conv,
+                  message_count: conv.message_count + 1,
+                  total_cost: conv.total_cost + (message.cost || 0),
+                  updated_at: message.created_at,
+                }
+              : conv
+          )
+        );
+      }
     }, []),
   });
 

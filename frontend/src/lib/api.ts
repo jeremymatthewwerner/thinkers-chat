@@ -163,11 +163,12 @@ export async function sendMessage(
 // Thinker API
 export async function suggestThinkers(
   topic: string,
-  count: number = 3
+  count: number = 3,
+  exclude: string[] = []
 ): Promise<ThinkerSuggestion[]> {
   return fetchWithSession<ThinkerSuggestion[]>('/api/thinkers/suggest', {
     method: 'POST',
-    body: JSON.stringify({ topic, count }),
+    body: JSON.stringify({ topic, count, exclude }),
   });
 }
 

@@ -99,14 +99,23 @@ class ThinkerService:
         except Exception:
             return None
 
-    async def suggest_thinkers(self, topic: str, count: int = 3) -> list[ThinkerSuggestion]:
+    async def suggest_thinkers(
+        self, topic: str, count: int = 3, exclude: list[str] | None = None
+    ) -> list[ThinkerSuggestion]:
         """Suggest diverse thinkers for a given topic.
 
         Uses Claude to suggest thinkers who would have interesting,
         diverse perspectives on the topic. Makes parallel API calls for speed.
+
+        Args:
+            topic: The topic to suggest thinkers for
+            count: Number of suggestions to return (1-5)
+            exclude: List of thinker names to exclude from suggestions
         """
         if not self.client:
             return []
+
+        exclude = exclude or []
 
         # For counts > 2, make parallel calls for faster response
         if count > 2:
@@ -124,7 +133,9 @@ class ThinkerService:
             while remaining > 0:
                 batch_size = min(2, remaining)
                 perspective_hint = perspectives[task_num % len(perspectives)]
-                tasks.append(self._suggest_single_batch(topic, batch_size, perspective_hint))
+                tasks.append(
+                    self._suggest_single_batch(topic, batch_size, perspective_hint, exclude)
+                )
                 remaining -= batch_size
                 task_num += 1
 
@@ -159,10 +170,14 @@ class ThinkerService:
             return all_suggestions[:count]
 
         # For small counts, single call is fine
-        return await self._suggest_single_batch(topic, count)
+        return await self._suggest_single_batch(topic, count, None, exclude)
 
     async def _suggest_single_batch(
-        self, topic: str, count: int, perspective_hint: str | None = None
+        self,
+        topic: str,
+        count: int,
+        perspective_hint: str | None = None,
+        exclude: list[str] | None = None,
     ) -> list[ThinkerSuggestion]:
         """Make a single API call to get thinker suggestions."""
         if not self.client:
@@ -172,7 +187,12 @@ class ThinkerService:
         if perspective_hint:
             perspective_text = f"\nFocus on thinkers with a {perspective_hint} perspective."
 
-        prompt = f"""Suggest {count} historical or contemporary thinkers who would have interesting and diverse perspectives on this topic: "{topic}"{perspective_text}
+        exclude_text = ""
+        if exclude:
+            exclude_names = ", ".join(exclude)
+            exclude_text = f"\n\nIMPORTANT: Do NOT suggest any of these people (they have already been suggested): {exclude_names}"
+
+        prompt = f"""Suggest {count} historical or contemporary thinkers who would have interesting and diverse perspectives on this topic: "{topic}"{perspective_text}{exclude_text}
 
 For each thinker, provide:
 1. Their full name

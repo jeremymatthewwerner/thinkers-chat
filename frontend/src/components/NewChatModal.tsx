@@ -26,7 +26,7 @@ export interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (topic: string, thinkers: ThinkerData[]) => Promise<void>;
-  onSuggestThinkers: (topic: string) => Promise<ThinkerSuggestion[]>;
+  onSuggestThinkers: (topic: string, exclude?: string[]) => Promise<ThinkerSuggestion[]>;
   onValidateThinker: (name: string) => Promise<ThinkerProfile | null>;
 }
 
@@ -134,8 +134,13 @@ export function NewChatModal({
     setError(null);
 
     try {
-      const results = await onSuggestThinkers(topic.trim());
-      // Append new suggestions, filtering out any we already have or have selected
+      // Build exclude list from existing suggestions and selected thinkers
+      const excludeNames = [
+        ...suggestions.map((s) => s.name),
+        ...selectedThinkers.map((t) => t.name),
+      ];
+      const results = await onSuggestThinkers(topic.trim(), excludeNames);
+      // Append new suggestions (API should already exclude duplicates, but filter just in case)
       setSuggestions((prev) => {
         const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
         const selectedNames = new Set(
@@ -154,22 +159,27 @@ export function NewChatModal({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [topic, isLoadingMore, onSuggestThinkers, selectedThinkers]);
+  }, [topic, isLoadingMore, onSuggestThinkers, selectedThinkers, suggestions]);
 
   const handleRefreshSuggestion = useCallback(
     async (nameToReplace: string) => {
       if (!topic.trim()) return;
 
       try {
-        const results = await onSuggestThinkers(topic.trim());
-        // Find a suggestion that's not already in our list or selected
+        // Build exclude list: all current suggestions (except the one being replaced) + selected thinkers
+        const excludeNames = [
+          ...suggestions.filter((s) => s.name !== nameToReplace).map((s) => s.name),
+          ...selectedThinkers.map((t) => t.name),
+        ];
+        const results = await onSuggestThinkers(topic.trim(), excludeNames);
+        // Find the first result to use as replacement
         setSuggestions((prev) => {
           const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
           const selectedNames = new Set(
             selectedThinkers.map((t) => t.name.toLowerCase())
           );
 
-          // Find a new suggestion that's unique
+          // Find a new suggestion that's unique (API should handle this, but double-check)
           const replacement = results.find(
             (s) =>
               !existingNames.has(s.name.toLowerCase()) &&
@@ -190,7 +200,7 @@ export function NewChatModal({
         setError(message);
       }
     },
-    [topic, onSuggestThinkers, selectedThinkers]
+    [topic, onSuggestThinkers, selectedThinkers, suggestions]
   );
 
   if (!isOpen) return null;

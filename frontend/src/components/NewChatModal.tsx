@@ -204,7 +204,7 @@ export function NewChatModal({
         </div>
 
         {/* Content */}
-        <div className={`px-6 py-4 flex-1 min-h-0 ${step === 'topic' ? 'overflow-y-auto' : ''}`}>
+        <div className={`px-6 py-4 flex-1 min-h-0 ${step === 'topic' ? 'overflow-y-auto' : 'overflow-hidden flex flex-col'}`}>
           {step === 'topic' ? (
             <form onSubmit={handleTopicSubmit}>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -226,7 +226,7 @@ export function NewChatModal({
               )}
             </form>
           ) : (
-            <div className="h-full">
+            <>
               <ThinkerSelector
                 topic={topic}
                 suggestions={suggestions}
@@ -237,13 +237,12 @@ export function NewChatModal({
                 onRefreshSuggestion={handleRefreshSuggestion}
                 isLoading={isLoading}
               />
-
               {error && (
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p className="flex-shrink-0 text-sm text-red-600 dark:text-red-400 mt-2">
                   {error}
                 </p>
               )}
-            </div>
+            </>
           )}
         </div>
 

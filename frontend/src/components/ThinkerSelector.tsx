@@ -102,7 +102,7 @@ export function ThinkerSelector({
   );
 
   return (
-    <div className="flex flex-col h-full" data-testid="thinker-selector">
+    <div className="flex flex-col flex-1 min-h-0" data-testid="thinker-selector">
       {/* Pinned header section */}
       <div className="flex-shrink-0 space-y-3 pb-3 border-b border-zinc-200 dark:border-zinc-700">
         {/* Topic */}

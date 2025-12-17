@@ -18,7 +18,7 @@ export default function Home() {
   const [currentConversation, setCurrentConversation] =
     useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [totalCost, setTotalCost] = useState(0);
+  const [sessionCost, setSessionCost] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +38,7 @@ export default function Home() {
     onMessage: useCallback((message: Message) => {
       setMessages((prev) => [...prev, message]);
       if (message.cost) {
-        setTotalCost((prev) => prev + message.cost!);
+        setSessionCost((prev) => prev + message.cost!);
       }
       // Update conversation summary in sidebar (message count and cost)
       setConversations((prev) =>
@@ -78,7 +78,7 @@ export default function Home() {
       const conv = await api.getConversation(id);
       setCurrentConversation(conv);
       setMessages(conv.messages);
-      setTotalCost(conv.total_cost);
+      // Note: sessionCost is not reset - it tracks all spending since page load
       // Only close sidebar on mobile (window width < 1024px)
       if (typeof window !== 'undefined' && window.innerWidth < 1024) {
         setSidebarOpen(false);
@@ -97,7 +97,6 @@ export default function Home() {
         if (currentConversation?.id === id) {
           setCurrentConversation(null);
           setMessages([]);
-          setTotalCost(0);
         }
       } catch (error) {
         console.error('Failed to delete conversation:', error);
@@ -149,7 +148,6 @@ export default function Home() {
       // Set current conversation - add empty messages array since create endpoint doesn't return messages
       setCurrentConversation({ ...conv, messages: [], total_cost: 0 });
       setMessages([]); // New conversation has no messages
-      setTotalCost(0);
       // Only close sidebar on mobile (window width < 1024px)
       if (typeof window !== 'undefined' && window.innerWidth < 1024) {
         setSidebarOpen(false);
@@ -201,7 +199,7 @@ export default function Home() {
         conversation={currentConversation}
         messages={messages}
         typingThinkers={Array.from(typingThinkers)}
-        totalCost={totalCost}
+        totalCost={sessionCost}
         onSendMessage={handleSendMessage}
         onTypingStart={sendTypingStart}
         onTypingStop={sendTypingStop}

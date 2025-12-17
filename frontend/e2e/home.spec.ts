@@ -147,6 +147,53 @@ test.describe('New Conversation Flow', () => {
     // The name might change (or might stay same if API returns same person)
     await expect(firstSuggestion).toBeVisible({ timeout: 15000 });
   });
+
+  test('suggest more thinkers returns unique results', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open modal and go to thinker step
+    await page.getByTestId('new-chat-button').click();
+    await page.getByTestId('topic-input').fill('Quantum physics');
+    await page.getByTestId('next-button').click();
+
+    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+
+    // Wait for initial suggestions
+    const suggestions = page.getByTestId('thinker-suggestion');
+    await expect(suggestions.first()).toBeVisible({ timeout: 15000 });
+
+    // Collect initial thinker names
+    const getVisibleNames = async () => {
+      const cards = await suggestions.all();
+      const names: string[] = [];
+      for (const card of cards) {
+        const name = await card.locator('div.font-medium').textContent();
+        if (name) names.push(name);
+      }
+      return names;
+    };
+
+    const initialNames = await getVisibleNames();
+    expect(initialNames.length).toBeGreaterThan(0);
+
+    // Click "Suggest More Thinkers" button
+    const suggestMoreButton = page.getByTestId('suggest-more-button');
+    await suggestMoreButton.click();
+
+    // Wait for loading to complete
+    await page.waitForTimeout(5000);
+
+    // Get names after requesting more
+    const afterMoreNames = await getVisibleNames();
+
+    // Should have more suggestions now
+    expect(afterMoreNames.length).toBeGreaterThan(initialNames.length);
+
+    // All names should be unique (no duplicates)
+    const uniqueNames = [...new Set(afterMoreNames)];
+    expect(uniqueNames.length).toBe(afterMoreNames.length);
+  });
 });
 
 test.describe('Persistence', () => {
@@ -236,7 +283,7 @@ test.describe('Chat Functionality', () => {
     await expect(page.locator('text=Hello, this is a test message!')).toBeVisible({ timeout: 5000 });
   });
 
-  test('pause/resume button works', async ({ page }) => {
+  test('pause/resume button toggles UI state', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
@@ -256,6 +303,57 @@ test.describe('Chat Functionality', () => {
     // Click to resume
     await pauseResumeButton.click();
     await expect(pauseResumeButton).toContainText('Pause');
+  });
+
+  test('pause actually stops thinker responses', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await createConversationWithThinker(page, 'Tell me about ethics', 'Aristotle');
+
+    // Send a message to trigger thinker response
+    const messageTextarea = page.getByTestId('message-textarea');
+    await messageTextarea.fill('What is virtue?');
+    await page.getByTestId('send-button').click();
+
+    // Wait for user message to appear
+    await expect(page.locator('text=What is virtue?')).toBeVisible({ timeout: 5000 });
+
+    // Get initial message count
+    const getMessageCount = async () => {
+      const messages = await page.getByTestId('message').all();
+      return messages.length;
+    };
+
+    // Wait a moment for thinker to potentially start responding
+    await page.waitForTimeout(2000);
+    const countBeforePause = await getMessageCount();
+
+    // Pause the conversation
+    const pauseButton = page.getByTestId('pause-resume-button');
+    await pauseButton.click();
+    await expect(pauseButton).toContainText('Resume');
+
+    // Wait and verify no new messages appear while paused
+    await page.waitForTimeout(5000);
+    const countWhilePaused = await getMessageCount();
+
+    // Message count should not have increased significantly while paused
+    // (allow for 1 message that might have been in-flight when pause was clicked)
+    expect(countWhilePaused).toBeLessThanOrEqual(countBeforePause + 1);
+
+    // Resume the conversation
+    await pauseButton.click();
+    await expect(pauseButton).toContainText('Pause');
+
+    // Wait for thinker to respond after resume
+    await page.waitForTimeout(10000);
+    const countAfterResume = await getMessageCount();
+
+    // Should have more messages after resuming (thinker responded)
+    expect(countAfterResume).toBeGreaterThan(countWhilePaused);
   });
 
   test('can switch between conversations', async ({ page }) => {

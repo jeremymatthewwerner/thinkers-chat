@@ -446,6 +446,31 @@ test.describe('Chat Functionality', () => {
     expect(countAfterResume).toBeGreaterThan(countWhilePaused);
   });
 
+  test('can delete a conversation', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Create a conversation to delete
+    await createConversationWithThinker(page, 'Topic to delete', 'Aristotle');
+    await expect(page.locator('h2', { hasText: 'Topic to delete' })).toBeVisible();
+
+    // Verify conversation is in sidebar
+    const conversationItem = page.getByTestId('conversation-item');
+    await expect(conversationItem).toBeVisible();
+
+    // Click delete button
+    const deleteButton = page.getByTestId('delete-conversation');
+    await deleteButton.click();
+
+    // Conversation should be removed from sidebar
+    await expect(conversationItem).not.toBeVisible({ timeout: 5000 });
+
+    // Should show empty state or welcome message
+    await expect(page.locator('text=Welcome to Thinkers Chat')).toBeVisible();
+  });
+
   test('can switch between conversations', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());

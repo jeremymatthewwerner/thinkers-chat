@@ -12,9 +12,34 @@ env:
   FRONTEND_IMAGE: ghcr.io/${{ github.repository }}-frontend
 
 jobs:
+  # Determine which parts of the codebase changed
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            e2e:
+              - 'backend/**'
+              - 'frontend/**'
+              - '.github/workflows/**'
+
   backend:
     name: Backend Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     defaults:
       run:
         working-directory: backend
@@ -46,6 +71,8 @@ jobs:
   frontend:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     defaults:
       run:
         working-directory: frontend
@@ -78,7 +105,12 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [changes, backend, frontend]
+    # Run if code changed AND (jobs succeeded OR were skipped due to no changes)
+    if: |
+      needs.changes.outputs.e2e == 'true' &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
 
     steps:
       - uses: actions/checkout@v4
@@ -124,8 +156,13 @@ jobs:
   build-and-push:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
-    needs: [e2e]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [changes, e2e]
+    # Run on push to main if code changed AND e2e passed (or was skipped for non-code changes)
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.changes.outputs.e2e == 'true' &&
+      (needs.e2e.result == 'success' || needs.e2e.result == 'skipped')
     permissions:
       contents: read
       packages: write

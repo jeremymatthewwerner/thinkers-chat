@@ -117,7 +117,53 @@ Create an engaging, educational chat experience where users can have real-time g
 - Coordination mechanism to prevent response flooding
 - Natural timing/pacing algorithms
 
-### 4.3 LLM Integration
+### 4.3 Natural Conversation Dynamics
+
+The goal is to make thinker responses feel like a real group chat, not a mechanical round-robin.
+
+#### 4.3.1 Response Length Variation
+- **Short responses**: Sometimes just a few words or one sentence reacting to someone else
+  - "I couldn't agree more."
+  - "That's precisely my concern."
+  - "Interesting—but have you considered the inverse?"
+- **Medium responses**: 2-4 sentences of substantive contribution (most common)
+- **Long responses**: Occasionally deeper explorations when the topic warrants
+- Length should feel organic—not every response needs to be a paragraph
+
+#### 4.3.2 Thinking Preview (Internal Monologue)
+Instead of showing just "Thinking...", show a brief preview of the thinker's internal reasoning:
+- Display 1 sentence summarizing what the thinker is considering
+- Examples:
+  - "Considering how this relates to the Forms..."
+  - "Weighing the empirical evidence..."
+  - "Reflecting on my experience with X..."
+- **Implementation**: Use streaming or a lightweight LLM call to generate a thinking preview before the full response
+- Preview should be italicized/styled differently from actual messages
+- Bonus: If using extended thinking, surface an actual summary of the model's reasoning
+
+#### 4.3.3 Response Timing Variation
+Break the "everyone responds in order" pattern:
+- **Silent turns**: A thinker may stay quiet for several exchanges if they have nothing to add
+- **Consecutive messages**: Same thinker might send 2 bubbles in a row (initial thought, then follow-up)
+- **Variable delays**:
+  - Quick reactions: 2-5 seconds for short agreement/disagreement
+  - Thoughtful responses: 10-30 seconds for substantive contributions
+  - Longer pauses: Sometimes 30-60 seconds of apparent "thinking" before responding
+- **Engagement triggers**: Higher probability of responding when:
+  - Directly addressed by name
+  - Topic relates closely to their expertise
+  - They disagree with something said
+  - Building on their own previous point
+
+#### 4.3.4 Conversation Flow Patterns
+Model realistic group chat dynamics:
+- **Back-and-forth exchanges**: Two thinkers might have a brief direct exchange
+- **Pile-on agreement**: Multiple thinkers quickly agreeing on a point
+- **Debate clusters**: Disagreements that draw multiple participants
+- **Topic drift**: Natural tangents that emerge from the conversation
+- **Re-centering**: Occasionally a thinker brings conversation back to the original question
+
+### 4.4 LLM Integration
 - Robust prompt engineering for persona consistency
 - Context window management for long conversations
 - Fallback handling for API failures

@@ -5,7 +5,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  /* Use 3 workers in CI for parallel test execution (was 1, causing 8min runs) */
+  workers: process.env.CI ? 3 : undefined,
   reporter: 'html',
   /* Increase timeout for tests using real API calls */
   timeout: process.env.CI ? 90000 : 90000,

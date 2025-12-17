@@ -58,9 +58,9 @@ This interactive script will guide you through:
 2. Setting up PostgreSQL
 3. Deploying backend and frontend services
 
-### Manual Setup
+### Manual Setup (Using Pre-built Images from CI)
 
-If you prefer manual setup:
+The recommended approach uses Docker images built by GitHub Actions:
 
 1. **Create Railway Project**
    - Go to https://railway.app/new
@@ -70,25 +70,25 @@ If you prefer manual setup:
    - Click "+ New" → "Database" → "Add PostgreSQL"
 
 3. **Add Backend Service**
-   - Click "+ New" → "GitHub Repo" → Select this repo
-   - In Settings, set:
-     - Root Directory: `/` (repo root)
-     - Build: Dockerfile
-     - Dockerfile Path: `backend/Dockerfile`
+   - Click "+ New" → "Docker Image"
+   - Set image: `ghcr.io/<your-github-username>/thinkers-chat-backend:latest`
    - Add environment variables:
-     - `ANTHROPIC_API_KEY` = your API key
+     - `ANTHROPIC_API_KEY` = your API key (secret)
      - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
-     - `CORS_ORIGINS` = `https://<your-frontend>.up.railway.app`
+     - `CORS_ORIGINS` = `https://<your-frontend-domain>` (see note below)
 
 4. **Add Frontend Service**
-   - Click "+ New" → "GitHub Repo" → Select this repo
-   - In Settings, set:
-     - Root Directory: `/` (repo root)
-     - Build: Dockerfile
-     - Dockerfile Path: `frontend/Dockerfile`
-   - Add environment variables:
-     - `NEXT_PUBLIC_API_URL` = `https://<your-backend>.up.railway.app`
-     - `NEXT_PUBLIC_WS_URL` = `wss://<your-backend>.up.railway.app`
+   - Click "+ New" → "Docker Image"
+   - Set image: `ghcr.io/<your-github-username>/thinkers-chat-frontend:latest`
+   - No environment variables needed (baked in at build time)
+
+> **Important: CORS Configuration**
+>
+> The `CORS_ORIGINS` variable on the backend MUST include your frontend's URL.
+> If using a custom domain, use that (e.g., `https://myapp.example.com`).
+> For multiple origins, comma-separate them: `https://myapp.example.com,https://myapp.up.railway.app`
+>
+> **Common error**: "Failed to fetch" in the browser usually means CORS is misconfigured.
 
 ## CI/CD with GitHub Actions
 

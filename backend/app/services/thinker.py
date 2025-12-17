@@ -376,10 +376,7 @@ Return ONLY the JSON, no other text."""
         just_spoke = recent_messages and recent_messages[-1].sender_name == thinker.name
 
         # Check if addressed directly
-        was_addressed = any(
-            thinker.name.lower() in m.content.lower()
-            for m in recent_messages[-2:]
-        )
+        was_addressed = any(thinker.name.lower() in m.content.lower() for m in recent_messages[-2:])
 
         # Random selection weighted by context
         roll = random.random()
@@ -388,24 +385,18 @@ Return ONLY the JSON, no other text."""
             # Follow-up thought - brief
             return (
                 "Respond with a VERY brief follow-up thought (1 short sentence, like 'Though I should add...' or 'Actually, on reflection...')",
-                80
+                80,
             )
         elif was_addressed:
             # More likely to give a fuller response when addressed
             if roll < 0.2:
-                return (
-                    "Give a brief, direct response (1 sentence)",
-                    80
-                )
+                return ("Give a brief, direct response (1 sentence)", 80)
             elif roll < 0.85:
-                return (
-                    "Give a substantive response (2-4 sentences)",
-                    300
-                )
+                return ("Give a substantive response (2-4 sentences)", 300)
             else:
                 return (
                     "Give a more extended response exploring the idea deeply (4-6 sentences)",
-                    500
+                    500,
                 )
         else:
             # Not addressed - more variety
@@ -413,18 +404,12 @@ Return ONLY the JSON, no other text."""
                 # Quick reaction
                 return (
                     "Give a brief reaction or agreement/disagreement (1 short sentence, like 'I couldn't agree more' or 'That's precisely my concern')",
-                    80
+                    80,
                 )
             elif roll < 0.85:
-                return (
-                    "Give a substantive response (2-4 sentences)",
-                    300
-                )
+                return ("Give a substantive response (2-4 sentences)", 300)
             else:
-                return (
-                    "Give a more extended response (4-6 sentences)",
-                    500
-                )
+                return ("Give a more extended response (4-6 sentences)", 500)
 
     async def generate_thinking_preview(
         self,
@@ -441,10 +426,7 @@ Return ONLY the JSON, no other text."""
 
         # Build minimal context
         recent = messages[-3:] if messages else []
-        context = "\n".join(
-            f"{m.sender_name or 'User'}: {m.content[:100]}"
-            for m in recent
-        )
+        context = "\n".join(f"{m.sender_name or 'User'}: {m.content[:100]}" for m in recent)
 
         prompt = f"""You are {thinker.name}. Based on this conversation snippet about "{topic}":
 

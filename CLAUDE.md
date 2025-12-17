@@ -9,6 +9,7 @@ Real-time multi-party chat with AI-simulated historical/contemporary thinkers.
 - Commit and push frequently at logical checkpoints
 - See REQUIREMENTS.md for full product specification
 - **ALWAYS check things yourself before asking the user** - Use available tools (CLI, API calls, logs, code inspection) to verify state, configuration, or behavior. Only ask the user to check something if you've confirmed there's no way for you to check it directly.
+- **ALWAYS check CI results after every push** - Use `gh run list` and `gh run view <id> --log-failed` to verify CI passes. If CI fails, debug and fix immediately. Do not consider a task complete until CI is green. Keep iterating until all checks pass.
 
 ## Development Workflow (MANDATORY)
 

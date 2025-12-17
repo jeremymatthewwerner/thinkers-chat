@@ -21,8 +21,7 @@ export function TypingIndicator({
   }
 
   // If we have thinking content, show individual indicators for each thinker
-  const hasThinkingContent =
-    thinkingContent && thinkingContent.size > 0;
+  const hasThinkingContent = thinkingContent && thinkingContent.size > 0;
 
   if (hasThinkingContent) {
     return (

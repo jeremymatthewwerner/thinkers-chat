@@ -118,11 +118,11 @@ export function ThinkerSelector({
         )}
 
         {/* Selected thinkers */}
-        {selectedThinkers.length > 0 && (
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Selected ({selectedThinkers.length}/{maxThinkers})
-            </label>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Selected ({selectedThinkers.length}/{maxThinkers})
+          </label>
+          {selectedThinkers.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {selectedThinkers.map((thinker) => (
                 <div
@@ -153,8 +153,12 @@ export function ThinkerSelector({
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="py-3 text-center text-sm text-zinc-400 dark:text-zinc-500">
+              No Selections Yet
+            </div>
+          )}
+        </div>
 
         {/* Custom thinker input - in pinned header */}
         {canAddMore && (

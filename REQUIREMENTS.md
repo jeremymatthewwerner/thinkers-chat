@@ -130,16 +130,22 @@ The goal is to make thinker responses feel like a real group chat, not a mechani
 - **Long responses**: Occasionally deeper explorations when the topic warrants
 - Length should feel organic—not every response needs to be a paragraph
 
-#### 4.3.2 Thinking Preview (Internal Monologue)
-Instead of showing just "Thinking...", show a brief preview of the thinker's internal reasoning:
-- Display 1 sentence summarizing what the thinker is considering
-- Examples:
-  - "Considering how this relates to the Forms..."
-  - "Weighing the empirical evidence..."
-  - "Reflecting on my experience with X..."
-- **Implementation**: Use streaming or a lightweight LLM call to generate a thinking preview before the full response
-- Preview should be italicized/styled differently from actual messages
-- Bonus: If using extended thinking, surface an actual summary of the model's reasoning
+#### 4.3.2 Thinking Preview (Streaming Extended Thinking)
+Instead of showing just "Thinking...", stream the LLM's actual reasoning process in real-time:
+- **Use Claude's extended thinking feature** to capture genuine model reasoning
+- **Stream thinking tokens** via WebSocket as they're generated
+- Display thinking content with a typewriter effect, updating as new tokens arrive
+- Examples of real thinking that might appear:
+  - "Let me consider how Kant's categorical imperative applies here..."
+  - "The user raises an interesting point about consciousness. I should address..."
+  - "I disagree with what Aristotle just said because..."
+- **Implementation details**:
+  - Enable `thinking` parameter with appropriate budget in Claude API calls
+  - Stream `thinking` block content via `thinker_thinking` WebSocket messages
+  - Frontend accumulates and displays thinking tokens in real-time
+  - Transition to response streaming once thinking completes
+- **Styling**: Thinking text should be italicized and visually distinct from final messages
+- **Benefits**: Shows authentic LLM reasoning, not canned phrases; more engaging waiting experience
 
 #### 4.3.3 Response Timing Variation
 Break the "everyone responds in order" pattern:

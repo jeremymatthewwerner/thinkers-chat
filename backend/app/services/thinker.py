@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 from anthropic import APIError, AsyncAnthropic
-from anthropic.types import TextBlock
+from anthropic.types import TextBlock, ThinkingBlock
 
 from app.api.websocket import manager
 from app.core.config import get_settings
@@ -28,9 +28,11 @@ class ThinkerAPIError(Exception):
 if TYPE_CHECKING:
     from app.models import ConversationThinker, Message
 
-# Cost per token (approximate for Claude 3.5 Sonnet)
+# Cost per token (approximate for Claude Sonnet 4)
 INPUT_COST_PER_TOKEN = 0.000003  # $3 per million input tokens
 OUTPUT_COST_PER_TOKEN = 0.000015  # $15 per million output tokens
+# Extended thinking uses same rate as output tokens
+THINKING_COST_PER_TOKEN = 0.000015  # $15 per million thinking tokens
 
 
 class ThinkerService:
@@ -411,45 +413,164 @@ Return ONLY the JSON, no other text."""
             else:
                 return ("Give a more extended response (4-6 sentences)", 500)
 
-    async def generate_thinking_preview(
+    async def generate_response_with_streaming_thinking(
         self,
+        conversation_id: str,
         thinker: "ConversationThinker",
         messages: Sequence["Message"],
         topic: str,
-    ) -> str:
-        """Generate a brief thinking preview for the typing indicator.
+    ) -> tuple[str, float]:
+        """Generate a response using streaming extended thinking.
 
-        Returns a short phrase describing what the thinker is considering.
+        Streams thinking tokens via WebSocket as they're generated,
+        then returns the final response text and cost.
         """
         if not self.client:
-            return "Thinking..."
+            return "", 0.0
 
-        # Build minimal context
-        recent = messages[-3:] if messages else []
-        context = "\n".join(f"{m.sender_name or 'User'}: {m.content[:100]}" for m in recent)
+        # Choose response style based on context
+        style_instruction, max_tokens = self._choose_response_style(thinker, messages)
 
-        prompt = f"""You are {thinker.name}. Based on this conversation snippet about "{topic}":
+        # Build conversation context
+        def get_sender_label(msg: "Message") -> str:
+            sender = msg.sender_type
+            is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
+            return "User" if is_user else (msg.sender_name or "Unknown")
 
-{context}
+        conversation_history = "\n".join(
+            f"{get_sender_label(m)}: {m.content}"
+            for m in messages[-20:]  # Last 20 messages for context
+        )
 
-Write a VERY brief phrase (5-10 words) describing what you're thinking about before responding.
-Examples: "Considering the ethical implications...", "Recalling my experiments with...", "Weighing both perspectives..."
+        prompt = f"""You are simulating {thinker.name} in a group discussion.
 
-Respond with ONLY the thinking phrase, nothing else."""
+ABOUT {thinker.name.upper()}:
+Bio: {thinker.bio}
+Known positions: {thinker.positions}
+Communication style: {thinker.style}
+
+DISCUSSION TOPIC: {topic}
+
+CONVERSATION SO FAR:
+{conversation_history}
+
+Now respond as {thinker.name} would. Guidelines:
+- Stay in character based on their known views and communication style
+- Use modern English regardless of their era
+- If discussing something that didn't exist in their time, acknowledge it (e.g., "In my era we didn't have X, but...")
+- Engage with what others have said - agree, disagree, build on ideas
+- Don't be preachy or lecture-like
+- Show personality through your response style
+
+RESPONSE STYLE: {style_instruction}
+
+Respond with ONLY what {thinker.name} would say, nothing else."""
 
         try:
-            response = await self.client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=30,
-                messages=[{"role": "user", "content": prompt}],
-            )
+            # Use streaming with extended thinking
+            response_text = ""
+            thinking_text = ""
+            input_tokens = 0
+            output_tokens = 0
 
-            first_block = response.content[0]
-            if isinstance(first_block, TextBlock):
-                return first_block.text.strip()
-            return "Thinking..."
-        except Exception:
-            return "Thinking..."
+            # Track when we last sent a thinking update (throttle to avoid spam)
+            last_thinking_update = 0.0
+            thinking_update_interval = 0.3  # Send update every 300ms
+
+            async with self.client.messages.stream(
+                model="claude-sonnet-4-20250514",
+                max_tokens=max_tokens + 2000,  # Extra for thinking budget
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 2000,  # Budget for thinking
+                },
+                messages=[{"role": "user", "content": prompt}],
+            ) as stream:
+                async for event in stream:
+                    # Handle different event types
+                    if event.type == "content_block_start":
+                        pass  # Block started
+                    elif event.type == "content_block_delta":
+                        delta = event.delta
+                        if hasattr(delta, "thinking") and delta.thinking:
+                            # Accumulate thinking text
+                            thinking_text += delta.thinking
+                            # Throttle updates to avoid overwhelming WebSocket
+                            current_time = asyncio.get_event_loop().time()
+                            if current_time - last_thinking_update >= thinking_update_interval:
+                                # Extract last sentence or meaningful chunk for display
+                                display_thinking = self._extract_thinking_display(thinking_text)
+                                if display_thinking:
+                                    await manager.send_thinker_thinking(
+                                        conversation_id, thinker.name, display_thinking
+                                    )
+                                last_thinking_update = current_time
+                        elif hasattr(delta, "text") and delta.text:
+                            # Accumulate response text
+                            response_text += delta.text
+                    elif (
+                        event.type == "message_delta"
+                        and hasattr(event, "usage")
+                        and event.usage
+                    ):
+                        # Final usage info
+                        output_tokens = event.usage.output_tokens
+
+                # Get final message for input token count
+                final_message = await stream.get_final_message()
+                input_tokens = final_message.usage.input_tokens
+                output_tokens = final_message.usage.output_tokens
+
+                # Calculate cost (thinking tokens counted as output)
+                # Count thinking tokens from the thinking block
+                thinking_tokens = 0
+                for block in final_message.content:
+                    if isinstance(block, ThinkingBlock):
+                        # Approximate thinking tokens from text length
+                        thinking_tokens = len(block.thinking) // 4  # Rough estimate
+
+                cost = (
+                    input_tokens * INPUT_COST_PER_TOKEN
+                    + output_tokens * OUTPUT_COST_PER_TOKEN
+                    + thinking_tokens * THINKING_COST_PER_TOKEN
+                )
+
+            return response_text.strip(), cost
+
+        except Exception as e:
+            logging.warning(f"Error in streaming thinking response: {e}")
+            return "", 0.0
+
+    def _extract_thinking_display(self, thinking_text: str) -> str:
+        """Extract a displayable portion of the thinking text.
+
+        Returns the last complete sentence or a truncated version of recent thinking.
+        """
+        if not thinking_text:
+            return ""
+
+        # Clean up the text
+        text = thinking_text.strip()
+
+        # Get the last ~150 characters for display
+        if len(text) > 150:
+            text = text[-150:]
+            # Try to start at a sentence boundary
+            for punct in [". ", "! ", "? ", "\n"]:
+                idx = text.find(punct)
+                if idx != -1 and idx < 50:
+                    text = text[idx + len(punct) :]
+                    break
+
+        # Clean up any incomplete words at the start
+        if text and not text[0].isupper() and " " in text:
+            text = text[text.find(" ") + 1 :]
+
+        # Add ellipsis if truncated
+        if text and not text.endswith((".", "!", "?", "...")):
+            text = text.rstrip() + "..."
+
+        return text
 
     async def generate_response(
         self,
@@ -457,7 +578,7 @@ Respond with ONLY the thinking phrase, nothing else."""
         messages: Sequence["Message"],
         topic: str,
     ) -> tuple[str, float]:
-        """Generate a response from a thinker given the conversation context.
+        """Generate a response from a thinker (non-streaming fallback).
 
         Returns (response_text, cost).
         """
@@ -468,7 +589,6 @@ Respond with ONLY the thinking phrase, nothing else."""
         style_instruction, max_tokens = self._choose_response_style(thinker, messages)
 
         # Build conversation context
-        # sender_type can be either string or enum depending on how SQLAlchemy returns it
         def get_sender_label(msg: "Message") -> str:
             sender = msg.sender_type
             is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
@@ -623,33 +743,19 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                     # Show typing indicator
                     await manager.send_thinker_typing(conversation_id, thinker.name)
 
-                    # Variable typing delay based on response type
-                    # Quick reactions: 1-3s, Normal: 3-8s, Thoughtful: 8-15s
-                    response_complexity = random.random()
-                    if response_complexity < 0.3:
-                        typing_delay = random.uniform(1.0, 3.0)  # Quick reaction
-                    elif response_complexity < 0.8:
-                        typing_delay = random.uniform(3.0, 8.0)  # Normal
-                    else:
-                        typing_delay = random.uniform(8.0, 15.0)  # Thoughtful
+                    # Small initial delay before starting response generation
+                    await asyncio.sleep(random.uniform(0.5, 1.5))
 
-                    # Generate thinking preview while "typing"
-                    thinking_preview = await self.generate_thinking_preview(
-                        thinker, messages, topic
-                    )
-                    await manager.send_thinker_thinking(
-                        conversation_id, thinker.name, thinking_preview
-                    )
-
-                    await asyncio.sleep(typing_delay)
-
-                    # Check pause state again before generating (prevents spend during pause)
+                    # Check pause state before generating (prevents spend during pause)
                     if self.is_paused(conversation_id):
                         await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
                         continue
 
-                    # Generate response
-                    response_text, cost = await self.generate_response(thinker, messages, topic)
+                    # Generate response with streaming thinking
+                    # This streams thinking tokens via WebSocket as they're generated
+                    response_text, cost = await self.generate_response_with_streaming_thinking(
+                        conversation_id, thinker, messages, topic
+                    )
 
                     # Check pause state again before saving (in case paused during generation)
                     if self.is_paused(conversation_id):

@@ -8,6 +8,7 @@ Real-time multi-party chat with AI-simulated historical/contemporary thinkers.
 - NEVER commit code without tests - minimum 80% coverage
 - Commit and push frequently at logical checkpoints
 - See REQUIREMENTS.md for full product specification
+- **ALWAYS check things yourself before asking the user** - Use available tools (CLI, API calls, logs, code inspection) to verify state, configuration, or behavior. Only ask the user to check something if you've confirmed there's no way for you to check it directly.
 
 ## Development Workflow (MANDATORY)
 

@@ -26,7 +26,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Thinkers Chat API",
     description="Real-time multi-party chat with AI-simulated historical/contemporary thinkers",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 

@@ -71,7 +71,10 @@ If you prefer manual setup:
 
 3. **Add Backend Service**
    - Click "+ New" → "GitHub Repo" → Select this repo
-   - Set root directory: `backend`
+   - In Settings, set:
+     - Root Directory: `/` (repo root)
+     - Build: Dockerfile
+     - Dockerfile Path: `backend/Dockerfile`
    - Add environment variables:
      - `ANTHROPIC_API_KEY` = your API key
      - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
@@ -79,15 +82,44 @@ If you prefer manual setup:
 
 4. **Add Frontend Service**
    - Click "+ New" → "GitHub Repo" → Select this repo
-   - Set root directory: `frontend`
+   - In Settings, set:
+     - Root Directory: `/` (repo root)
+     - Build: Dockerfile
+     - Dockerfile Path: `frontend/Dockerfile`
    - Add environment variables:
      - `NEXT_PUBLIC_API_URL` = `https://<your-backend>.up.railway.app`
      - `NEXT_PUBLIC_WS_URL` = `wss://<your-backend>.up.railway.app`
+
+## CI/CD with GitHub Actions
+
+The project includes a CI/CD pipeline that runs tests and deploys to Railway on push to `main`.
+
+### GitHub Secrets Required
+
+Add these secrets in your GitHub repository settings (**Settings** → **Secrets and variables** → **Actions** → **New repository secret**):
+
+| Secret | Description | How to get it |
+|--------|-------------|---------------|
+| `RAILWAY_TOKEN` | Railway API token for deployments | Railway dashboard → Account Settings → Tokens → Create Token |
+| `PRODUCTION_BACKEND_URL` | Backend URL for smoke tests | Your Railway backend URL (e.g., `https://backend-xxx.up.railway.app`) |
+| `PRODUCTION_FRONTEND_URL` | Frontend URL for smoke tests | Your Railway frontend URL (e.g., `https://frontend-xxx.up.railway.app`) |
+
+### Pipeline Steps
+
+1. **Backend Tests** - Lint, type check, and test with coverage
+2. **Frontend Tests** - Lint, type check, and test with coverage
+3. **E2E Tests** - Run Playwright tests against real backend
+4. **Docker Build** - Verify Docker images build correctly
+5. **Deploy** - Deploy to Railway (only on push to `main`)
+6. **Smoke Test** - Verify production endpoints are healthy
 
 ## Project Structure
 
 ```
 thinkers-chat/
+├── .github/
+│   └── workflows/
+│       └── ci.yml     # CI/CD pipeline
 ├── backend/           # FastAPI backend
 │   ├── app/
 │   │   ├── api/       # API routes
@@ -97,17 +129,17 @@ thinkers-chat/
 │   │   └── services/  # Business logic
 │   ├── tests/
 │   ├── Dockerfile
-│   └── railway.toml
+│   └── railway.json   # Railway config
 ├── frontend/          # Next.js frontend
 │   ├── src/
 │   ├── e2e/           # Playwright tests
 │   ├── Dockerfile
-│   └── railway.toml
+│   └── railway.json   # Railway config
 └── scripts/
     ├── setup.sh       # Local dev setup
     ├── dev.sh         # Run dev servers
     ├── test-all.sh    # Run all tests
-    └── deploy-railway.sh  # Railway deployment
+    └── railway-setup.sh  # Railway CLI setup helper
 ```
 
 ## Tech Stack

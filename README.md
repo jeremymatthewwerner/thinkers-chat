@@ -92,7 +92,7 @@ If you prefer manual setup:
 
 ## CI/CD with GitHub Actions
 
-The project includes a CI/CD pipeline that runs tests and deploys to Railway on push to `main`.
+The project includes a CI/CD pipeline that builds Docker images, pushes to GitHub Container Registry, and deploys to Railway on push to `main`.
 
 ### GitHub Secrets Required
 
@@ -101,18 +101,36 @@ Add these secrets in your GitHub repository settings (**Settings** → **Secrets
 | Secret | Description | How to get it |
 |--------|-------------|---------------|
 | `ANTHROPIC_API_KEY` | Anthropic API key for E2E tests | https://console.anthropic.com/ |
-| `RAILWAY_TOKEN` | Railway API token for deployments | Railway dashboard → Account Settings → Tokens → Create Token |
-| `PRODUCTION_BACKEND_URL` | Backend URL for smoke tests | Your Railway backend URL (e.g., `https://backend-xxx.up.railway.app`) |
+| `RAILWAY_TOKEN` | Railway project token for deployments | Railway dashboard → Project → Settings → Tokens |
+| `NEXT_PUBLIC_API_URL` | Backend API URL for frontend build | Your Railway backend URL (e.g., `https://backend-xxx.up.railway.app`) |
+| `NEXT_PUBLIC_WS_URL` | WebSocket URL for frontend build | Your Railway backend WS URL (e.g., `wss://backend-xxx.up.railway.app`) |
+| `PRODUCTION_BACKEND_URL` | Backend URL for smoke tests | Same as `NEXT_PUBLIC_API_URL` |
 | `PRODUCTION_FRONTEND_URL` | Frontend URL for smoke tests | Your Railway frontend URL (e.g., `https://frontend-xxx.up.railway.app`) |
 
 ### Pipeline Steps
 
 1. **Backend Tests** - Lint, type check, and test with coverage
 2. **Frontend Tests** - Lint, type check, and test with coverage
-3. **E2E Tests** - Run Playwright tests against real backend
-4. **Docker Build** - Verify Docker images build correctly
-5. **Deploy** - Deploy to Railway (only on push to `main`)
+3. **E2E Tests** - Run Playwright tests against real backend with API
+4. **Build & Push** - Build Docker images and push to GitHub Container Registry (ghcr.io)
+5. **Deploy** - Trigger Railway to redeploy with new images (only on push to `main`)
 6. **Smoke Test** - Verify production endpoints are healthy
+
+### Docker Images
+
+Images are published to GitHub Container Registry:
+- Backend: `ghcr.io/<owner>/thinkers-chat-backend:latest`
+- Frontend: `ghcr.io/<owner>/thinkers-chat-frontend:latest`
+
+### Railway Configuration
+
+Railway services must be configured to use Docker images instead of building from source:
+
+1. Go to Railway Dashboard → Your Project → Backend Service
+2. **Settings** → **Source** → Change to **Docker Image**
+3. Set image to: `ghcr.io/<your-github-username>/thinkers-chat-backend:latest`
+4. Add environment variables: `ANTHROPIC_API_KEY`, `DATABASE_URL`, `CORS_ORIGINS`
+5. Repeat for Frontend service with `ghcr.io/<your-github-username>/thinkers-chat-frontend:latest`
 
 ## Project Structure
 

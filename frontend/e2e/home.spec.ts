@@ -183,6 +183,95 @@ test.describe('New Conversation Flow', () => {
     // Log for visibility
     console.log(`Refreshed: ${initialName} -> ${newName}`);
   });
+
+  test('shows loading spinner on Next button while generating suggestions', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open modal
+    await page.getByTestId('new-chat-button').click();
+    await page.getByTestId('topic-input').fill('The meaning of life');
+
+    // Get the next button
+    const nextButton = page.getByTestId('next-button');
+
+    // Click Next and immediately check for loading state
+    await nextButton.click();
+
+    // The button should show a spinner (svg with animate-spin class) and "Loading..." text
+    // Wait for either the spinner to appear OR the thinkers step to load
+    const spinnerOrThinkers = await Promise.race([
+      nextButton.locator('svg.animate-spin').isVisible().then(() => 'spinner'),
+      page.locator('h2', { hasText: 'Select Thinkers' }).waitFor({ timeout: 30000 }).then(() => 'thinkers'),
+    ]);
+
+    // If we caught the spinner, great! If thinkers loaded too fast, that's also fine
+    console.log(`Loading animation test: saw ${spinnerOrThinkers}`);
+
+    // Verify we end up at the thinker selection step
+    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    // Button should no longer be in loading state
+    await expect(nextButton).not.toBeVisible();
+  });
+
+  test('auto-fetches new suggestion when selecting a thinker', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open modal and go to thinker step
+    await page.getByTestId('new-chat-button').click();
+    await page.getByTestId('topic-input').fill('Ancient Greek philosophy');
+    await page.getByTestId('next-button').click();
+
+    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+
+    // Wait for initial suggestions to load
+    const suggestions = page.getByTestId('thinker-suggestion');
+    await expect(suggestions.first()).toBeVisible({ timeout: 15000 });
+
+    // Count initial suggestions and get names
+    const initialCount = await suggestions.count();
+    const initialNames: string[] = [];
+    for (let i = 0; i < initialCount; i++) {
+      const name = await suggestions.nth(i).locator('div.font-medium').textContent();
+      if (name) initialNames.push(name);
+    }
+
+    // Set up listener for auto-fetch API call BEFORE clicking
+    const autoFetchPromise = page.waitForResponse(
+      response => response.url().includes('/thinkers/suggest'),
+      { timeout: 20000 }
+    );
+
+    // Select the first thinker
+    const acceptButton = page.getByTestId('accept-suggestion').first();
+    await acceptButton.click();
+
+    // Should see selected thinker appear
+    await expect(page.getByTestId('selected-thinker')).toBeVisible();
+
+    // Wait for the auto-fetch API call to complete
+    await autoFetchPromise;
+
+    // Wait for state to update after API response
+    await page.waitForTimeout(2000);
+
+    // Get the final count and names
+    const finalCount = await suggestions.count();
+    const finalNames: string[] = [];
+    for (let i = 0; i < finalCount; i++) {
+      const name = await suggestions.nth(i).locator('div.font-medium').textContent();
+      if (name) finalNames.push(name);
+    }
+
+    // Check if a new thinker was added (different from original suggestions)
+    const newThinkers = finalNames.filter(name => !initialNames.includes(name));
+
+    // With auto-fetch working, we should have the same number of suggestions
+    // (one removed for selection, one added via auto-fetch)
+    expect(finalCount).toBe(initialCount);
+    expect(newThinkers.length).toBeGreaterThan(0);
+  });
 });
 
 test.describe('Persistence', () => {

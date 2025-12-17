@@ -92,7 +92,7 @@ describe('NewChatModal', () => {
     await user.click(screen.getByTestId('next-button'));
 
     await waitFor(() => {
-      expect(onSuggestThinkers).toHaveBeenCalledWith('Philosophy of mind');
+      expect(onSuggestThinkers).toHaveBeenCalledWith('Philosophy of mind', 5);
     });
 
     await waitFor(() => {

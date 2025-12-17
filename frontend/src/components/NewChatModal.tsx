@@ -26,7 +26,7 @@ export interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (topic: string, thinkers: ThinkerData[]) => Promise<void>;
-  onSuggestThinkers: (topic: string, exclude?: string[]) => Promise<ThinkerSuggestion[]>;
+  onSuggestThinkers: (topic: string, count?: number, exclude?: string[]) => Promise<ThinkerSuggestion[]>;
   onValidateThinker: (name: string) => Promise<ThinkerProfile | null>;
 }
 
@@ -76,7 +76,7 @@ export function NewChatModal({
       setError(null);
 
       try {
-        const results = await onSuggestThinkers(topic.trim());
+        const results = await onSuggestThinkers(topic.trim(), 5);
         setSuggestions(results);
         setStep('thinkers');
       } catch (err) {
@@ -132,9 +132,10 @@ export function NewChatModal({
             ...selectedThinkers.map((t) => t.name),
             thinker.name,
           ];
-          const results = await onSuggestThinkers(topic.trim(), excludeNames);
+          // Request just 1 replacement suggestion for faster response
+          const results = await onSuggestThinkers(topic.trim(), 1, excludeNames);
 
-          // Add the first new unique suggestion
+          // Add the new suggestion if valid
           if (results.length > 0) {
             setSuggestions((prev) => {
               const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
@@ -171,7 +172,8 @@ export function NewChatModal({
           ...suggestions.filter((s) => s.name !== nameToReplace).map((s) => s.name),
           ...selectedThinkers.map((t) => t.name),
         ];
-        const results = await onSuggestThinkers(topic.trim(), excludeNames);
+        // Request just 1 replacement suggestion
+        const results = await onSuggestThinkers(topic.trim(), 1, excludeNames);
         // Find the first result to use as replacement
         setSuggestions((prev) => {
           const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));

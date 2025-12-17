@@ -160,8 +160,8 @@ export default function Home() {
 
   // Suggest thinkers for topic
   const handleSuggestThinkers = useCallback(
-    async (topic: string, exclude: string[] = []): Promise<ThinkerSuggestion[]> => {
-      return api.suggestThinkers(topic, 5, exclude);
+    async (topic: string, count: number = 5, exclude: string[] = []): Promise<ThinkerSuggestion[]> => {
+      return api.suggestThinkers(topic, count, exclude);
     },
     []
   );

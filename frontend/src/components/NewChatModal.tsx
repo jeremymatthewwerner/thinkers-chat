@@ -44,7 +44,6 @@ export function NewChatModal({
     []
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,7 +63,6 @@ export function NewChatModal({
       setSuggestions([]);
       setSelectedThinkers([]);
       setError(null);
-      setIsLoadingMore(false);
     }
   }, [isOpen]);
 
@@ -126,40 +124,6 @@ export function NewChatModal({
   const handleRemoveThinker = useCallback((name: string) => {
     setSelectedThinkers((prev) => prev.filter((t) => t.name !== name));
   }, []);
-
-  const handleRequestMore = useCallback(async () => {
-    if (!topic.trim() || isLoadingMore) return;
-
-    setIsLoadingMore(true);
-    setError(null);
-
-    try {
-      // Build exclude list from existing suggestions and selected thinkers
-      const excludeNames = [
-        ...suggestions.map((s) => s.name),
-        ...selectedThinkers.map((t) => t.name),
-      ];
-      const results = await onSuggestThinkers(topic.trim(), excludeNames);
-      // Append new suggestions (API should already exclude duplicates, but filter just in case)
-      setSuggestions((prev) => {
-        const existingNames = new Set(prev.map((s) => s.name.toLowerCase()));
-        const selectedNames = new Set(
-          selectedThinkers.map((t) => t.name.toLowerCase())
-        );
-        const newSuggestions = results.filter(
-          (s) =>
-            !existingNames.has(s.name.toLowerCase()) &&
-            !selectedNames.has(s.name.toLowerCase())
-        );
-        return [...prev, ...newSuggestions];
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to get more suggestions';
-      setError(message);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [topic, isLoadingMore, onSuggestThinkers, selectedThinkers, suggestions]);
 
   const handleRefreshSuggestion = useCallback(
     async (nameToReplace: string) => {
@@ -240,7 +204,7 @@ export function NewChatModal({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 flex-1 overflow-y-auto">
+        <div className={`px-6 py-4 flex-1 min-h-0 ${step === 'topic' ? 'overflow-y-auto' : ''}`}>
           {step === 'topic' ? (
             <form onSubmit={handleTopicSubmit}>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -262,26 +226,16 @@ export function NewChatModal({
               )}
             </form>
           ) : (
-            <div className="space-y-4">
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Topic:{' '}
-                </span>
-                <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  {topic}
-                </span>
-              </div>
-
+            <div className="h-full">
               <ThinkerSelector
+                topic={topic}
                 suggestions={suggestions}
                 selectedThinkers={selectedThinkers}
                 onSelect={handleSelectThinker}
                 onRemove={handleRemoveThinker}
                 onValidateCustom={onValidateThinker}
-                onRequestMore={handleRequestMore}
                 onRefreshSuggestion={handleRefreshSuggestion}
                 isLoading={isLoading}
-                isLoadingMore={isLoadingMore}
               />
 
               {error && (

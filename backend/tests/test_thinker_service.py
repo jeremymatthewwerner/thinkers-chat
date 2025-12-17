@@ -230,6 +230,68 @@ class TestGenerateResponse:
         assert cost > 0  # Cost should be calculated
 
 
+class TestExtractThinkingDisplay:
+    """Tests for _extract_thinking_display helper method."""
+
+    def test_empty_text_returns_empty(self) -> None:
+        """Test that empty text returns empty string."""
+        service = ThinkerService()
+        result = service._extract_thinking_display("")
+        assert result == ""
+
+    def test_short_text_returned_as_is(self) -> None:
+        """Test that short text is returned with ellipsis if incomplete."""
+        service = ThinkerService()
+        result = service._extract_thinking_display("Considering the implications")
+        assert "Considering" in result
+        assert result.endswith("...")
+
+    def test_long_text_truncated(self) -> None:
+        """Test that long text is truncated to ~150 chars."""
+        service = ThinkerService()
+        long_text = "This is a very long thinking text. " * 20
+        result = service._extract_thinking_display(long_text)
+        # Should be truncated
+        assert len(result) <= 160  # ~150 + some buffer for ellipsis
+
+    def test_text_ending_with_period_no_extra_ellipsis(self) -> None:
+        """Test that text ending with period doesn't get extra ellipsis."""
+        service = ThinkerService()
+        result = service._extract_thinking_display("This is a complete thought.")
+        assert result == "This is a complete thought."
+
+    def test_preserves_sentence_boundaries(self) -> None:
+        """Test that truncation tries to preserve sentence boundaries."""
+        service = ThinkerService()
+        text = "First sentence. " * 5 + "Second sentence. " * 5 + "Final thought"
+        result = service._extract_thinking_display(text)
+        # Should try to start at a sentence boundary
+        assert len(result) <= 160
+
+
+class TestGenerateResponseWithStreamingThinking:
+    """Tests for generate_response_with_streaming_thinking method."""
+
+    async def test_returns_empty_without_client(self) -> None:
+        """Test that method returns empty without client."""
+        service = ThinkerService()
+        thinker = MagicMock()
+        thinker.name = "Socrates"
+        thinker.bio = "Ancient philosopher"
+        thinker.positions = "Questioning everything"
+        thinker.style = "Socratic method"
+        messages: Any = []
+
+        # Mock the client property to return None
+        with patch.object(type(service), "client", new_callable=PropertyMock) as mock_client:
+            mock_client.return_value = None
+            response, cost = await service.generate_response_with_streaming_thinking(
+                "test-conv", thinker, messages, "philosophy"
+            )
+            assert response == ""
+            assert cost == 0.0
+
+
 class TestConversationAgents:
     """Tests for conversation agent management."""
 

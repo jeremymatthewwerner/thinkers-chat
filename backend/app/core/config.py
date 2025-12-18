@@ -29,6 +29,20 @@ class Settings(BaseSettings):
             return url.replace("postgres://", "postgresql+asyncpg://", 1)
         return url
 
+    @property
+    def sync_database_url(self) -> str:
+        """Get database URL with sync driver for Alembic migrations."""
+        url = self.database_url
+        # Convert async URLs to sync equivalents
+        if "asyncpg" in url:
+            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        if "aiosqlite" in url:
+            return url.replace("sqlite+aiosqlite://", "sqlite://", 1)
+        # Convert Railway's postgresql:// stays as is
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql://", 1)
+        return url
+
     # Anthropic API
     anthropic_api_key: str = ""
 

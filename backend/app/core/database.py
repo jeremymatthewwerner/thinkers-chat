@@ -1,12 +1,17 @@
 """Database configuration and session management."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from alembic import command
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Create async engine
@@ -52,10 +57,54 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
+def run_migrations() -> None:
+    """Run Alembic migrations synchronously.
+
+    This is called from init_db() using run_sync to ensure migrations
+    run in a sync context even when called from an async function.
+    """
+    backend_dir = Path(__file__).parent.parent.parent
+    alembic_ini = backend_dir / "alembic.ini"
+
+    if not alembic_ini.exists():
+        logger.warning(f"alembic.ini not found at {alembic_ini}, skipping migrations")
+        return False
+
+    logger.info("Running database migrations...")
+    alembic_cfg = Config(str(alembic_ini))
+    alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+
+    # Override the database URL to use sync driver for migrations
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.sync_database_url)
+
+    command.upgrade(alembic_cfg, "head")
+    logger.info("Database migrations complete")
+    return True
+
+
 async def init_db() -> None:
-    """Initialize database tables."""
+    """Initialize database by running Alembic migrations.
+
+    This runs any pending migrations to ensure the database schema
+    is up to date. For new databases, this will create all tables.
+    For existing databases, this will apply any new migrations.
+    """
     from app.models import Base
 
+    # Try to run migrations
+    backend_dir = Path(__file__).parent.parent.parent
+    alembic_ini = backend_dir / "alembic.ini"
+
+    if alembic_ini.exists():
+        # Run migrations synchronously using sync database URL
+        try:
+            run_migrations()
+            return
+        except Exception as e:
+            logger.warning(f"Migration failed: {e}, falling back to create_all")
+
+    # Fall back to create_all for development/testing or if migrations fail
+    logger.info("Using create_all for database initialization")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

@@ -302,3 +302,65 @@ jobs:
             echo "Frontend health check failed with status: $response"
             exit 1
           fi
+
+      - name: Test user registration
+        id: register
+        run: |
+          BACKEND_URL="${{ secrets.PRODUCTION_BACKEND_URL }}"
+          if [ -z "$BACKEND_URL" ]; then
+            echo "Warning: PRODUCTION_BACKEND_URL not set, skipping registration test"
+            exit 0
+          fi
+          # Generate unique username for this test run
+          TEST_USER="smoketest_$(date +%s)"
+          TEST_PASS="testpass123"
+          echo "Testing registration with user: $TEST_USER"
+
+          response=$(curl -s -w "\n%{http_code}" -X POST "$BACKEND_URL/api/auth/register" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"$TEST_USER\", \"password\": \"$TEST_PASS\"}")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "Response code: $http_code"
+          echo "Response body: $body"
+
+          if [ "$http_code" = "200" ]; then
+            echo "Registration successful"
+            # Extract token for next step
+            TOKEN=$(echo "$body" | jq -r '.access_token')
+            echo "token=$TOKEN" >> $GITHUB_OUTPUT
+            echo "test_user=$TEST_USER" >> $GITHUB_OUTPUT
+          else
+            echo "Registration failed with status: $http_code"
+            exit 1
+          fi
+
+      - name: Test user authentication (get current user)
+        run: |
+          BACKEND_URL="${{ secrets.PRODUCTION_BACKEND_URL }}"
+          TOKEN="${{ steps.register.outputs.token }}"
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Warning: No token available, skipping auth test"
+            exit 0
+          fi
+          echo "Testing authenticated endpoint /api/auth/me"
+
+          response=$(curl -s -w "\n%{http_code}" "$BACKEND_URL/api/auth/me" \
+            -H "Authorization: Bearer $TOKEN")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "Response code: $http_code"
+          echo "Response body: $body"
+
+          if [ "$http_code" = "200" ]; then
+            echo "Auth check passed"
+            username=$(echo "$body" | jq -r '.username')
+            echo "Logged in as: $username"
+          else
+            echo "Auth check failed with status: $http_code"
+            exit 1
+          fi

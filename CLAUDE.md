@@ -208,6 +208,45 @@ Use labels to categorize issues:
 - #<related-issue-number>
 ```
 
+## GitHub CLI Access (Claude Code)
+
+The `gh` CLI is available and authenticated in Claude Code for managing GitHub operations. This works even though the git remote uses a local proxy.
+
+### Setup (First Session Only)
+
+If gh is not authenticated:
+```bash
+# Interactive web authentication
+gh auth login --web --git-protocol https
+# Follow the device code flow in browser
+```
+
+### Using gh with This Repo
+
+Because the git remote points to a local proxy, always specify the repo explicitly:
+```bash
+# Check CI status
+gh run list --repo jeremymatthewwerner/thinkers-chat --limit 5
+
+# View failed CI logs
+gh run view <run-id> --repo jeremymatthewwerner/thinkers-chat --log-failed
+
+# Create issues
+gh issue create --repo jeremymatthewwerner/thinkers-chat --title "Bug: ..." --body "..."
+
+# List issues
+gh issue list --repo jeremymatthewwerner/thinkers-chat
+
+# Create PR
+gh pr create --repo jeremymatthewwerner/thinkers-chat --title "..." --body "..."
+```
+
+### Important Notes
+
+- CI only runs on `main` branch or PRs targeting `main` (see `.github/workflows/ci.yml`)
+- Feature branch pushes don't trigger CI - create a PR to run CI
+- Always verify gh works: `gh auth status`
+
 ## Architecture
 
 - Thinker agents run as independent async tasks (concurrent responses)

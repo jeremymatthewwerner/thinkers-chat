@@ -14,17 +14,8 @@ from anthropic.types import TextBlock, ThinkingBlock
 
 from app.api.websocket import manager
 from app.core.config import get_settings
+from app.exceptions import ThinkerAPIError
 from app.schemas import ThinkerProfile, ThinkerSuggestion
-
-
-class ThinkerAPIError(Exception):
-    """Exception raised when the thinker API fails."""
-
-    def __init__(self, message: str, is_quota_error: bool = False):
-        self.message = message
-        self.is_quota_error = is_quota_error
-        super().__init__(message)
-
 
 if TYPE_CHECKING:
     from app.models import ConversationThinker, Message

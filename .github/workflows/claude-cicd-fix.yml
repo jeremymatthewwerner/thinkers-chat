@@ -216,6 +216,10 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           allowed_bots: '*'
+          allowed_tools: |
+            Edit,MultiEdit,Glob,Grep,LS,Read,Write
+            Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*)
+            Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)
           prompt: |
             ## CI/CD Fix Required - Attempt ${{ steps.count-retries.outputs.next_retry }} of ${{ env.MAX_RETRIES }}
 

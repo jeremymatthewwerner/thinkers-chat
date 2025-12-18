@@ -1,9 +1,9 @@
 name: Claude Automated Work
 
 on:
-  # Trigger immediately when issues get priority labels
+  # Trigger when issues get priority labels OR assigned to claude[bot]
   issues:
-    types: [labeled]
+    types: [labeled, assigned]
 
   # Self-chain via repository_dispatch (workflow can't listen to itself via workflow_run)
   repository_dispatch:
@@ -28,12 +28,18 @@ concurrency:
 
 jobs:
   # Gate job: check if we should run
-  # Skip entirely for non-priority label events to avoid queuing
+  # Run for: priority labels, assignment to claude[bot], manual/scheduled triggers
   should-run:
-    if: github.event_name != 'issues' || github.event.label.name == 'P0' || github.event.label.name == 'P1' || github.event.label.name == 'P2'
+    if: >
+      github.event_name != 'issues' ||
+      github.event.action == 'assigned' ||
+      github.event.label.name == 'P0' ||
+      github.event.label.name == 'P1' ||
+      github.event.label.name == 'P2'
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
+      assigned_issue: ${{ steps.check.outputs.assigned_issue }}
     steps:
       - name: Check trigger conditions
         id: check
@@ -43,15 +49,35 @@ jobs:
              [ "${{ github.event_name }}" = "schedule" ] || \
              [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "assigned_issue=" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # For issue labeled events, only run if label is P0, P1, or P2
+          # For issue events
           if [ "${{ github.event_name }}" = "issues" ]; then
+            ACTION="${{ github.event.action }}"
+
+            # Assignment to claude[bot] - work on THIS specific issue
+            if [ "$ACTION" = "assigned" ]; then
+              ASSIGNEE="${{ github.event.assignee.login }}"
+              if [ "$ASSIGNEE" = "claude[bot]" ]; then
+                echo "Triggered by assignment to claude[bot]"
+                echo "should_run=true" >> $GITHUB_OUTPUT
+                echo "assigned_issue=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+                exit 0
+              else
+                echo "Ignoring assignment to: $ASSIGNEE"
+                echo "should_run=false" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            fi
+
+            # Priority label - find highest priority issue
             LABEL="${{ github.event.label.name }}"
             if [ "$LABEL" = "P0" ] || [ "$LABEL" = "P1" ] || [ "$LABEL" = "P2" ]; then
               echo "Triggered by priority label: $LABEL"
               echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "assigned_issue=" >> $GITHUB_OUTPUT
             else
               echo "Ignoring non-priority label: $LABEL"
               echo "should_run=false" >> $GITHUB_OUTPUT
@@ -78,7 +104,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # If specific issue provided, use that
+          # If assigned to claude[bot], work on THAT specific issue
+          ASSIGNED_ISSUE="${{ needs.should-run.outputs.assigned_issue }}"
+          if [ -n "$ASSIGNED_ISSUE" ]; then
+            echo "Working on assigned issue: #$ASSIGNED_ISSUE"
+            echo "issue_number=$ASSIGNED_ISSUE" >> $GITHUB_OUTPUT
+            TITLE=$(gh issue view $ASSIGNED_ISSUE --repo ${{ github.repository }} --json title -q .title 2>/dev/null || echo "")
+            echo "issue_title=$TITLE" >> $GITHUB_OUTPUT
+            echo "has_more_work=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # If specific issue provided via manual trigger, use that
           if [ -n "${{ inputs.issue_number }}" ]; then
             echo "issue_number=${{ inputs.issue_number }}" >> $GITHUB_OUTPUT
             TITLE=$(gh issue view ${{ inputs.issue_number }} --repo ${{ github.repository }} --json title -q .title 2>/dev/null || echo "")
@@ -254,11 +291,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Add needs-human-help label and remove claude-working
-          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+          ISSUE_NUM="${{ needs.find-work.outputs.issue_number }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+
+          # Remove claude-working label
+          gh issue edit $ISSUE_NUM \
             --repo ${{ github.repository }} \
-            --add-label "needs-human-help" \
             --remove-label "claude-working" || true
+
+          # Unassign claude[bot] and assign to repo owner
+          gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/assignees \
+            -X DELETE \
+            -f 'assignees[]=claude[bot]' || true
+          gh issue edit $ISSUE_NUM \
+            --repo ${{ github.repository }} \
+            --add-assignee "$REPO_OWNER" || true
 
           # Try to extract error details from execution log
           LOG_FILE="${RUNNER_TEMP}/claude-execution-output.json"
@@ -274,12 +321,10 @@ $RESULT
             fi
           fi
 
-          # Post comment with @mention and error details
-          gh issue comment ${{ needs.find-work.outputs.issue_number }} \
+          # Post comment with error details
+          gh issue comment $ISSUE_NUM \
             --repo ${{ github.repository }} \
-            --body "## ❌ Claude encountered an issue
-
-@jeremymatthewwerner - This issue needs human intervention.
+            --body "## ❌ Claude needs help
 
 **Status:** Work failed or was blocked
 
@@ -287,10 +332,7 @@ $RESULT
 
 $ERROR_DETAILS
 
-**What to do:**
-- Check the workflow logs for more details
-- The issue might have unmet dependencies
-- Remove \`needs-human-help\` label after addressing the problem to allow retry"
+**To retry:** Add your input as a comment, then assign this issue to \`claude[bot]\`"
 
       - name: Remove in-progress label on completion
         # Only remove on SUCCESS - failed issues keep the label so they're skipped

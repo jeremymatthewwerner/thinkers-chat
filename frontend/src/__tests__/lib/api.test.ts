@@ -19,6 +19,7 @@ describe('API Client', () => {
         user: {
           id: 'user-123',
           username: 'testuser',
+          display_name: 'Test User',
           is_admin: false,
           total_spend: 0,
           created_at: '2024-01-15T10:00:00Z',
@@ -29,7 +30,7 @@ describe('API Client', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      const response = await api.register('testuser', 'password123');
+      const response = await api.register('testuser', 'Test User', 'password123');
 
       expect(response).toEqual(mockResponse);
       expect(localStorage.setItem).toHaveBeenCalledWith(

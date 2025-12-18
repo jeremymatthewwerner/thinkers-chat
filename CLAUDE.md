@@ -371,6 +371,97 @@ gh workflow run claude-cicd-fix.yml --repo jeremymatthewwerner/thinkers-chat -f 
 - `ANTHROPIC_API_KEY` secret must be set in repository settings
 - Workflows need `contents: write`, `issues: write`, `pull-requests: write` permissions
 
+### Setting Up Claude Automation for New Projects
+
+To add this automation to another project, copy these workflows and customize:
+
+1. **Copy workflow files:**
+   - `.github/workflows/claude-triage.yml` - Issue triage
+   - `.github/workflows/claude-work.yml` - Automated work
+   - `.github/workflows/claude-cicd-fix.yml` - CI/CD fix loop
+
+2. **Add required secrets:**
+   - `ANTHROPIC_API_KEY` - Your Claude API key
+
+3. **Create labels:**
+   ```bash
+   gh label create "P0" --color "FF0000" --description "Critical: Blocks most functionality"
+   gh label create "P1" --color "FF6600" --description "High: Blocks some functionality"
+   gh label create "P2" --color "FBCA04" --description "Medium: Optimizations, cleanup"
+   gh label create "P3" --color "EEEEEE" --description "Needs triage"
+   gh label create "claude-working" --color "7057ff" --description "Claude is working on this"
+   gh label create "needs-human-help" --color "D93F0B" --description "Needs human intervention"
+   ```
+
+4. **Customize workflow prompts:**
+   - Update repo-specific instructions in the `prompt` section
+   - Adjust `allowed_tools` for your tech stack commands
+   - Modify test/lint commands for your project
+
+### Live Status Updates (track_progress)
+
+The `track_progress: true` feature enables real-time updates during work:
+
+```yaml
+- uses: anthropics/claude-code-action@v1
+  with:
+    track_progress: ${{ github.event_name == 'issues' }}  # Only for issue events
+```
+
+This creates a live-updating comment on the issue showing:
+- Current task being worked on
+- Todo list with checkboxes
+- Progress indicator
+- Link to workflow run
+
+**Note:** `track_progress` only works for `pull_request`, `issues`, and `issue_comment` events.
+
+### Audit Log Best Practices
+
+The automation creates a beautiful audit trail:
+
+1. **Issue comments show progress:**
+   - Starting work comment with workflow link
+   - Live checkbox updates during work
+   - Completion comment with PR link
+
+2. **Commit messages reference issues:**
+   - `Fixes #N` to auto-close issues
+   - `Relates to #N` for partial progress
+
+3. **CI/CD fix commits show history:**
+   ```
+   Fix CI/CD: Add missing type annotation
+
+   Failing check: mypy
+   Error: Missing type annotation for parameter
+   Previous attempt: abc1234
+   Retry: 3/15
+   ```
+
+4. **Labels indicate status:**
+   - `claude-working` - Work in progress
+   - `needs-human-help` - Requires manual intervention
+
+### Allowed Tools Configuration
+
+To configure which tools Claude can use, pass `--allowedTools` via `claude_args`. Example:
+
+```yaml
+claude_args: |
+  --max-turns 50
+  --dangerously-skip-permissions
+  --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh:*),Bash(cd backend && uv run:*)"
+```
+
+Common tool patterns:
+- `Bash(git:*)` - All git commands
+- `Bash(gh:*)` - GitHub CLI commands (pr create, issue comment, etc.)
+- `Bash(cd backend && uv run:*)` - Python test/lint commands
+- `Bash(cd frontend && npm:*)` - Node.js test/lint commands
+
+**Important:** The `--dangerously-skip-permissions` flag skips interactive confirmations, but Claude can only use tools in the `--allowedTools` list.
+
 ## Architecture
 
 - Thinker agents run as independent async tasks (concurrent responses)

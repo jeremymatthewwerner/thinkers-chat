@@ -274,6 +274,7 @@ jobs:
           claude_args: |
             --max-turns 30
             --dangerously-skip-permissions
+            --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)"
 
       - name: Post progress comment
         if: steps.should-fix.outputs.should_fix == 'true' && steps.check-limit.outputs.limit_reached == 'false'

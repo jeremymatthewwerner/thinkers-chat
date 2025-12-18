@@ -7,6 +7,7 @@
 import type { ConversationSummary } from '@/types';
 import { ConversationList } from './ConversationList';
 import { CostMeter } from './CostMeter';
+import { generateBugReportUrl } from '@/utils/bugReport';
 
 export interface SidebarProps {
   conversations: ConversationSummary[];
@@ -43,6 +44,10 @@ export function Sidebar({
 }: SidebarProps) {
   // Use display name if available, fall back to username
   const nameToShow = displayName || username;
+
+  // Generate bug report URL with user info
+  const bugReportUrl = generateBugReportUrl({ username, displayName });
+
   return (
     <>
       {/* Mobile overlay */}
@@ -141,9 +146,9 @@ export function Sidebar({
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {/* Bug report button - creates GitHub issue */}
+                  {/* Bug report button - creates GitHub issue with pre-populated user info */}
                   <a
-                    href="https://github.com/jeremymatthewwerner/thinkers-chat/issues/new?title=Bug%3A%20&body=%23%23%20Description%0APlease%20describe%20the%20issue%3A%0A%0A%23%23%20Steps%20to%20Reproduce%0A1.%20%0A2.%20%0A%0A%23%23%20Expected%20Behavior%0A%0A%23%23%20Actual%20Behavior%0A%0A%23%23%20Browser%2FDevice%0A&labels=P3,bug"
+                    href={bugReportUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2 py-1 text-xs text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"

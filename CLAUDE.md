@@ -445,17 +445,22 @@ The automation creates a beautiful audit trail:
 
 ### Allowed Tools Configuration
 
-The `allowed_tools` parameter controls what commands Claude can run. Example for a Python/TypeScript project:
+To configure which tools Claude can use, pass `--allowedTools` via `claude_args`. Example:
 
 ```yaml
-allowed_tools: |
-  Edit,MultiEdit,Glob,Grep,LS,Read,Write
-  Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*)
-  Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh issue comment:*)
-  Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)
+claude_args: |
+  --max-turns 50
+  --dangerously-skip-permissions
+  --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh:*),Bash(cd backend && uv run:*)"
 ```
 
-**Important:** Even with `--dangerously-skip-permissions`, Claude can only use tools in this list.
+Common tool patterns:
+- `Bash(git:*)` - All git commands
+- `Bash(gh:*)` - GitHub CLI commands (pr create, issue comment, etc.)
+- `Bash(cd backend && uv run:*)` - Python test/lint commands
+- `Bash(cd frontend && npm:*)` - Node.js test/lint commands
+
+**Important:** The `--dangerously-skip-permissions` flag skips interactive confirmations, but Claude can only use tools in the `--allowedTools` list.
 
 ## Architecture
 

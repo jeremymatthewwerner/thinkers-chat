@@ -1,10 +1,20 @@
 name: Claude Automated Work
 
 on:
-  # Run hourly
+  # Trigger immediately when issues get priority labels
+  issues:
+    types: [labeled]
+
+  # Self-chain: continue working after previous job completes
+  workflow_run:
+    workflows: ["Claude Automated Work"]
+    types: [completed]
+
+  # Fallback: catch edge cases (reduced frequency since event-driven)
   schedule:
-    - cron: '0 * * * *'
-  # Allow manual triggering
+    - cron: '0 */6 * * *'  # Every 6 hours
+
+  # Manual trigger
   workflow_dispatch:
     inputs:
       issue_number:
@@ -12,8 +22,51 @@ on:
         required: false
         type: number
 
+# Only one work job at a time - queue others
+concurrency:
+  group: claude-work
+  cancel-in-progress: false
+
 jobs:
+  # Gate job: check if we should run
+  should-run:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check trigger conditions
+        id: check
+        run: |
+          # Always run for manual triggers and schedule
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # For workflow_run (self-chain), always check for more work
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # For issue labeled events, only run if label is P0, P1, or P2
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            LABEL="${{ github.event.label.name }}"
+            if [ "$LABEL" = "P0" ] || [ "$LABEL" = "P1" ] || [ "$LABEL" = "P2" ]; then
+              echo "Triggered by priority label: $LABEL"
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            else
+              echo "Ignoring non-priority label: $LABEL"
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+
+          echo "should_run=false" >> $GITHUB_OUTPUT
+
   find-work:
+    needs: should-run
+    if: needs.should-run.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     outputs:
       issue_number: ${{ steps.find.outputs.issue_number }}
@@ -40,10 +93,10 @@ jobs:
             ISSUE=$(gh issue list --repo ${{ github.repository }} \
               --label "$priority" \
               --state open \
-              --json number,title \
-              --jq 'map(select(.labels | map(.name) | index("claude-working") | not)) | .[0] | "\(.number)|\(.title)"' 2>/dev/null || echo "")
+              --json number,title,labels \
+              --jq '[.[] | select(.labels | map(.name) | index("claude-working") | not)] | .[0] | "\(.number)|\(.title)"' 2>/dev/null || echo "")
 
-            if [ -n "$ISSUE" ] && [ "$ISSUE" != "null|null" ]; then
+            if [ -n "$ISSUE" ] && [ "$ISSUE" != "null|null" ] && [ "$ISSUE" != "|" ]; then
               NUMBER=$(echo "$ISSUE" | cut -d'|' -f1)
               TITLE=$(echo "$ISSUE" | cut -d'|' -f2-)
               echo "Found $priority issue: #$NUMBER - $TITLE"

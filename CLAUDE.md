@@ -311,20 +311,24 @@ Background automation handles issue triage and work without manual intervention.
 - Checks for duplicate issues
 
 **Automated Work** (`.github/workflows/claude-work.yml`):
-- Runs hourly on schedule
+- **Event-driven**: Triggers immediately when issues get P0/P1/P2 labels
+- **Self-chaining**: After completing work, automatically checks for more issues
+- **Fallback**: Scheduled every 6 hours to catch edge cases
 - Finds highest priority open issue (P0 → P1 → P2)
 - Adds `claude-working` label while in progress
 - Implements changes, runs tests, creates PR
 - Removes `claude-working` label when done
-- Can be triggered manually via workflow_dispatch
+- Concurrency control: only one work job runs at a time (others queue)
 
 ### How It Works
 
 1. User reports bug via "Report a Bug" button → Creates P3 issue
-2. Triage workflow runs → Upgrades to P0/P1/P2 with comment
-3. Work workflow runs hourly → Picks up highest priority issue
+2. Triage workflow runs → Assigns P0/P1/P2 label with comment
+3. Work workflow triggers immediately (event-driven by label)
 4. Claude implements fix → Creates PR with `Fixes #N`
-5. CI runs → PR merged → Issue auto-closes
+5. Work workflow self-chains → Picks up next issue if any
+6. CI runs → PR merged → Issue auto-closes
+7. Cycle continues until no P0-P2 issues remain
 
 ### Manual Trigger
 

@@ -98,12 +98,20 @@ This ensures comprehensive test coverage and prevents regressions.
 - **TypeScript**: ESLint + Prettier, strict mode
 - Run formatters before committing
 
-## Git
+## Git Workflow
 
-- Work directly on `main` branch - no feature branches needed for this project
+**Claude Code sessions use feature branches:**
+1. Create branch: `claude/<description>-<session-id>` (branch name is auto-assigned)
+2. Commit changes with issue references (`Fixes #N` or `Relates to #N`)
+3. Push to feature branch and create PR
+4. CI runs on PR - must pass before merge
+5. Merge PR (squash) - triggers deploy CI on main
+6. Issues auto-close when PR merges
+
+**Best practices:**
 - Commit frequently with clear messages
 - One logical change per commit
-- Push to main after tests pass locally
+- Always reference GitHub issues in commits
 
 ## Task & Bug Tracking with GitHub Issues (MANDATORY)
 
@@ -240,12 +248,16 @@ gh issue list --repo jeremymatthewwerner/thinkers-chat
 
 # Create PR
 gh pr create --repo jeremymatthewwerner/thinkers-chat --title "..." --body "..."
+
+# Merge PR after CI passes
+gh pr merge <number> --repo jeremymatthewwerner/thinkers-chat --squash --delete-branch
 ```
 
-### Important Notes
+### CI Pipeline
 
-- CI only runs on `main` branch or PRs targeting `main` (see `.github/workflows/ci.yml`)
-- Feature branch pushes don't trigger CI - create a PR to run CI
+- **PR triggers**: Backend tests, Frontend tests, E2E tests only
+- **Main branch triggers**: Tests + Docker build + Railway deploy + Smoke tests
+- Feature branch pushes don't trigger CI - must create a PR
 - Always verify gh works: `gh auth status`
 
 ## Architecture

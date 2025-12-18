@@ -105,6 +105,8 @@ export type WSMessageType =
   | 'resume'
   | 'paused'
   | 'resumed'
+  | 'set_speed'
+  | 'speed_changed'
   | 'error';
 
 export interface WSMessage {
@@ -116,4 +118,5 @@ export interface WSMessage {
   message_id?: string;
   timestamp?: string;
   cost?: number;
+  speed_multiplier?: number;
 }

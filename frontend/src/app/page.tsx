@@ -32,6 +32,7 @@ export default function Home() {
   const {
     isConnected,
     isPaused,
+    speedMultiplier,
     typingThinkers,
     thinkingContent,
     sendUserMessage,
@@ -39,6 +40,7 @@ export default function Home() {
     sendTypingStop,
     sendPause,
     sendResume,
+    sendSetSpeed,
   } = useWebSocket({
     conversationId: currentConversation?.id || null,
     onMessage: useCallback((message: Message) => {
@@ -252,6 +254,8 @@ export default function Home() {
         isPaused={isPaused}
         onPause={sendPause}
         onResume={sendResume}
+        speedMultiplier={speedMultiplier}
+        onSpeedChange={sendSetSpeed}
       />
 
       <NewChatModal

@@ -35,6 +35,7 @@ class WSMessageType(str, Enum):
     TYPING_STOP = "typing_stop"
     PAUSE = "pause"
     RESUME = "resume"
+    SET_SPEED = "set_speed"  # Set conversation speed multiplier
 
     # Server -> Client
     MESSAGE = "message"
@@ -45,6 +46,7 @@ class WSMessageType(str, Enum):
     USER_LEFT = "user_left"
     PAUSED = "paused"
     RESUMED = "resumed"
+    SPEED_CHANGED = "speed_changed"  # Notify clients of speed change
     ERROR = "error"
 
 
@@ -59,6 +61,7 @@ class WSMessage(BaseModel):
     message_id: str | None = None
     timestamp: str | None = None
     cost: float | None = None
+    speed_multiplier: float | None = None  # For speed control (0.5 to 3.0)
 
 
 @dataclass
@@ -69,6 +72,7 @@ class ConversationRoom:
     connections: set[WebSocket] = field(default_factory=set)
     is_active: bool = False
     typing_thinkers: set[str] = field(default_factory=set)
+    speed_multiplier: float = 1.0  # 1.0 = normal, 0.5 = fast, 2.0+ = slow
 
     def add_connection(self, websocket: WebSocket) -> None:
         """Add a WebSocket connection to the room."""
@@ -123,6 +127,28 @@ class ConnectionManager:
     def is_conversation_active(self, conversation_id: str) -> bool:
         """Check if a conversation has any active connections."""
         return conversation_id in self.rooms and self.rooms[conversation_id].is_active
+
+    def get_speed_multiplier(self, conversation_id: str) -> float:
+        """Get the speed multiplier for a conversation (1.0 = normal)."""
+        if conversation_id in self.rooms:
+            return self.rooms[conversation_id].speed_multiplier
+        return 1.0
+
+    async def set_speed_multiplier(self, conversation_id: str, multiplier: float) -> None:
+        """Set the speed multiplier for a conversation (0.5 to 3.0)."""
+        # Clamp to valid range
+        multiplier = max(0.5, min(3.0, multiplier))
+        if conversation_id in self.rooms:
+            self.rooms[conversation_id].speed_multiplier = multiplier
+            # Notify all clients of the speed change
+            await self.broadcast_to_conversation(
+                conversation_id,
+                WSMessage(
+                    type=WSMessageType.SPEED_CHANGED,
+                    conversation_id=conversation_id,
+                    speed_multiplier=multiplier,
+                ),
+            )
 
     async def broadcast_to_conversation(self, conversation_id: str, message: WSMessage) -> None:
         """Broadcast a message to all connections in a conversation."""
@@ -331,6 +357,10 @@ async def websocket_endpoint(
                             conversation_id=conversation_id,
                         ),
                     )
+                elif message_type == WSMessageType.SET_SPEED.value:
+                    # Set conversation speed multiplier
+                    speed = message_data.get("speed_multiplier", 1.0)
+                    await manager.set_speed_multiplier(conversation_id, float(speed))
                 elif message_type == WSMessageType.USER_MESSAGE:
                     # User sent a message - broadcast to all
                     # Note: The actual message storage is handled by the REST API

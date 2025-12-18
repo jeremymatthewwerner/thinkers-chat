@@ -487,9 +487,13 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
             input_tokens = 0
             output_tokens = 0
 
-            # Track when we last sent a thinking update (throttle to avoid spam)
+            # Get speed multiplier for this conversation (higher = slower)
+            speed_mult = manager.get_speed_multiplier(conversation_id)
+
+            # Track when we last sent a thinking update (throttle for readability)
             last_thinking_update = 0.0
-            thinking_update_interval = 0.3  # Send update every 300ms
+            # Base interval is 1.5s, multiplied by speed setting for slower display
+            thinking_update_interval = 1.5 * speed_mult
 
             async with self.client.messages.stream(
                 model="claude-sonnet-4-20250514",
@@ -838,11 +842,14 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 if should_respond:
                     consecutive_silence = 0
 
+                    # Get speed multiplier (higher = slower, more reading time)
+                    speed_mult = manager.get_speed_multiplier(conversation_id)
+
                     # Show typing indicator
                     await manager.send_thinker_typing(conversation_id, thinker.name)
 
                     # Small initial delay before starting response generation
-                    await asyncio.sleep(random.uniform(0.5, 1.5))
+                    await asyncio.sleep(random.uniform(0.5, 1.5) * speed_mult)
 
                     # Check pause state before generating (prevents spend during pause)
                     if self.is_paused(conversation_id):
@@ -896,11 +903,11 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
                             # If there are more bubbles, show typing and wait
                             if i < len(bubbles) - 1:
-                                await asyncio.sleep(random.uniform(1.0, 2.5))
+                                await asyncio.sleep(random.uniform(1.0, 2.5) * speed_mult)
                                 # Show typing for next bubble
                                 await manager.send_thinker_typing(conversation_id, thinker.name)
                                 # Brief typing delay
-                                await asyncio.sleep(random.uniform(1.0, 3.0))
+                                await asyncio.sleep(random.uniform(1.0, 3.0) * speed_mult)
 
                         last_response_count = len(messages) + len(bubbles)
                     else:
@@ -908,12 +915,15 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 else:
                     consecutive_silence += 1
 
+                # Get speed multiplier for wait times
+                speed_mult = manager.get_speed_multiplier(conversation_id)
+
                 # Variable wait before checking again
                 # Shorter waits when conversation is active, longer when quiet
                 if consecutive_silence > 3:
-                    wait_time = random.uniform(5.0, 12.0)  # Quiet conversation
+                    wait_time = random.uniform(5.0, 12.0) * speed_mult  # Quiet conversation
                 else:
-                    wait_time = random.uniform(2.0, 6.0)  # Active conversation
+                    wait_time = random.uniform(2.0, 6.0) * speed_mult  # Active conversation
                 await asyncio.sleep(wait_time)
 
             except asyncio.CancelledError:

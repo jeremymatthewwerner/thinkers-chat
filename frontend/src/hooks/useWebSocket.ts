@@ -20,6 +20,7 @@ export interface UseWebSocketOptions {
 export interface UseWebSocketReturn {
   isConnected: boolean;
   isPaused: boolean;
+  speedMultiplier: number; // 1.0 = normal, 0.5 = fast, 2.0+ = slow
   typingThinkers: Set<string>;
   thinkingContent: Map<string, string>; // thinker name -> thinking preview
   sendUserMessage: (content: string) => void;
@@ -27,6 +28,7 @@ export interface UseWebSocketReturn {
   sendTypingStop: () => void;
   sendPause: () => void;
   sendResume: () => void;
+  sendSetSpeed: (multiplier: number) => void;
 }
 
 export function useWebSocket({
@@ -39,6 +41,7 @@ export function useWebSocket({
 }: UseWebSocketOptions): UseWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [speedMultiplier, setSpeedMultiplier] = useState(1.0);
   const [typingThinkers, setTypingThinkers] = useState<Set<string>>(new Set());
   const [thinkingContent, setThinkingContent] = useState<Map<string, string>>(
     new Map()
@@ -170,6 +173,12 @@ export function useWebSocket({
               setIsPaused(false);
               break;
 
+            case 'speed_changed':
+              if (data.speed_multiplier !== undefined) {
+                setSpeedMultiplier(data.speed_multiplier);
+              }
+              break;
+
             case 'error':
               onError?.(data.content || 'Unknown error');
               break;
@@ -198,6 +207,7 @@ export function useWebSocket({
       setThinkingContent(new Map());
       setIsPaused(false);
       setIsConnected(false);
+      setSpeedMultiplier(1.0);
     };
   }, [
     conversationId,
@@ -253,9 +263,21 @@ export function useWebSocket({
     });
   }, [conversationId, sendMessage]);
 
+  const sendSetSpeed = useCallback(
+    (multiplier: number) => {
+      sendMessage({
+        type: 'set_speed',
+        conversation_id: conversationId || undefined,
+        speed_multiplier: multiplier,
+      });
+    },
+    [conversationId, sendMessage]
+  );
+
   return {
     isConnected,
     isPaused,
+    speedMultiplier,
     typingThinkers,
     thinkingContent,
     sendUserMessage,
@@ -263,5 +285,6 @@ export function useWebSocket({
     sendTypingStop,
     sendPause,
     sendResume,
+    sendSetSpeed,
   };
 }

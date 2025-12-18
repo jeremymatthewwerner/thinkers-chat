@@ -21,6 +21,27 @@ export interface ChatAreaProps {
   isPaused?: boolean;
   onPause?: () => void;
   onResume?: () => void;
+  /** Speed multiplier (1.0 = normal, 0.5 = fast, 2.0+ = slow) */
+  speedMultiplier?: number;
+  onSpeedChange?: (multiplier: number) => void;
+}
+
+// Speed labels for display
+const SPEED_LABELS: Record<number, string> = {
+  0.5: 'Fast',
+  1.0: 'Normal',
+  1.5: 'Relaxed',
+  2.0: 'Slow',
+  3.0: 'Very Slow',
+};
+
+function getSpeedLabel(speed: number): string {
+  // Find closest match
+  const speeds = [0.5, 1.0, 1.5, 2.0, 3.0];
+  const closest = speeds.reduce((prev, curr) =>
+    Math.abs(curr - speed) < Math.abs(prev - speed) ? curr : prev
+  );
+  return SPEED_LABELS[closest];
 }
 
 export function ChatArea({
@@ -35,6 +56,8 @@ export function ChatArea({
   isPaused = false,
   onPause,
   onResume,
+  speedMultiplier = 1.0,
+  onSpeedChange,
 }: ChatAreaProps) {
   if (!conversation) {
     return (
@@ -74,6 +97,32 @@ export function ChatArea({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Speed control */}
+          {onSpeedChange && (
+            <div
+              className="flex items-center gap-2"
+              data-testid="speed-control"
+            >
+              <label className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                Pace:
+              </label>
+              <input
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.5"
+                value={speedMultiplier}
+                onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
+                className="w-20 h-1.5 accent-blue-600 cursor-pointer"
+                title={`Conversation pace: ${getSpeedLabel(speedMultiplier)}`}
+                data-testid="speed-slider"
+              />
+              <span className="text-xs text-zinc-600 dark:text-zinc-300 w-16">
+                {getSpeedLabel(speedMultiplier)}
+              </span>
+            </div>
+          )}
+
           {/* Pause/Resume button */}
           {(onPause || onResume) && (
             <button

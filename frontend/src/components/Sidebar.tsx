@@ -141,11 +141,13 @@ export function Sidebar({
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {/* Bug report button */}
+                  {/* Bug report button - creates GitHub issue */}
                   <a
-                    href="mailto:jwerner@gmail.com?subject=Thinkers%20Chat%20Bug%20Report&body=Please%20describe%20the%20issue%3A%0A%0A%0ASteps%20to%20reproduce%3A%0A1.%20%0A2.%20%0A%0AExpected%20behavior%3A%0A%0AActual%20behavior%3A%0A%0ABrowser%2FDevice%3A%0A"
+                    href="https://github.com/jeremymatthewwerner/thinkers-chat/issues/new?title=%5BP3%5D%20User%20Report%3A%20&body=%23%23%20Description%0APlease%20describe%20the%20issue%3A%0A%0A%23%23%20Steps%20to%20Reproduce%0A1.%20%0A2.%20%0A%0A%23%23%20Expected%20Behavior%0A%0A%23%23%20Actual%20Behavior%0A%0A%23%23%20Browser%2FDevice%0A&labels=P3,bug"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="p-2 text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                    title="Report a bug"
+                    title="Report a bug on GitHub"
                     data-testid="bug-report-link"
                   >
                     <svg

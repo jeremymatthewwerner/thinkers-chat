@@ -159,6 +159,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           track_progress: true
+          allowed_bots: '*'  # Allow self-chaining via repository_dispatch
           prompt: |
             You are working on issue #${{ needs.find-work.outputs.issue_number }}: ${{ needs.find-work.outputs.issue_title }}
 
@@ -224,9 +225,10 @@ jobs:
             --remove-label "claude-working" || true
 
   # Self-chain: trigger another run if there's more work
+  # IMPORTANT: Only chain on SUCCESS to prevent infinite failure loops
   continue-work:
     needs: [find-work, work-on-issue]
-    if: always() && needs.find-work.outputs.has_more_work == 'true'
+    if: success() && needs.find-work.outputs.has_more_work == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

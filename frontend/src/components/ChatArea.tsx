@@ -4,7 +4,9 @@
 
 'use client';
 
+import { useState } from 'react';
 import type { Conversation, Message } from '@/types';
+import { exportAsHtml, exportAsMarkdown } from '@/lib/export';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 
@@ -59,6 +61,22 @@ export function ChatArea({
   speedMultiplier = 1.0,
   onSpeedChange,
 }: ChatAreaProps) {
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const handleExportHtml = () => {
+    if (conversation) {
+      exportAsHtml(conversation, messages);
+      setShowExportMenu(false);
+    }
+  };
+
+  const handleExportMarkdown = () => {
+    if (conversation) {
+      exportAsMarkdown(conversation, messages);
+      setShowExportMenu(false);
+    }
+  };
+
   if (!conversation) {
     return (
       <div
@@ -122,6 +140,80 @@ export function ChatArea({
               </span>
             </div>
           )}
+
+          {/* Export button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              data-testid="export-button"
+              title="Export conversation"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4"
+              >
+                <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
+                <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+              </svg>
+              Export
+            </button>
+            {showExportMenu && (
+              <>
+                {/* Backdrop to close menu */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowExportMenu(false)}
+                />
+                {/* Dropdown menu */}
+                <div
+                  className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 py-1 min-w-[140px]"
+                  data-testid="export-menu"
+                >
+                  <button
+                    onClick={handleExportHtml}
+                    className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2"
+                    data-testid="export-html-option"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-4 h-4 text-orange-500"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zM10 8a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 0110 8z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    HTML
+                  </button>
+                  <button
+                    onClick={handleExportMarkdown}
+                    className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2"
+                    data-testid="export-markdown-option"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-4 h-4 text-blue-500"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zM8 12.25a.75.75 0 01.75-.75h2.5a.75.75 0 010 1.5h-2.5a.75.75 0 01-.75-.75z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Markdown
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Pause/Resume button */}
           {(onPause || onResume) && (

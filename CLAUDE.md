@@ -304,18 +304,19 @@ Background automation handles issue triage and work without manual intervention.
 ### Automated Workflows
 
 **Issue Triage** (`.github/workflows/claude-triage.yml`):
-- Triggers when new issues are opened or labeled with P3
+- Triggers when P3 label is added (user-reported issues needing triage)
 - Analyzes issue content and assigns appropriate priority (P0/P1/P2)
-- Adds type labels (bug, feature, task)
-- Comments with triage reasoning
+- Adds type labels (bug, enhancement, task)
+- Comments with triage reasoning and priority justification
 - Checks for duplicate issues
 
 **Automated Work** (`.github/workflows/claude-work.yml`):
 - **Event-driven**: Triggers immediately when issues get P0/P1/P2 labels
-- **Self-chaining**: After completing work, automatically checks for more issues
+- **Self-chaining**: Uses `repository_dispatch` to continue processing queue
 - **Fallback**: Scheduled every 6 hours to catch edge cases
 - Finds highest priority open issue (P0 → P1 → P2)
 - Adds `claude-working` label while in progress
+- **Status comments**: Posts updates to issue when starting and completing work
 - Implements changes, runs tests, creates PR
 - Removes `claude-working` label when done
 - Concurrency control: only one work job runs at a time (others queue)

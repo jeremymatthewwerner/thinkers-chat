@@ -18,6 +18,86 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * Escapes regex special characters.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Renders message content with highlighted mentions for HTML export.
+ * Similar to the UI mention rendering but outputs HTML strings.
+ */
+function renderMentionsHtml(
+  content: string,
+  thinkers: ConversationThinker[]
+): string {
+  if (!thinkers || thinkers.length === 0) {
+    return escapeHtml(content);
+  }
+
+  // Build a map of names to thinker data (case-insensitive)
+  const thinkerMap = new Map<string, ConversationThinker>();
+  thinkers.forEach((t) => {
+    thinkerMap.set(t.name.toLowerCase(), t);
+    // Also map individual name parts for partial matches
+    const nameParts = t.name.split(' ');
+    nameParts.forEach((part) => {
+      if (part.length > 2) {
+        thinkerMap.set(part.toLowerCase(), t);
+      }
+    });
+  });
+
+  // Create regex pattern matching any thinker name
+  const names = Array.from(thinkerMap.keys()).sort(
+    (a, b) => b.length - a.length
+  );
+  if (names.length === 0) return escapeHtml(content);
+
+  const pattern = new RegExp(
+    `\\b(${names.map(escapeRegex).join('|')})\\b`,
+    'gi'
+  );
+
+  // Process content, escaping HTML and highlighting mentions
+  const parts: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(content)) !== null) {
+    // Add escaped text before this match
+    if (match.index > lastIndex) {
+      parts.push(escapeHtml(content.slice(lastIndex, match.index)));
+    }
+
+    // Add the highlighted mention
+    const matchedName = match[1];
+    const thinker = thinkerMap.get(matchedName.toLowerCase());
+    if (thinker) {
+      const color = thinker.color || '#6366f1';
+      const avatarHtml = thinker.image_url
+        ? `<img src="${thinker.image_url}" alt="${escapeHtml(thinker.name)}" class="mention-avatar">`
+        : `<span class="mention-initial" style="background-color: ${color}20; color: ${color}">${thinker.name[0]}</span>`;
+      parts.push(
+        `<span class="mention" style="color: ${color}; background-color: ${color}15">${avatarHtml}${escapeHtml(matchedName)}</span>`
+      );
+    } else {
+      parts.push(escapeHtml(matchedName));
+    }
+
+    lastIndex = match.index + matchedName.length;
+  }
+
+  // Add remaining escaped text
+  if (lastIndex < content.length) {
+    parts.push(escapeHtml(content.slice(lastIndex)));
+  }
+
+  return parts.join('');
+}
+
+/**
  * Formats a date for display.
  */
 function formatDate(isoString: string): string {
@@ -58,7 +138,7 @@ export function generateHtmlExport(
         return `
           <div class="message user-message">
             <div class="message-bubble user-bubble">
-              <div class="message-content">${escapeHtml(msg.content)}</div>
+              <div class="message-content">${renderMentionsHtml(msg.content, conversation.thinkers)}</div>
               <div class="message-meta">${time}</div>
             </div>
           </div>
@@ -71,7 +151,7 @@ export function generateHtmlExport(
             </div>
             <div class="message-bubble thinker-bubble">
               <div class="sender-name" style="color: ${color}">${escapeHtml(msg.sender_name || 'Unknown')}</div>
-              <div class="message-content">${escapeHtml(msg.content)}</div>
+              <div class="message-content">${renderMentionsHtml(msg.content, conversation.thinkers)}</div>
               <div class="message-meta">${time} ${cost ? `· ${cost}` : ''}</div>
             </div>
           </div>
@@ -169,6 +249,31 @@ export function generateHtmlExport(
     }
     .sender-name { font-weight: 600; font-size: 0.875rem; margin-bottom: 0.25rem; }
     .message-content { white-space: pre-wrap; }
+    .mention {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-weight: 600;
+      padding: 0.1rem 0.3rem;
+      border-radius: 0.25rem;
+      margin: 0 0.1rem;
+    }
+    .mention-avatar {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .mention-initial {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+    }
     .message-meta { font-size: 0.75rem; color: #71717a; margin-top: 0.5rem; }
     .user-bubble .message-meta { color: #93c5fd; }
     .summary {

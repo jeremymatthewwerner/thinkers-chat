@@ -104,6 +104,110 @@ This ensures comprehensive test coverage and prevents regressions.
 - Commit frequently with clear messages
 - One logical change per commit
 
+## Task & Bug Tracking with GitHub Issues (MANDATORY)
+
+All bugs AND tasks must be tracked via GitHub Issues for audit history and traceability.
+
+### When to Create Issues
+
+Create a GitHub issue for:
+1. **Every bug found** - Whether discovered by Claude, CI/CD, or user-reported
+2. **Every failing test** - If tests fail in CI, file an issue before fixing
+3. **Every feature request** - Track requested features as issues
+4. **Every task/todo** - Before starting work on non-trivial tasks, create an issue
+5. **Multi-step work** - Break larger work into multiple linked issues
+
+### Issue Workflow
+
+1. **File the issue first** - Before starting work, create a GitHub issue:
+   ```bash
+   # For bugs
+   gh issue create --title "Bug: <brief description>" --body "<detailed description>"
+
+   # For features/tasks
+   gh issue create --title "Feature: <brief description>" --body "<detailed description>"
+
+   # For tasks
+   gh issue create --title "Task: <brief description>" --body "<detailed description>"
+   ```
+
+2. **Reference issues in commits** - When committing, reference the issue:
+   ```bash
+   git commit -m "Fix <description>
+
+   Fixes #<issue-number>"
+   ```
+
+   Or for partial progress:
+   ```bash
+   git commit -m "Progress on <description>
+
+   Relates to #<issue-number>"
+   ```
+
+3. **Verify the fix** - Run tests and CI to confirm the fix works
+
+4. **Close or reopen** - If CI passes, the issue auto-closes. If the fix fails, reopen:
+   ```bash
+   gh issue reopen <issue-number> --comment "Fix failed: <reason>"
+   ```
+
+### Issue Labels
+
+Use labels to categorize issues:
+- `bug` - Something isn't working
+- `feature` - New feature request
+- `task` - General task/work item
+- `ci` - CI/CD related
+- `urgent` - High priority
+
+### Issue Templates
+
+**Bug Report:**
+```markdown
+## Description
+<What's broken?>
+
+## Steps to Reproduce
+1. <step 1>
+2. <step 2>
+
+## Expected Behavior
+<What should happen?>
+
+## Actual Behavior
+<What actually happens?>
+
+## Environment
+- Browser/OS: <details>
+- Relevant logs: <paste or link>
+```
+
+**Feature Request:**
+```markdown
+## Description
+<What feature is needed?>
+
+## Use Case
+<Why is this needed? What problem does it solve?>
+
+## Proposed Solution
+<How might this be implemented?>
+```
+
+**Task:**
+```markdown
+## Description
+<What needs to be done?>
+
+## Acceptance Criteria
+- [ ] <criterion 1>
+- [ ] <criterion 2>
+
+## Related Issues
+- #<related-issue-number>
+```
+
 ## Architecture
 
 - Thinker agents run as independent async tasks (concurrent responses)

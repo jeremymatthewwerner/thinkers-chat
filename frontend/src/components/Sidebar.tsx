@@ -143,7 +143,7 @@ export function Sidebar({
                 <div className="flex items-center gap-1">
                   {/* Bug report button - creates GitHub issue */}
                   <a
-                    href="https://github.com/jeremymatthewwerner/thinkers-chat/issues/new?title=%5BP3%5D%20User%20Report%3A%20&body=%23%23%20Description%0APlease%20describe%20the%20issue%3A%0A%0A%23%23%20Steps%20to%20Reproduce%0A1.%20%0A2.%20%0A%0A%23%23%20Expected%20Behavior%0A%0A%23%23%20Actual%20Behavior%0A%0A%23%23%20Browser%2FDevice%0A&labels=P3,bug"
+                    href="https://github.com/jeremymatthewwerner/thinkers-chat/issues/new?title=Bug%3A%20&body=%23%23%20Description%0APlease%20describe%20the%20issue%3A%0A%0A%23%23%20Steps%20to%20Reproduce%0A1.%20%0A2.%20%0A%0A%23%23%20Expected%20Behavior%0A%0A%23%23%20Actual%20Behavior%0A%0A%23%23%20Browser%2FDevice%0A&labels=P3,bug"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"

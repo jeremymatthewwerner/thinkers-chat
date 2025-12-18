@@ -170,4 +170,30 @@ describe('NewChatModal', () => {
       expect(screen.getByTestId('create-button')).toBeDisabled();
     });
   });
+
+  it('proceeds to thinker selection even when suggestion API fails', async () => {
+    const user = userEvent.setup();
+    const onSuggestThinkers = jest
+      .fn()
+      .mockRejectedValue(new Error('API credit limit reached'));
+
+    render(
+      <NewChatModal {...defaultProps} onSuggestThinkers={onSuggestThinkers} />
+    );
+
+    await user.type(screen.getByTestId('topic-input'), 'Philosophy');
+    await user.click(screen.getByTestId('next-button'));
+
+    // Should still proceed to thinker selection step
+    await waitFor(() => {
+      expect(screen.getByText('Select Thinkers')).toBeInTheDocument();
+    });
+
+    // Should show the error message
+    await waitFor(() => {
+      expect(
+        screen.getByText('API credit limit reached')
+      ).toBeInTheDocument();
+    });
+  });
 });

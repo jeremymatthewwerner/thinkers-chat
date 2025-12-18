@@ -82,15 +82,18 @@ export function NewChatModal({
       try {
         const results = await onSuggestThinkers(topic.trim(), 5);
         setSuggestions(results);
-        setStep('thinkers');
       } catch (err) {
         const message =
           err instanceof Error
             ? err.message
             : 'Failed to get thinker suggestions';
         setError(message);
+        // Still proceed with empty suggestions - user can add thinkers manually
+        setSuggestions([]);
       } finally {
         setIsLoading(false);
+        // Always advance to thinker selection step, even if suggestions failed
+        setStep('thinkers');
       }
     },
     [topic, onSuggestThinkers]

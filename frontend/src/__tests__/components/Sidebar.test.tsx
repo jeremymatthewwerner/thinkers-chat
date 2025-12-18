@@ -147,11 +147,7 @@ describe('Sidebar', () => {
 
   it('bug report URL includes display name when provided', () => {
     render(
-      <Sidebar
-        {...defaultProps}
-        username="testuser"
-        displayName="Test User"
-      />
+      <Sidebar {...defaultProps} username="testuser" displayName="Test User" />
     );
     const bugReportLink = screen.getByTestId(
       'bug-report-link'

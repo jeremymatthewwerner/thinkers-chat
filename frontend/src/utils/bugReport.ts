@@ -14,7 +14,8 @@ export function generateBugReportUrl(params: BugReportParams): string {
   const { username, displayName } = params;
 
   // Get user agent information (browser/device)
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
+  const userAgent =
+    typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
 
   // Parse user agent to extract readable browser/OS info
   const browserInfo = getBrowserInfo(userAgent);
@@ -79,7 +80,11 @@ function getBrowserInfo(userAgent: string): { browser: string; os: string } {
   if (userAgent.includes('Android')) {
     const match = userAgent.match(/Android (\d+(\.\d+)?)/);
     os = match ? `Android ${match[1]}` : 'Android';
-  } else if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+  } else if (
+    userAgent.includes('iOS') ||
+    userAgent.includes('iPhone') ||
+    userAgent.includes('iPad')
+  ) {
     const match = userAgent.match(/OS (\d+_\d+(_\d+)?)/);
     os = match ? `iOS ${match[1].replace(/_/g, '.')}` : 'iOS';
   } else if (userAgent.includes('Windows NT')) {

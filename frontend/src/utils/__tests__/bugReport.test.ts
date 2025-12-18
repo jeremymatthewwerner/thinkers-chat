@@ -31,7 +31,9 @@ describe('generateBugReportUrl', () => {
   it('generates URL with username only', () => {
     const url = generateBugReportUrl({ username: 'testuser' });
 
-    expect(url).toContain('https://github.com/jeremymatthewwerner/thinkers-chat/issues/new');
+    expect(url).toContain(
+      'https://github.com/jeremymatthewwerner/thinkers-chat/issues/new'
+    );
     expect(url).toContain('title=Bug%3A%20');
     expect(url).toContain('labels=P3%2Cbug');
 
@@ -59,7 +61,9 @@ describe('generateBugReportUrl', () => {
     const url = generateBugReportUrl({});
 
     const decodedUrl = decodeURIComponent(url);
-    expect(decodedUrl).toContain('Filed from thinkers-chat app by Unknown User');
+    expect(decodedUrl).toContain(
+      'Filed from thinkers-chat app by Unknown User'
+    );
     expect(decodedUrl).toContain('Username: Not available');
   });
 

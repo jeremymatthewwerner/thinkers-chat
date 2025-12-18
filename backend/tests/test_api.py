@@ -591,9 +591,7 @@ class TestAdminAPI:
 class TestSpendAPI:
     """Tests for spend tracking endpoints."""
 
-    async def test_get_spend_as_admin(
-        self, client: AsyncClient, db_session: AsyncSession
-    ) -> None:
+    async def test_get_spend_as_admin(self, client: AsyncClient, db_session: AsyncSession) -> None:
         """Test that admins can get user spend data."""
         admin_data = await create_admin_user(client, db_session)
         headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
@@ -664,9 +662,7 @@ class TestSpendAPI:
         headers = await get_auth_headers(client, "regularspenduser", "password123")
         user_data = await register_and_get_token(client, "targetuser", "password123")
 
-        response = await client.get(
-            f"/api/spend/{user_data['user']['id']}", headers=headers
-        )
+        response = await client.get(f"/api/spend/{user_data['user']['id']}", headers=headers)
         assert response.status_code == 403
 
     async def test_get_spend_no_auth(self, client: AsyncClient) -> None:

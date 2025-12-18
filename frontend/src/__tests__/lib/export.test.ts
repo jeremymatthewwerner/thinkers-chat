@@ -225,10 +225,10 @@ describe('Export utilities', () => {
         href: '',
         download: '',
         click: jest.fn(),
-      };
-      jest.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
-      jest.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as any);
-      jest.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
+      } as unknown as HTMLAnchorElement;
+      jest.spyOn(document, 'createElement').mockReturnValue(mockLink);
+      jest.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink);
+      jest.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink);
     });
 
     afterEach(() => {

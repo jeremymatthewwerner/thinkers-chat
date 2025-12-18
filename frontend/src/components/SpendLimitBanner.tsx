@@ -74,9 +74,7 @@ export function SpendLimitBanner({
                   : 'text-yellow-800 dark:text-yellow-200'
               }`}
             >
-              {isExceeded
-                ? 'Spend limit reached'
-                : 'Approaching spend limit'}
+              {isExceeded ? 'Spend limit reached' : 'Approaching spend limit'}
             </p>
             <p
               className={`text-xs ${
@@ -85,7 +83,8 @@ export function SpendLimitBanner({
                   : 'text-yellow-600 dark:text-yellow-400'
               }`}
             >
-              ${currentSpend.toFixed(2)} / ${spendLimit.toFixed(2)} ({percentUsed.toFixed(0)}%)
+              ${currentSpend.toFixed(2)} / ${spendLimit.toFixed(2)} (
+              {percentUsed.toFixed(0)}%)
               {isExceeded && ' - Contact admin to increase your limit'}
             </p>
           </div>

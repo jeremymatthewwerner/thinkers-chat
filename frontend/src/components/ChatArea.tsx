@@ -75,9 +75,11 @@ export function ChatArea({
   const [dismissedWarning, setDismissedWarning] = useState(false);
 
   // Calculate spend limit status
-  const percentUsed = userSpendLimit > 0 ? (userTotalSpend / userSpendLimit) * 100 : 0;
+  const percentUsed =
+    userSpendLimit > 0 ? (userTotalSpend / userSpendLimit) * 100 : 0;
   const isNearLimit = percentUsed >= 85 && !spendLimitExceeded;
-  const showSpendBanner = (isNearLimit && !dismissedWarning) || spendLimitExceeded;
+  const showSpendBanner =
+    (isNearLimit && !dismissedWarning) || spendLimitExceeded;
 
   const handleExportHtml = () => {
     if (conversation) {

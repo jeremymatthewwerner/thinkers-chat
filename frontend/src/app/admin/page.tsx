@@ -85,7 +85,9 @@ export default function AdminPage() {
     try {
       await updateUserSpendLimit(userId, newLimit);
       setUsers(
-        users.map((u) => (u.id === userId ? { ...u, spend_limit: newLimit } : u))
+        users.map((u) =>
+          u.id === userId ? { ...u, spend_limit: newLimit } : u
+        )
       );
       cancelEditingLimit();
     } catch (err) {
@@ -265,11 +267,15 @@ export default function AdminPage() {
                     <td className="whitespace-nowrap px-6 py-4 text-zinc-700 dark:text-zinc-300">
                       {editingLimitId === u.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-zinc-500 dark:text-zinc-400">$</span>
+                          <span className="text-zinc-500 dark:text-zinc-400">
+                            $
+                          </span>
                           <input
                             type="number"
                             value={editingLimitValue}
-                            onChange={(e) => setEditingLimitValue(e.target.value)}
+                            onChange={(e) =>
+                              setEditingLimitValue(e.target.value)
+                            }
                             className="w-20 rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-700"
                             min="0.01"
                             step="0.01"
@@ -292,7 +298,9 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2">
                           <span>{formatCurrency(u.spend_limit)}</span>
                           <button
-                            onClick={() => startEditingLimit(u.id, u.spend_limit)}
+                            onClick={() =>
+                              startEditingLimit(u.id, u.spend_limit)
+                            }
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                           >
                             Edit

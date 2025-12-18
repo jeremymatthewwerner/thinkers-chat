@@ -199,21 +199,29 @@ jobs:
             --dangerously-skip-permissions
             --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh:*),Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)"
 
-      - name: Comment - Work failed
+      - name: Mark as needing human help and notify
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Add needs-human-help label
+          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --add-label "needs-human-help" || true
+
+          # Post comment with @mention for notification
           gh issue comment ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
             --body "$(cat <<'EOF'
           ## ❌ Claude encountered an issue
 
+          @jeremymatthewwerner - This issue needs human intervention.
+
           **Status:** Work failed or was blocked
 
           **Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-          Please check the workflow logs for details. This issue may need manual intervention or clarification.
+          Please check the workflow logs for details. The `needs-human-help` label has been added.
           EOF
           )"
 

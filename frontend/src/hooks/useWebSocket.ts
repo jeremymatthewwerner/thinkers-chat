@@ -205,7 +205,8 @@ export function useWebSocket({
       // Reset state on cleanup (before next effect runs with new conversationId)
       setTypingThinkers(new Set());
       setThinkingContent(new Map());
-      setIsPaused(false);
+      // Note: Do NOT reset isPaused here - the backend will send the correct state
+      // when reconnecting to ensure pause state is preserved across thread switches
       setIsConnected(false);
       setSpeedMultiplier(1.0);
     };

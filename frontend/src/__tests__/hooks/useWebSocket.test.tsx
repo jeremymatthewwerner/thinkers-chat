@@ -421,4 +421,170 @@ describe('useWebSocket', () => {
       expect(onError).toHaveBeenCalledWith('Failed to parse WebSocket message');
     });
   });
+
+  it('sets isPaused when paused message is received', async () => {
+    const { result } = renderHook(() =>
+      useWebSocket({
+        conversationId: 'conv-123',
+      })
+    );
+
+    act(() => {
+      mockWsInstance.simulateOpen();
+    });
+
+    expect(result.current.isPaused).toBe(false);
+
+    act(() => {
+      mockWsInstance.simulateMessage({
+        type: 'paused',
+        conversation_id: 'conv-123',
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPaused).toBe(true);
+    });
+  });
+
+  it('unsets isPaused when resumed message is received', async () => {
+    const { result } = renderHook(() =>
+      useWebSocket({
+        conversationId: 'conv-123',
+      })
+    );
+
+    act(() => {
+      mockWsInstance.simulateOpen();
+    });
+
+    // First pause
+    act(() => {
+      mockWsInstance.simulateMessage({
+        type: 'paused',
+        conversation_id: 'conv-123',
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPaused).toBe(true);
+    });
+
+    // Then resume
+    act(() => {
+      mockWsInstance.simulateMessage({
+        type: 'resumed',
+        conversation_id: 'conv-123',
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPaused).toBe(false);
+    });
+  });
+
+  it('preserves isPaused state when switching conversations', async () => {
+    const { result, rerender } = renderHook(
+      ({ conversationId }) =>
+        useWebSocket({
+          conversationId,
+        }),
+      {
+        initialProps: { conversationId: 'conv-123' },
+      }
+    );
+
+    // Setup initial connection
+    act(() => {
+      mockWsInstance.simulateOpen();
+    });
+
+    // Pause the conversation
+    act(() => {
+      mockWsInstance.simulateMessage({
+        type: 'paused',
+        conversation_id: 'conv-123',
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPaused).toBe(true);
+    });
+
+    // Switch to different conversation - create new WebSocket instance
+    const newMockWsInstance = new MockWebSocket();
+    mockWsInstance = newMockWsInstance;
+
+    rerender({ conversationId: 'conv-456' });
+
+    // The hook should NOT reset isPaused during cleanup
+    // It should remain true until the backend tells us otherwise
+    expect(result.current.isPaused).toBe(true);
+
+    // Simulate backend telling us the new conversation is not paused
+    act(() => {
+      newMockWsInstance.simulateOpen();
+    });
+
+    // isPaused should still be true because backend hasn't sent resumed message
+    expect(result.current.isPaused).toBe(true);
+
+    // Only when backend explicitly sends resumed should it change
+    act(() => {
+      newMockWsInstance.simulateMessage({
+        type: 'resumed',
+        conversation_id: 'conv-456',
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPaused).toBe(false);
+    });
+  });
+
+  it('sends pause command via WebSocket', async () => {
+    const { result } = renderHook(() =>
+      useWebSocket({
+        conversationId: 'conv-123',
+      })
+    );
+
+    act(() => {
+      mockWsInstance.simulateOpen();
+    });
+
+    act(() => {
+      result.current.sendPause();
+    });
+
+    expect(mockWsInstance.send).toHaveBeenCalledWith(
+      JSON.stringify({
+        type: 'pause',
+        conversation_id: 'conv-123',
+      })
+    );
+  });
+
+  it('sends resume command via WebSocket', async () => {
+    const { result } = renderHook(() =>
+      useWebSocket({
+        conversationId: 'conv-123',
+      })
+    );
+
+    act(() => {
+      mockWsInstance.simulateOpen();
+    });
+
+    act(() => {
+      result.current.sendResume();
+    });
+
+    expect(mockWsInstance.send).toHaveBeenCalledWith(
+      JSON.stringify({
+        type: 'resume',
+        conversation_id: 'conv-123',
+      })
+    );
+  });
 });

@@ -39,6 +39,7 @@ async def list_users(
             UserWithStats(
                 id=user.id,
                 username=user.username,
+                display_name=user.display_name,
                 is_admin=user.is_admin,
                 total_spend=user.total_spend,
                 conversation_count=conv_count,

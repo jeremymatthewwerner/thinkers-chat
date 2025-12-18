@@ -7,6 +7,7 @@
 export interface User {
   id: string;
   username: string;
+  display_name: string | null;
   is_admin: boolean;
   total_spend: number;
   created_at: string;

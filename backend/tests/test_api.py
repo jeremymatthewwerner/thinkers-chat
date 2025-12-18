@@ -76,11 +76,16 @@ async def register_and_get_token(
     client: AsyncClient,
     username: str = "testuser",
     password: str = "testpass123",
+    display_name: str | None = None,
 ) -> dict[str, Any]:
     """Helper to register a user and get their auth token."""
     response = await client.post(
         "/api/auth/register",
-        json={"username": username, "password": password},
+        json={
+            "username": username,
+            "display_name": display_name or username.title(),
+            "password": password,
+        },
     )
     assert response.status_code == 200
     data: dict[str, Any] = response.json()
@@ -104,23 +109,36 @@ class TestAuthAPI:
         """Test user registration."""
         response = await client.post(
             "/api/auth/register",
-            json={"username": "newuser", "password": "password123"},
+            json={
+                "username": "newuser",
+                "display_name": "New User",
+                "password": "password123",
+            },
         )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
         assert data["user"]["username"] == "newuser"
+        assert data["user"]["display_name"] == "New User"
         assert data["user"]["is_admin"] is False
 
     async def test_register_duplicate_username(self, client: AsyncClient) -> None:
         """Test that duplicate usernames are rejected."""
         await client.post(
             "/api/auth/register",
-            json={"username": "testuser", "password": "password123"},
+            json={
+                "username": "testuser",
+                "display_name": "Test User",
+                "password": "password123",
+            },
         )
         response = await client.post(
             "/api/auth/register",
-            json={"username": "testuser", "password": "password456"},
+            json={
+                "username": "testuser",
+                "display_name": "Test User 2",
+                "password": "password456",
+            },
         )
         assert response.status_code == 400
         assert "already taken" in response.json()["detail"]
@@ -130,7 +148,11 @@ class TestAuthAPI:
         # First register
         await client.post(
             "/api/auth/register",
-            json={"username": "logintest", "password": "password123"},
+            json={
+                "username": "logintest",
+                "display_name": "Login Test",
+                "password": "password123",
+            },
         )
         # Then login
         response = await client.post(
@@ -141,12 +163,17 @@ class TestAuthAPI:
         data = response.json()
         assert "access_token" in data
         assert data["user"]["username"] == "logintest"
+        assert data["user"]["display_name"] == "Login Test"
 
     async def test_login_invalid_password(self, client: AsyncClient) -> None:
         """Test login with wrong password."""
         await client.post(
             "/api/auth/register",
-            json={"username": "testuser2", "password": "password123"},
+            json={
+                "username": "testuser2",
+                "display_name": "Test User 2",
+                "password": "password123",
+            },
         )
         response = await client.post(
             "/api/auth/login",

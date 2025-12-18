@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.auth import decode_access_token
 from app.core.database import get_db
@@ -32,7 +33,9 @@ async def get_session_from_token(
     if not session_id:
         raise HTTPException(status_code=401, detail="Invalid token - no session")
 
-    result = await db.execute(select(Session).where(Session.id == session_id))
+    result = await db.execute(
+        select(Session).where(Session.id == session_id).options(selectinload(Session.user))
+    )
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")

@@ -20,6 +20,7 @@ export interface SidebarProps {
   isPaused?: boolean;
   sessionCost?: number;
   username?: string;
+  displayName?: string | null;
   isAdmin?: boolean;
   onLogout?: () => void;
 }
@@ -36,9 +37,12 @@ export function Sidebar({
   isPaused = false,
   sessionCost = 0,
   username,
+  displayName,
   isAdmin = false,
   onLogout,
 }: SidebarProps) {
+  // Use display name if available, fall back to username
+  const nameToShow = displayName || username;
   return (
     <>
       {/* Mobile overlay */}
@@ -129,11 +133,11 @@ export function Sidebar({
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm font-medium">
-                      {username.charAt(0).toUpperCase()}
+                      {(nameToShow || 'U').charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
-                    {username}
+                    {nameToShow}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">

@@ -98,11 +98,12 @@ async function fetchWithAuth<T>(
 // Auth API
 export async function register(
   username: string,
+  displayName: string,
   password: string
 ): Promise<AuthResponse> {
   const response = await fetchWithAuth<AuthResponse>('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, display_name: displayName, password }),
   });
   setAccessToken(response.access_token);
   setStoredUser(response.user);

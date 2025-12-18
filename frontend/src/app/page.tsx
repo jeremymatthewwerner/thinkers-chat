@@ -235,6 +235,7 @@ export default function Home() {
         isPaused={isPaused}
         sessionCost={sessionCost}
         username={user?.username}
+        displayName={user?.display_name}
         isAdmin={user?.is_admin}
         onLogout={handleLogout}
       />

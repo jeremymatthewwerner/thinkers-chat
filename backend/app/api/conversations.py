@@ -164,10 +164,13 @@ async def send_message(
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    # Create message
+    # Create message with user's display name
+    user = session.user
+    sender_name = user.display_name or user.username
     message = Message(
         conversation_id=conversation_id,
         sender_type=SenderType.USER,
+        sender_name=sender_name,
         content=data.content,
     )
     db.add(message)

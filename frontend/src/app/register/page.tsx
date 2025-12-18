@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { register, isAuthenticated, isLoading } = useAuth();
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -37,7 +38,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      await register(username, password);
+      await register(username, displayName, password);
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -85,6 +86,24 @@ export default function RegisterPage() {
                 placeholder="Choose a username"
                 required
                 autoFocus
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="displayName"
+                className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                What should we call you?
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100"
+                placeholder="Your name (shown to thinkers)"
+                required
               />
             </div>
 

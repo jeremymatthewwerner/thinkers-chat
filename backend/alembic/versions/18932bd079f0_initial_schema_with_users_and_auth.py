@@ -28,11 +28,12 @@ def upgrade() -> None:
     # Drop existing tables in reverse dependency order if they exist
     # This handles the case where tables exist but with wrong schema
     # (e.g., sessions without user_id column)
-    op.execute("DROP TABLE IF EXISTS messages CASCADE")
-    op.execute("DROP TABLE IF EXISTS conversation_thinkers CASCADE")
-    op.execute("DROP TABLE IF EXISTS conversations CASCADE")
-    op.execute("DROP TABLE IF EXISTS sessions CASCADE")
-    op.execute("DROP TABLE IF EXISTS users CASCADE")
+    # Note: Dropping in reverse dependency order, no CASCADE needed (SQLite doesn't support it)
+    op.execute("DROP TABLE IF EXISTS messages")
+    op.execute("DROP TABLE IF EXISTS conversation_thinkers")
+    op.execute("DROP TABLE IF EXISTS conversations")
+    op.execute("DROP TABLE IF EXISTS sessions")
+    op.execute("DROP TABLE IF EXISTS users")
 
     # Also drop alembic_version if it exists from a failed migration
     # (we'll recreate it when this migration completes)

@@ -9,6 +9,7 @@ class UserRegister(BaseModel):
     """Request schema for user registration."""
 
     username: str = Field(..., min_length=3, max_length=50)
+    display_name: str = Field(..., min_length=1, max_length=100)
     password: str = Field(..., min_length=6, max_length=100)
 
 
@@ -24,6 +25,7 @@ class UserResponse(BaseModel):
 
     id: str
     username: str
+    display_name: str | None
     is_admin: bool
     total_spend: float
     created_at: datetime
@@ -34,6 +36,7 @@ class UserWithStats(BaseModel):
 
     id: str
     username: str
+    display_name: str | None
     is_admin: bool
     total_spend: float
     conversation_count: int

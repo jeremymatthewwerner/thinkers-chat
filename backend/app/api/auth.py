@@ -88,6 +88,7 @@ async def register(
     password_hash = get_password_hash(data.password)
     user = User(
         username=data.username,
+        display_name=data.display_name,
         password_hash=password_hash,
     )
     db.add(user)
@@ -107,6 +108,7 @@ async def register(
         user=UserResponse(
             id=user.id,
             username=user.username,
+            display_name=user.display_name,
             is_admin=user.is_admin,
             total_spend=user.total_spend,
             created_at=user.created_at,
@@ -148,6 +150,7 @@ async def login(
         user=UserResponse(
             id=user.id,
             username=user.username,
+            display_name=user.display_name,
             is_admin=user.is_admin,
             total_spend=user.total_spend,
             created_at=user.created_at,
@@ -163,6 +166,7 @@ async def get_me(
     return UserResponse(
         id=user.id,
         username=user.username,
+        display_name=user.display_name,
         is_admin=user.is_admin,
         total_spend=user.total_spend,
         created_at=user.created_at,

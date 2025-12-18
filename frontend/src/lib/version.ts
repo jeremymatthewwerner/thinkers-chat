@@ -5,7 +5,9 @@
 // Read version from package.json at build time
 // This will be embedded in the bundle
 export const APP_VERSION =
-  process.env.NEXT_PUBLIC_APP_VERSION || process.env.npm_package_version || '0.1.0';
+  process.env.NEXT_PUBLIC_APP_VERSION ||
+  process.env.npm_package_version ||
+  '0.1.0';
 
 // Generate a build timestamp that changes with each build
 export const BUILD_TIMESTAMP = Date.now().toString();

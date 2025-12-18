@@ -28,7 +28,9 @@ describe('BuildInfo', () => {
     render(<BuildInfo />);
 
     expect(consoleLogSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Thinkers Chat - Build: 2025-12-18T08:00:00.000Z'),
+      expect.stringContaining(
+        'Thinkers Chat - Build: 2025-12-18T08:00:00.000Z'
+      ),
       expect.any(String)
     );
 

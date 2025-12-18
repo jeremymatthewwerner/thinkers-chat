@@ -147,7 +147,12 @@ Create a GitHub issue for:
    gh issue create --title "[P2] Task: <brief description>" --body "<detailed description>"
    ```
 
-2. **Reference issues in commits** - When committing, reference the issue:
+2. **Mark issue as in-progress** - Add the `claude-working` label when starting work:
+   ```bash
+   gh issue edit <issue-number> --add-label "claude-working"
+   ```
+
+3. **Reference issues in commits** - When committing, reference the issue:
    ```bash
    git commit -m "Fix <description>
 
@@ -161,9 +166,9 @@ Create a GitHub issue for:
    Relates to #<issue-number>"
    ```
 
-3. **Verify the fix** - Run tests and CI to confirm the fix works
+4. **Verify the fix** - Run tests and CI to confirm the fix works
 
-4. **Close or reopen** - If CI passes, the issue auto-closes. If the fix fails, reopen:
+5. **Close or reopen** - If CI passes, the issue auto-closes (and `claude-working` label is removed). If the fix fails, reopen:
    ```bash
    gh issue reopen <issue-number> --comment "Fix failed: <reason>"
    ```
@@ -200,6 +205,7 @@ Use labels to categorize issues:
 - `feature` - New feature request
 - `task` - General task/work item
 - `ci` - CI/CD related
+- `claude-working` - Claude is actively working on this issue
 
 ### Issue Templates
 

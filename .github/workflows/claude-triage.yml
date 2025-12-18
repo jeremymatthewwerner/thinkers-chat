@@ -1,0 +1,59 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  triage:
+    # Only run for new issues with P3 label (user-reported, needs triage)
+    if: |
+      github.event.action == 'opened' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'P3')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are triaging a new GitHub issue for the Thinkers Chat project.
+
+            REPOSITORY: ${{ github.repository }}
+            ISSUE NUMBER: #${{ github.event.issue.number }}
+            TITLE: ${{ github.event.issue.title }}
+            BODY: ${{ github.event.issue.body }}
+            AUTHOR: ${{ github.event.issue.user.login }}
+            CURRENT LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
+
+            ## Priority Definitions
+            - P0: Blocks most or all functionality (critical bugs, system down)
+            - P1: Blocks some functionality OR new feature requests
+            - P2: Optimizations, cleanup, refactoring, minor improvements
+            - P3: Unprioritized (needs triage) - should be upgraded to P0/P1/P2
+
+            ## Your Task
+            1. Read and understand the issue
+            2. Determine the appropriate priority (P0, P1, or P2)
+            3. Determine the type (bug, feature, task)
+            4. Check if this might be a duplicate of existing issues
+            5. Update the issue with correct labels
+
+            ## Actions to Take
+            1. Remove P3 label if present and add the correct priority label
+            2. Add type label (bug, feature, or task) if not present
+            3. Add a brief comment explaining your triage decision
+
+            Use these commands:
+            - `gh issue edit ${{ github.event.issue.number }} --remove-label "P3" --add-label "P1,bug"`
+            - `gh issue comment ${{ github.event.issue.number }} --body "..."`
+            - `gh issue list` to check for duplicates
+
+          claude_args: |
+            --allowedTools "Bash(gh issue:*),Bash(gh search:*)"

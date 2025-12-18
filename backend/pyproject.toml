@@ -80,6 +80,11 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+# Suppress "Event loop is closed" errors from aiosqlite during test cleanup
+# This occurs when sync TestClient closes before async DB operations complete
+filterwarnings = [
+    "ignore:Exception ignored:pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.coverage.run]
 source = ["app"]

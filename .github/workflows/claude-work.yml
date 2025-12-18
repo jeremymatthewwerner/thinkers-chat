@@ -158,7 +158,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          track_progress: true
+          track_progress: ${{ github.event_name == 'issues' }}  # Only supported for issue events
           allowed_bots: '*'  # Allow self-chaining via repository_dispatch
           prompt: |
             You are working on issue #${{ needs.find-work.outputs.issue_number }}: ${{ needs.find-work.outputs.issue_title }}

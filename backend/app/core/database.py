@@ -57,7 +57,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
-def run_migrations() -> None:
+def run_migrations() -> bool:
     """Run Alembic migrations synchronously.
 
     This is called from init_db() using run_sync to ensure migrations

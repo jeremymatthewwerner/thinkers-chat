@@ -30,6 +30,14 @@ At every meaningful milestone (new feature, API changes, UI flow completion):
 - Test the happy path AND error cases
 - Use real backend (not mocked) to validate actual API contracts
 
+**When E2E tests hang or timeout (CRITICAL)**:
+- **DO NOT assume it's a test or framework issue** - E2E tests exercise real code paths
+- **ASSUME a real regression** - Something in recent changes broke the functionality
+- **Investigate recent commits** - Look at what changed since tests last passed
+- **Check the feature being tested** - If a test for "thinker suggestions" hangs, the thinker suggestion code likely has a bug
+- **Avoid piling on fixes** - Don't keep adjusting test timeouts or adding workarounds; find and fix the root cause
+- **The Claude API is core to this app** - We can't mock it away; if API calls hang, there's a real integration issue
+
 ## Tech Stack
 
 - **Frontend**: Next.js (TypeScript strict mode)

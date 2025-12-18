@@ -843,8 +843,9 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
             del self._active_tasks[conversation_id]
-        # Clean up paused state
-        self._paused_conversations.discard(conversation_id)
+        # Note: We intentionally do NOT clean up paused state here.
+        # Pause state should persist across reconnections so users
+        # see the conversation is still paused when they return.
 
     def pause_conversation(self, conversation_id: str) -> None:
         """Pause all thinker agents for a conversation."""

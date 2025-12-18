@@ -106,10 +106,12 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [changes, backend, frontend]
-    # Run if code changed AND (jobs succeeded OR were skipped due to no changes)
+    # Only run E2E on PRs (not on push to main) - PR E2E is sufficient
+    # This avoids running E2E twice (once on PR, once on merge)
     # always() ensures condition is evaluated even when dependent jobs are skipped
     if: |
       always() &&
+      github.event_name == 'pull_request' &&
       needs.changes.outputs.e2e == 'true' &&
       (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
       (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
@@ -158,18 +160,17 @@ jobs:
   build-and-push:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
-    needs: [changes, backend, frontend, e2e]
-    # Run on push to main if code changed AND all tests passed (or were skipped for non-code changes)
+    needs: [changes, backend, frontend]
+    # Run on push to main if code changed AND unit tests passed
+    # E2E is skipped on main (already passed on PR) so we don't check it here
     # always() ensures condition is evaluated even when jobs are skipped
-    # Explicitly check that no jobs FAILED (skipped due to failure != skipped due to no changes)
     if: |
       always() &&
       github.ref == 'refs/heads/main' &&
       github.event_name == 'push' &&
       needs.changes.outputs.e2e == 'true' &&
       needs.backend.result != 'failure' &&
-      needs.frontend.result != 'failure' &&
-      needs.e2e.result != 'failure'
+      needs.frontend.result != 'failure'
     permissions:
       contents: read
       packages: write

@@ -447,29 +447,32 @@ Return ONLY the JSON, no other text."""
             for m in messages[-20:]  # Last 20 messages for context
         )
 
-        prompt = f"""You are simulating {thinker.name} in a group discussion.
+        prompt = f"""You ARE {thinker.name}, participating in a group discussion.
 
-ABOUT {thinker.name.upper()}:
-Bio: {thinker.bio}
-Known positions: {thinker.positions}
-Communication style: {thinker.style}
+WHO YOU ARE:
+{thinker.bio}
+Your known positions: {thinker.positions}
+Your communication style: {thinker.style}
 
 DISCUSSION TOPIC: {topic}
 
 CONVERSATION SO FAR:
 {conversation_history}
 
-Now respond as {thinker.name} would. Guidelines:
-- Stay in character based on their known views and communication style
-- Use modern English regardless of their era
-- If discussing something that didn't exist in their time, acknowledge it (e.g., "In my era we didn't have X, but...")
+IMPORTANT - STAY IN FIRST PERSON:
+Think and respond in FIRST PERSON as yourself ({thinker.name}). Your inner thoughts should be "I believe...", "I want to mention...", "Let me consider..." - NOT third person reasoning like "{thinker.name} would say...".
+
+Guidelines for your response:
+- Stay in character based on your known views and communication style
+- Use modern English regardless of your era
+- If discussing something that didn't exist in your time, acknowledge it (e.g., "In my era we didn't have X, but...")
 - Engage with what others have said - agree, disagree, build on ideas
 - Don't be preachy or lecture-like
 - Show personality through your response style
 
 RESPONSE STYLE: {style_instruction}
 
-Respond with ONLY what {thinker.name} would say, nothing else."""
+Respond with ONLY what you would say as {thinker.name}, nothing else."""
 
         try:
             # Use streaming with extended thinking
@@ -753,29 +756,32 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
             for m in messages[-20:]  # Last 20 messages for context
         )
 
-        prompt = f"""You are simulating {thinker.name} in a group discussion.
+        prompt = f"""You ARE {thinker.name}, participating in a group discussion.
 
-ABOUT {thinker.name.upper()}:
-Bio: {thinker.bio}
-Known positions: {thinker.positions}
-Communication style: {thinker.style}
+WHO YOU ARE:
+{thinker.bio}
+Your known positions: {thinker.positions}
+Your communication style: {thinker.style}
 
 DISCUSSION TOPIC: {topic}
 
 CONVERSATION SO FAR:
 {conversation_history}
 
-Now respond as {thinker.name} would. Guidelines:
-- Stay in character based on their known views and communication style
-- Use modern English regardless of their era
-- If discussing something that didn't exist in their time, acknowledge it (e.g., "In my era we didn't have X, but...")
+IMPORTANT - STAY IN FIRST PERSON:
+Think and respond in FIRST PERSON as yourself ({thinker.name}). Your inner thoughts should be "I believe...", "I want to mention...", "Let me consider..." - NOT third person reasoning like "{thinker.name} would say...".
+
+Guidelines for your response:
+- Stay in character based on your known views and communication style
+- Use modern English regardless of your era
+- If discussing something that didn't exist in your time, acknowledge it (e.g., "In my era we didn't have X, but...")
 - Engage with what others have said - agree, disagree, build on ideas
 - Don't be preachy or lecture-like
 - Show personality through your response style
 
 RESPONSE STYLE: {style_instruction}
 
-Respond with ONLY what {thinker.name} would say, nothing else."""
+Respond with ONLY what you would say as {thinker.name}, nothing else."""
 
         try:
             response = await self.client.messages.create(
@@ -1091,12 +1097,12 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
             f"{get_sender_label(m)}: {m.content}" for m in messages[-15:]
         )
 
-        prompt = f"""You are simulating {thinker.name} in a group discussion.
+        prompt = f"""You ARE {thinker.name}, participating in a group discussion.
 
-ABOUT {thinker.name.upper()}:
-Bio: {thinker.bio}
-Known positions: {thinker.positions}
-Communication style: {thinker.style}
+WHO YOU ARE:
+{thinker.bio}
+Your known positions: {thinker.positions}
+Your communication style: {thinker.style}
 
 DISCUSSION TOPIC: {topic}
 
@@ -1104,19 +1110,19 @@ RECENT CONVERSATION:
 {conversation_history}
 
 The user {user_name} hasn't spoken in a while. Generate a SHORT, natural message that:
-1. Stays in character as {thinker.name}
+1. Stays in character as yourself ({thinker.name})
 2. Invites {user_name} to share their perspective
 3. References something specific from the recent discussion
 4. Feels warm and curious, not demanding
 
-Examples of good prompts (adapt to your character's style):
+Examples of good prompts (adapt to your style):
 - "{user_name}, I'm curious what you make of all this."
 - "We've been going back and forth, but {user_name}, where do you stand?"
 - "{user_name}, you've been quiet - any thoughts on what [other thinker] said about X?"
 
 Keep it to ONE short sentence (under 20 words). Be genuine, not formulaic.
 
-Respond with ONLY what {thinker.name} would say, nothing else."""
+Respond with ONLY what you would say, nothing else."""
 
         try:
             response = await self.client.messages.create(

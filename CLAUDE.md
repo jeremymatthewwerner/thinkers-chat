@@ -11,6 +11,7 @@ Real-time multi-party chat with AI-simulated historical/contemporary thinkers.
 - **ALWAYS check things yourself before asking the user** - Use available tools (CLI, API calls, logs, code inspection) to verify state, configuration, or behavior. Only ask the user to check something if you've confirmed there's no way for you to check it directly.
 - **ALWAYS check CI results after every push** - Use `gh run list` and `gh run view <id> --log-failed` to verify CI passes. If CI fails, debug and fix immediately. Do not consider a task complete until CI is green. Keep iterating until all checks pass.
 - **When resuming work or assessing project state, ALWAYS check CI first** - Run `gh run list` before anything else. There may be failed runs from a previous session that need fixing. Don't assume local state is the full picture.
+- **ALWAYS check open issues at session start** - Run `gh issue list` and work from highest priority (P0 → P1 → P2). Critical bugs must be addressed before new features.
 
 ## Development Workflow (MANDATORY)
 
@@ -134,16 +135,16 @@ Create a GitHub issue for:
 
 ### Issue Workflow
 
-1. **File the issue first** - Before starting work, create a GitHub issue:
+1. **File the issue first** - Before starting work, create a GitHub issue with priority:
    ```bash
-   # For bugs
-   gh issue create --title "Bug: <brief description>" --body "<detailed description>"
+   # For bugs (include priority in title)
+   gh issue create --title "[P1] Bug: <brief description>" --body "<detailed description>"
 
-   # For features/tasks
-   gh issue create --title "Feature: <brief description>" --body "<detailed description>"
+   # For features
+   gh issue create --title "[P2] Feature: <brief description>" --body "<detailed description>"
 
    # For tasks
-   gh issue create --title "Task: <brief description>" --body "<detailed description>"
+   gh issue create --title "[P2] Task: <brief description>" --body "<detailed description>"
    ```
 
 2. **Reference issues in commits** - When committing, reference the issue:
@@ -167,6 +168,24 @@ Create a GitHub issue for:
    gh issue reopen <issue-number> --comment "Fix failed: <reason>"
    ```
 
+### Issue Priority (MANDATORY)
+
+**Always assign a priority when creating issues:**
+- **P0** - Blocks most or all functionality from working (critical bugs, system down)
+- **P1** - Blocks some functionality from working correctly (significant bugs, broken features)
+- **P2** - Way of working improvements or optimizations (nice-to-haves, refactoring)
+
+Include priority in issue title: `[P0] Bug: Critical auth failure` or `[P1] Feature: Add export button`
+
+### Working from Issues
+
+**At the start of each session:**
+1. Check for open issues: `gh issue list --repo jeremymatthewwerner/thinkers-chat`
+2. Work from highest to lowest priority (P0 → P1 → P2)
+3. If no open issues, ask the user what to work on
+
+**This ensures critical bugs are always addressed first.**
+
 ### Issue Labels
 
 Use labels to categorize issues:
@@ -174,12 +193,14 @@ Use labels to categorize issues:
 - `feature` - New feature request
 - `task` - General task/work item
 - `ci` - CI/CD related
-- `urgent` - High priority
 
 ### Issue Templates
 
-**Bug Report:**
+**Bug Report:** (title format: `[P0/P1/P2] Bug: <description>`)
 ```markdown
+## Priority
+P0/P1/P2 - <justification>
+
 ## Description
 <What's broken?>
 
@@ -198,8 +219,11 @@ Use labels to categorize issues:
 - Relevant logs: <paste or link>
 ```
 
-**Feature Request:**
+**Feature Request:** (title format: `[P1/P2] Feature: <description>`)
 ```markdown
+## Priority
+P1/P2 - <justification>
+
 ## Description
 <What feature is needed?>
 
@@ -210,8 +234,11 @@ Use labels to categorize issues:
 <How might this be implemented?>
 ```
 
-**Task:**
+**Task:** (title format: `[P1/P2] Task: <description>`)
 ```markdown
+## Priority
+P1/P2 - <justification>
+
 ## Description
 <What needs to be done?>
 

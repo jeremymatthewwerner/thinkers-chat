@@ -14,7 +14,7 @@ from anthropic.types import TextBlock, ThinkingBlock
 
 from app.api.websocket import SpendLimitExceeded, WSMessage, WSMessageType, manager
 from app.core.config import get_settings
-from app.exceptions import ThinkerAPIError
+from app.exceptions import BillingError, ThinkerAPIError
 from app.schemas import ThinkerProfile, ThinkerSuggestion
 
 if TYPE_CHECKING:
@@ -557,6 +557,14 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
             return response_text.strip(), cost
 
         except APIError as e:
+            # Check for billing/quota errors first
+            error_msg = str(e)
+            is_billing = "credit balance" in error_msg.lower() or "billing" in error_msg.lower()
+            if is_billing:
+                logging.error(f"Anthropic billing error in streaming thinking: {e}")
+                raise BillingError(
+                    "API credit limit reached. Please check your Anthropic billing."
+                ) from e
             # Log API-specific errors with more detail
             logging.error(f"Anthropic API error in streaming thinking: {e}")
             raise ThinkerAPIError(f"AI service error: {e}") from e
@@ -1043,6 +1051,28 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
                         content=f"Spend limit reached (${e.current_spend:.2f}/${e.spend_limit:.2f}). Contact admin to increase your limit.",
                     ),
                 )
+                await manager.broadcast_to_conversation(
+                    conversation_id,
+                    WSMessage(
+                        type=WSMessageType.PAUSED,
+                        conversation_id=conversation_id,
+                    ),
+                )
+                break  # Stop this thinker agent
+            except BillingError as e:
+                # Billing/quota error - notify user with clear message
+                logging.error(f"Billing error for {thinker.name}: {e}")
+                await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                await manager.broadcast_to_conversation(
+                    conversation_id,
+                    WSMessage(
+                        type=WSMessageType.ERROR,
+                        conversation_id=conversation_id,
+                        content=f"API billing error: {e.message}. Please contact support.",
+                    ),
+                )
+                # Pause conversation to prevent further spending
+                self.pause_conversation(conversation_id)
                 await manager.broadcast_to_conversation(
                     conversation_id,
                     WSMessage(

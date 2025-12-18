@@ -3,8 +3,11 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import pytest
+from anthropic import APIError
 from anthropic.types import TextBlock
 
+from app.exceptions import BillingError
 from app.models.message import SenderType
 from app.services.thinker import ThinkerService
 
@@ -424,3 +427,106 @@ class TestConversationAgents:
 
         # Should not raise
         await service.stop_conversation_agents("nonexistent")
+
+
+class TestBillingErrorDetection:
+    """Tests for billing error detection in ThinkerService."""
+
+    def _create_mock_request(self) -> MagicMock:
+        """Create a mock httpx.Request for APIError."""
+        mock_request = MagicMock()
+        mock_request.url = "https://api.anthropic.com/v1/messages"
+        mock_request.method = "POST"
+        return mock_request
+
+    async def test_billing_error_raised_on_credit_balance_error(self) -> None:
+        """Test that BillingError is raised when API returns credit balance error."""
+        service = ThinkerService()
+
+        # Mock the client to raise APIError with credit balance message
+        mock_client = AsyncMock()
+        mock_stream = AsyncMock()
+        mock_request = self._create_mock_request()
+        mock_stream.__aenter__ = AsyncMock(
+            side_effect=APIError("Your credit balance is too low", mock_request, body=None)
+        )
+        mock_client.messages.stream = MagicMock(return_value=mock_stream)
+        service._client = mock_client
+
+        thinker = MagicMock()
+        thinker.name = "Socrates"
+        thinker.bio = "Ancient philosopher"
+        thinker.positions = "Questioning everything"
+        thinker.style = "Socratic method"
+        messages: Any = []
+
+        # Should raise BillingError, not ThinkerAPIError
+        with pytest.raises(BillingError) as exc_info:
+            await service.generate_response_with_streaming_thinking(
+                "test-conv", thinker, messages, "philosophy"
+            )
+
+        assert "credit" in str(exc_info.value).lower()
+
+    async def test_billing_error_raised_on_billing_keyword(self) -> None:
+        """Test that BillingError is raised when API returns error with 'billing' keyword."""
+        service = ThinkerService()
+
+        # Mock the client to raise APIError with billing message
+        mock_client = AsyncMock()
+        mock_stream = AsyncMock()
+        mock_request = self._create_mock_request()
+        mock_stream.__aenter__ = AsyncMock(
+            side_effect=APIError("Billing issue: payment method required", mock_request, body=None)
+        )
+        mock_client.messages.stream = MagicMock(return_value=mock_stream)
+        service._client = mock_client
+
+        thinker = MagicMock()
+        thinker.name = "Socrates"
+        thinker.bio = "Ancient philosopher"
+        thinker.positions = "Questioning everything"
+        thinker.style = "Socratic method"
+        messages: Any = []
+
+        # Should raise BillingError
+        with pytest.raises(BillingError) as exc_info:
+            await service.generate_response_with_streaming_thinking(
+                "test-conv", thinker, messages, "philosophy"
+            )
+
+        assert "billing" in str(exc_info.value).lower()
+
+    async def test_non_billing_api_error_raises_thinker_api_error(self) -> None:
+        """Test that non-billing API errors raise ThinkerAPIError, not BillingError."""
+        from app.exceptions import ThinkerAPIError
+
+        service = ThinkerService()
+
+        # Mock the client to raise APIError without billing keywords
+        mock_client = AsyncMock()
+        mock_stream = AsyncMock()
+        mock_request = self._create_mock_request()
+        mock_stream.__aenter__ = AsyncMock(
+            side_effect=APIError("Rate limit exceeded", mock_request, body=None)
+        )
+        mock_client.messages.stream = MagicMock(return_value=mock_stream)
+        service._client = mock_client
+
+        thinker = MagicMock()
+        thinker.name = "Socrates"
+        thinker.bio = "Ancient philosopher"
+        thinker.positions = "Questioning everything"
+        thinker.style = "Socratic method"
+        messages: Any = []
+
+        # Should raise ThinkerAPIError, not BillingError
+        with pytest.raises(ThinkerAPIError) as exc_info:
+            await service.generate_response_with_streaming_thinking(
+                "test-conv", thinker, messages, "philosophy"
+            )
+
+        # Should not contain billing-specific message
+        assert "credit" not in str(exc_info.value).lower() or "rate limit" in str(
+            exc_info.value
+        ).lower()

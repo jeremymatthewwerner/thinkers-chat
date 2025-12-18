@@ -160,11 +160,6 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           track_progress: ${{ github.event_name == 'issues' }}  # Only supported for issue events
           allowed_bots: '*'  # Allow self-chaining via repository_dispatch
-          allowed_tools: |
-            Edit,MultiEdit,Glob,Grep,LS,Read,Write
-            Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git rm:*)
-            Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh issue comment:*)
-            Bash(cd backend && uv run pytest:*),Bash(cd frontend && npm test:*),Bash(cd backend && uv run ruff check:*),Bash(cd frontend && npm run lint:*)
           prompt: |
             You are working on issue #${{ needs.find-work.outputs.issue_number }}: ${{ needs.find-work.outputs.issue_title }}
 

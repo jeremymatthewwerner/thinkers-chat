@@ -9,6 +9,7 @@ from app.models.base import Base, TimestampMixin, generate_uuid
 
 if TYPE_CHECKING:
     from app.models.session import Session
+    from app.models.spend import SessionSpend, ThreadSpend, UserLimits
 
 
 class User(Base, TimestampMixin):
@@ -53,6 +54,22 @@ class User(Base, TimestampMixin):
     # Relationships
     sessions: Mapped[list["Session"]] = relationship(
         "Session",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    limits: Mapped["UserLimits | None"] = relationship(
+        "UserLimits",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    session_spends: Mapped[list["SessionSpend"]] = relationship(
+        "SessionSpend",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    thread_spends: Mapped[list["ThreadSpend"]] = relationship(
+        "ThreadSpend",
         back_populates="user",
         cascade="all, delete-orphan",
     )

@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -11,7 +12,17 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.models import Base, Conversation, ConversationThinker, Message, Session, User
+from app.models import (
+    Base,
+    Conversation,
+    ConversationThinker,
+    Message,
+    Session,
+    SessionSpend,
+    ThreadSpend,
+    User,
+    UserLimits,
+)
 from app.models.message import SenderType
 
 
@@ -300,4 +311,266 @@ class TestCascadeDelete:
         await db_session.commit()
 
         result = await db_session.execute(select(Message).where(Message.id == msg_id))
+        assert result.scalar_one_or_none() is None
+
+
+class TestUserLimitsModel:
+    """Tests for the UserLimits model."""
+
+    async def test_create_user_limits(self, db_session: AsyncSession, test_user: User) -> None:
+        """Test creating user limits with default values."""
+        limits = UserLimits(
+            user_id=test_user.id,
+            session_limit=1.0,
+            thread_limit=2.0,
+            user_limit=5.0,
+        )
+        db_session.add(limits)
+        await db_session.commit()
+
+        assert limits.id is not None
+        assert limits.user_id == test_user.id
+        assert limits.session_limit == 1.0
+        assert limits.thread_limit == 2.0
+        assert limits.user_limit == 5.0
+        assert limits.created_at is not None
+
+    async def test_user_limits_unique_per_user(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test that each user can only have one limits record."""
+        limits1 = UserLimits(user_id=test_user.id)
+        db_session.add(limits1)
+        await db_session.commit()
+
+        # Try to create another limits record for the same user
+        limits2 = UserLimits(user_id=test_user.id)
+        db_session.add(limits2)
+
+        with pytest.raises(IntegrityError):  # Should raise integrity error
+            await db_session.commit()
+
+    async def test_user_limits_custom_values(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test creating user limits with custom values."""
+        limits = UserLimits(
+            user_id=test_user.id,
+            session_limit=10.0,
+            thread_limit=20.0,
+            user_limit=50.0,
+        )
+        db_session.add(limits)
+        await db_session.commit()
+
+        assert limits.session_limit == 10.0
+        assert limits.thread_limit == 20.0
+        assert limits.user_limit == 50.0
+
+
+class TestSessionSpendModel:
+    """Tests for the SessionSpend model."""
+
+    async def test_create_session_spend(self, db_session: AsyncSession, test_user: User) -> None:
+        """Test creating session spend tracker."""
+        session = Session(user_id=test_user.id)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = SessionSpend(
+            session_id=session.id,
+            user_id=test_user.id,
+            total_spend=0.0,
+        )
+        db_session.add(spend)
+        await db_session.commit()
+
+        assert spend.id is not None
+        assert spend.session_id == session.id
+        assert spend.user_id == test_user.id
+        assert spend.total_spend == 0.0
+        assert spend.created_at is not None
+
+    async def test_session_spend_accumulation(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test accumulating spend in a session."""
+        session = Session(user_id=test_user.id)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = SessionSpend(
+            session_id=session.id,
+            user_id=test_user.id,
+            total_spend=0.0,
+        )
+        db_session.add(spend)
+        await db_session.commit()
+
+        # Simulate accumulating spend
+        spend.total_spend += 0.05
+        await db_session.commit()
+
+        spend.total_spend += 0.03
+        await db_session.commit()
+
+        assert spend.total_spend == 0.08
+
+    async def test_session_spend_relationship(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test session-spend relationship."""
+        session = Session(user_id=test_user.id)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = SessionSpend(
+            session_id=session.id,
+            user_id=test_user.id,
+        )
+        db_session.add(spend)
+        await db_session.commit()
+
+        await db_session.refresh(session, attribute_names=["spend"])
+        assert session.spend is not None
+        assert session.spend.session_id == session.id
+
+
+class TestThreadSpendModel:
+    """Tests for the ThreadSpend model."""
+
+    async def test_create_thread_spend(self, db_session: AsyncSession, test_user: User) -> None:
+        """Test creating thread spend tracker."""
+        session = Session(user_id=test_user.id)
+        conversation = Conversation(session_id=session.id, topic="Test topic")
+        session.conversations.append(conversation)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = ThreadSpend(
+            conversation_id=conversation.id,
+            session_id=session.id,
+            user_id=test_user.id,
+            total_spend=0.0,
+        )
+        db_session.add(spend)
+        await db_session.commit()
+
+        assert spend.id is not None
+        assert spend.conversation_id == conversation.id
+        assert spend.session_id == session.id
+        assert spend.user_id == test_user.id
+        assert spend.total_spend == 0.0
+
+    async def test_thread_spend_accumulation(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test accumulating spend in a thread."""
+        session = Session(user_id=test_user.id)
+        conversation = Conversation(session_id=session.id, topic="Test")
+        session.conversations.append(conversation)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = ThreadSpend(
+            conversation_id=conversation.id,
+            session_id=session.id,
+            user_id=test_user.id,
+            total_spend=0.0,
+        )
+        db_session.add(spend)
+        await db_session.commit()
+
+        # Simulate message costs
+        spend.total_spend += 0.002  # First message
+        await db_session.commit()
+
+        spend.total_spend += 0.003  # Second message
+        await db_session.commit()
+
+        assert spend.total_spend == 0.005
+
+    async def test_thread_spend_relationship(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test conversation-spend relationship."""
+        session = Session(user_id=test_user.id)
+        conversation = Conversation(session_id=session.id, topic="Test")
+        session.conversations.append(conversation)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = ThreadSpend(
+            conversation_id=conversation.id,
+            session_id=session.id,
+            user_id=test_user.id,
+        )
+        db_session.add(spend)
+        await db_session.commit()
+
+        await db_session.refresh(conversation, attribute_names=["spend"])
+        assert conversation.spend is not None
+        assert conversation.spend.conversation_id == conversation.id
+
+
+class TestSpendCascadeDelete:
+    """Tests for cascade delete behavior with spend tracking."""
+
+    async def test_deleting_user_deletes_limits(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test that deleting a user deletes their limits."""
+        limits = UserLimits(user_id=test_user.id)
+        db_session.add(limits)
+        await db_session.commit()
+        limits_id = limits.id
+
+        await db_session.delete(test_user)
+        await db_session.commit()
+
+        result = await db_session.execute(select(UserLimits).where(UserLimits.id == limits_id))
+        assert result.scalar_one_or_none() is None
+
+    async def test_deleting_session_deletes_spend(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test that deleting a session deletes its spend tracker."""
+        session = Session(user_id=test_user.id)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = SessionSpend(session_id=session.id, user_id=test_user.id)
+        db_session.add(spend)
+        await db_session.commit()
+        spend_id = spend.id
+
+        await db_session.delete(session)
+        await db_session.commit()
+
+        result = await db_session.execute(select(SessionSpend).where(SessionSpend.id == spend_id))
+        assert result.scalar_one_or_none() is None
+
+    async def test_deleting_conversation_deletes_thread_spend(
+        self, db_session: AsyncSession, test_user: User
+    ) -> None:
+        """Test that deleting a conversation deletes its thread spend tracker."""
+        session = Session(user_id=test_user.id)
+        conversation = Conversation(session_id=session.id, topic="Test")
+        session.conversations.append(conversation)
+        db_session.add(session)
+        await db_session.commit()
+
+        spend = ThreadSpend(
+            conversation_id=conversation.id,
+            session_id=session.id,
+            user_id=test_user.id,
+        )
+        db_session.add(spend)
+        await db_session.commit()
+        spend_id = spend.id
+
+        await db_session.delete(conversation)
+        await db_session.commit()
+
+        result = await db_session.execute(select(ThreadSpend).where(ThreadSpend.id == spend_id))
         assert result.scalar_one_or_none() is None

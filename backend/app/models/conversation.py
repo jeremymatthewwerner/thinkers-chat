@@ -10,6 +10,7 @@ from app.models.base import Base, TimestampMixin, generate_uuid
 if TYPE_CHECKING:
     from app.models.message import Message
     from app.models.session import Session
+    from app.models.spend import ThreadSpend
     from app.models.thinker import ConversationThinker
 
 
@@ -61,4 +62,10 @@ class Conversation(Base, TimestampMixin):
         back_populates="conversation",
         cascade="all, delete-orphan",
         order_by="Message.created_at",
+    )
+    spend: Mapped["ThreadSpend | None"] = relationship(
+        "ThreadSpend",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        uselist=False,
     )

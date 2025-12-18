@@ -206,6 +206,7 @@ Use labels to categorize issues:
 - `task` - General task/work item
 - `ci` - CI/CD related
 - `claude-working` - Claude is actively working on this issue
+- `needs-human-help` - Claude exhausted CI/CD fix attempts (requires human intervention)
 
 ### Issue Templates
 
@@ -321,15 +322,29 @@ Background automation handles issue triage and work without manual intervention.
 - Removes `claude-working` label when done
 - Concurrency control: only one work job runs at a time (others queue)
 
+**CI/CD Fix Loop** (`.github/workflows/claude-cicd-fix.yml`):
+- **Triggers**: When CI/CD fails on a PR created by `claude[bot]`
+- **Iterative fixing**: Analyzes failure logs, commits fix, waits for CI/CD rerun
+- **Up to 15 attempts**: Each attempt uses commit message format `Fix CI/CD: <description>`
+- **Audit trail**: Commit messages link to previous attempts with retry count
+- **Human escalation**: After 15 failures, @mentions repo owner and adds `needs-human-help` label
+- Commits reference the failing check and error for traceability
+
 ### How It Works
 
 1. User reports bug via "Report a Bug" button → Creates P3 issue
 2. Triage workflow runs → Assigns P0/P1/P2 label with comment
 3. Work workflow triggers immediately (event-driven by label)
 4. Claude implements fix → Creates PR with `Fixes #N`
-5. Work workflow self-chains → Picks up next issue if any
-6. CI runs → PR merged → Issue auto-closes
-7. Cycle continues until no P0-P2 issues remain
+5. CI/CD runs on PR
+6. **If CI/CD fails**: CI/CD Fix workflow triggers
+   - Analyzes failure logs
+   - Commits fix with `Fix CI/CD: <description>` message
+   - CI/CD reruns automatically
+   - Repeats up to 15 times until green or escalates to human
+7. CI/CD passes → PR merged → Issue auto-closes
+8. Work workflow self-chains → Picks up next issue if any
+9. Cycle continues until no P0-P2 issues remain
 
 ### Manual Trigger
 
@@ -338,11 +353,17 @@ To manually trigger work on a specific issue:
 gh workflow run claude-work.yml --repo jeremymatthewwerner/thinkers-chat -f issue_number=123
 ```
 
+To manually trigger CI/CD fix on a PR:
+```bash
+gh workflow run claude-cicd-fix.yml --repo jeremymatthewwerner/thinkers-chat -f pr_number=42
+```
+
 ### Monitoring
 
-- View automation runs: `gh run list --workflow=claude-triage.yml` or `claude-work.yml`
+- View automation runs: `gh run list --workflow=claude-triage.yml` or `claude-work.yml` or `claude-cicd-fix.yml`
 - View logs: `gh run view <run-id> --log`
 - Check `claude-working` label for in-progress issues
+- Check `needs-human-help` label for PRs that exhausted CI/CD fix attempts
 
 ### Requirements
 

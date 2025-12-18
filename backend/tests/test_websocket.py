@@ -192,3 +192,90 @@ class TestWebSocketMessageTypes:
 
             # No response expected for typing_stop
             # The test passes if no error is raised
+
+    def test_pause_resume_messages(self) -> None:
+        """Test pause and resume message types."""
+        token = get_test_token()
+        with (
+            TestClient(app) as test_client,
+            test_client.websocket_connect(f"/ws/pause-test?token={token}") as websocket,
+        ):
+            # Skip join message
+            websocket.receive_json()
+
+            # Send pause
+            websocket.send_json({"type": "pause"})
+
+            # Should receive paused confirmation
+            data = websocket.receive_json()
+            assert data["type"] == "paused"
+            assert data["conversation_id"] == "pause-test"
+
+            # Send resume
+            websocket.send_json({"type": "resume"})
+
+            # Should receive resumed confirmation
+            data = websocket.receive_json()
+            assert data["type"] == "resumed"
+            assert data["conversation_id"] == "pause-test"
+
+    def test_pause_state_preserved_on_reconnect(self) -> None:
+        """Test that pause state is preserved when reconnecting to a conversation."""
+        from app.services.thinker import thinker_service
+
+        token = get_test_token()
+        conversation_id = "pause-reconnect-test"
+
+        with TestClient(app) as test_client:
+            # First connection - pause the conversation
+            with test_client.websocket_connect(f"/ws/{conversation_id}?token={token}") as ws1:
+                # Skip join message
+                ws1.receive_json()
+
+                # Pause the conversation
+                ws1.send_json({"type": "pause"})
+
+                # Confirm paused
+                data = ws1.receive_json()
+                assert data["type"] == "paused"
+
+                # Verify backend state is paused
+                assert thinker_service.is_paused(conversation_id) is True
+
+            # WebSocket closed - pause state should still be in backend
+
+            # Second connection - should receive pause state immediately
+            with test_client.websocket_connect(f"/ws/{conversation_id}?token={token}") as ws2:
+                # Should receive join message
+                data = ws2.receive_json()
+                assert data["type"] == "user_joined"
+
+                # Should receive paused state message
+                data = ws2.receive_json()
+                assert data["type"] == "paused"
+                assert data["conversation_id"] == conversation_id
+
+                # Verify backend still knows it's paused
+                assert thinker_service.is_paused(conversation_id) is True
+
+    def test_unpaused_conversation_no_pause_message_on_connect(self) -> None:
+        """Test that unpaused conversations don't receive a pause message on connect."""
+        from app.services.thinker import thinker_service
+
+        token = get_test_token()
+        conversation_id = "unpause-test"
+
+        # Ensure conversation is not paused
+        thinker_service.resume_conversation(conversation_id)
+
+        with (
+            TestClient(app) as test_client,
+            test_client.websocket_connect(f"/ws/{conversation_id}?token={token}") as websocket,
+        ):
+            # Should only receive join message, not pause message
+            data = websocket.receive_json()
+            assert data["type"] == "user_joined"
+
+            # Verify no pause message comes through
+            # (we can't directly check "no message", but we can verify the state)
+            assert thinker_service.is_paused(conversation_id) is False

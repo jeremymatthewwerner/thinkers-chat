@@ -4,6 +4,7 @@ import json
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.testclient import TestClient
 
 from app.api.websocket import (
@@ -294,7 +295,7 @@ class TestCostAccumulation:
     """Tests for cost accumulation to user.total_spend."""
 
     @pytest.mark.asyncio
-    async def test_save_thinker_message_updates_user_total_spend(self, db_session) -> None:
+    async def test_save_thinker_message_updates_user_total_spend(self, db_session: AsyncSession) -> None:
         """Test that saving a thinker message updates the user's total_spend."""
         # Create a user
         user = User(
@@ -362,7 +363,7 @@ class TestCostAccumulation:
         assert updated_user.total_spend == pytest.approx(cost_1 + cost_2)
 
     @pytest.mark.asyncio
-    async def test_save_thinker_message_with_zero_cost(self, db_session) -> None:
+    async def test_save_thinker_message_with_zero_cost(self, db_session: AsyncSession) -> None:
         """Test that saving a message with zero cost still works correctly."""
         # Create a user
         user = User(
@@ -409,7 +410,7 @@ class TestCostAccumulation:
         assert updated_user.total_spend == 0.0
 
     @pytest.mark.asyncio
-    async def test_save_thinker_message_multiple_users(self, db_session) -> None:
+    async def test_save_thinker_message_multiple_users(self, db_session: AsyncSession) -> None:
         """Test that costs are tracked separately for different users."""
         # Create two users
         user1 = User(

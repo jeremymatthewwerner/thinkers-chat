@@ -307,32 +307,19 @@ jobs:
             --repo ${{ github.repository }} \
             --add-assignee "$REPO_OWNER" || true
 
-          # Try to extract error details from execution log
-          LOG_FILE="${RUNNER_TEMP}/claude-execution-output.json"
-          ERROR_DETAILS=""
-          if [ -f "$LOG_FILE" ]; then
-            # Extract the result message or error info
-            RESULT=$(cat "$LOG_FILE" | jq -r 'select(.type == "result") | .result // .message // empty' 2>/dev/null | head -500)
-            if [ -n "$RESULT" ]; then
-              ERROR_DETAILS="**Claude's last message:**
-\`\`\`
-$RESULT
-\`\`\`"
-            fi
-          fi
-
-          # Post comment with error details
+          # Post comment
           gh issue comment $ISSUE_NUM \
             --repo ${{ github.repository }} \
-            --body "## ❌ Claude needs help
+            --body "$(cat <<'COMMENTEOF'
+          ## ❌ Claude needs help
 
-**Status:** Work failed or was blocked
+          **Status:** Work failed or was blocked
 
-**Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-$ERROR_DETAILS
-
-**To retry:** Add your input as a comment, then assign this issue to \`claude[bot]\`"
+          **To retry:** Add your input as a comment, then assign this issue to `claude[bot]`
+          COMMENTEOF
+          )"
 
       - name: Remove in-progress label on completion
         # Only remove on SUCCESS - failed issues keep the label so they're skipped

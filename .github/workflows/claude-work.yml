@@ -260,21 +260,37 @@ jobs:
             --add-label "needs-human-help" \
             --remove-label "claude-working" || true
 
-          # Post comment with @mention for notification
+          # Try to extract error details from execution log
+          LOG_FILE="${RUNNER_TEMP}/claude-execution-output.json"
+          ERROR_DETAILS=""
+          if [ -f "$LOG_FILE" ]; then
+            # Extract the result message or error info
+            RESULT=$(cat "$LOG_FILE" | jq -r 'select(.type == "result") | .result // .message // empty' 2>/dev/null | head -500)
+            if [ -n "$RESULT" ]; then
+              ERROR_DETAILS="**Claude's last message:**
+\`\`\`
+$RESULT
+\`\`\`"
+            fi
+          fi
+
+          # Post comment with @mention and error details
           gh issue comment ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
-            --body "$(cat <<'EOF'
-          ## ❌ Claude encountered an issue
+            --body "## ❌ Claude encountered an issue
 
-          @jeremymatthewwerner - This issue needs human intervention.
+@jeremymatthewwerner - This issue needs human intervention.
 
-          **Status:** Work failed or was blocked
+**Status:** Work failed or was blocked
 
-          **Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+**Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-          Please check the workflow logs for details. The `needs-human-help` label has been added.
-          EOF
-          )"
+$ERROR_DETAILS
+
+**What to do:**
+- Check the workflow logs for more details
+- The issue might have unmet dependencies
+- Remove \`needs-human-help\` label after addressing the problem to allow retry"
 
       - name: Remove in-progress label on completion
         # Only remove on SUCCESS - failed issues keep the label so they're skipped

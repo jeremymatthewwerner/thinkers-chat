@@ -2,14 +2,13 @@ name: Claude Issue Triage
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
 
 jobs:
   triage:
-    # Only run for new issues with P3 label (user-reported, needs triage)
-    if: |
-      github.event.action == 'opened' ||
-      (github.event.action == 'labeled' && github.event.label.name == 'P3')
+    # Only run when P3 label is added (user-reported issues needing triage)
+    # This prevents duplicate runs - opened+labeled would fire twice
+    if: github.event.label.name == 'P3'
     runs-on: ubuntu-latest
     permissions:
       contents: read

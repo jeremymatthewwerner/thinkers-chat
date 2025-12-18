@@ -5,10 +5,9 @@ on:
   issues:
     types: [labeled]
 
-  # Self-chain: continue working after previous job completes
-  workflow_run:
-    workflows: ["Claude Automated Work"]
-    types: [completed]
+  # Self-chain via repository_dispatch (workflow can't listen to itself via workflow_run)
+  repository_dispatch:
+    types: [claude-work-continue]
 
   # Fallback: catch edge cases (reduced frequency since event-driven)
   schedule:
@@ -37,14 +36,10 @@ jobs:
       - name: Check trigger conditions
         id: check
         run: |
-          # Always run for manual triggers and schedule
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # For workflow_run (self-chain), always check for more work
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+          # Always run for manual triggers, schedule, and repository_dispatch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "${{ github.event_name }}" = "schedule" ] || \
+             [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -71,6 +66,7 @@ jobs:
     outputs:
       issue_number: ${{ steps.find.outputs.issue_number }}
       issue_title: ${{ steps.find.outputs.issue_title }}
+      has_more_work: ${{ steps.find.outputs.has_more_work }}
     permissions:
       issues: read
 
@@ -85,34 +81,57 @@ jobs:
             echo "issue_number=${{ inputs.issue_number }}" >> $GITHUB_OUTPUT
             TITLE=$(gh issue view ${{ inputs.issue_number }} --repo ${{ github.repository }} --json title -q .title 2>/dev/null || echo "")
             echo "issue_title=$TITLE" >> $GITHUB_OUTPUT
+            echo "has_more_work=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Find issues by priority (P0 > P1 > P2), excluding claude-working
+          # Find all issues by priority (P0 > P1 > P2), excluding claude-working
+          FOUND_COUNT=0
+          FOUND_NUMBER=""
+          FOUND_TITLE=""
+
           for priority in P0 P1 P2; do
-            ISSUE=$(gh issue list --repo ${{ github.repository }} \
+            ISSUES=$(gh issue list --repo ${{ github.repository }} \
               --label "$priority" \
               --state open \
               --json number,title,labels \
-              --jq '[.[] | select(.labels | map(.name) | index("claude-working") | not)] | .[0] | "\(.number)|\(.title)"' 2>/dev/null || echo "")
+              --jq '[.[] | select(.labels | map(.name) | index("claude-working") | not)]' 2>/dev/null || echo "[]")
 
-            if [ -n "$ISSUE" ] && [ "$ISSUE" != "null|null" ] && [ "$ISSUE" != "|" ]; then
-              NUMBER=$(echo "$ISSUE" | cut -d'|' -f1)
-              TITLE=$(echo "$ISSUE" | cut -d'|' -f2-)
-              echo "Found $priority issue: #$NUMBER - $TITLE"
-              echo "issue_number=$NUMBER" >> $GITHUB_OUTPUT
-              echo "issue_title=$TITLE" >> $GITHUB_OUTPUT
-              exit 0
+            COUNT=$(echo "$ISSUES" | jq 'length')
+
+            if [ "$COUNT" -gt 0 ]; then
+              if [ -z "$FOUND_NUMBER" ]; then
+                # First issue found - this is what we'll work on
+                FOUND_NUMBER=$(echo "$ISSUES" | jq -r '.[0].number')
+                FOUND_TITLE=$(echo "$ISSUES" | jq -r '.[0].title')
+              fi
+              FOUND_COUNT=$((FOUND_COUNT + COUNT))
             fi
           done
 
-          echo "No open issues to work on"
-          echo "issue_number=" >> $GITHUB_OUTPUT
+          if [ -n "$FOUND_NUMBER" ]; then
+            echo "Found issue: #$FOUND_NUMBER - $FOUND_TITLE"
+            echo "issue_number=$FOUND_NUMBER" >> $GITHUB_OUTPUT
+            echo "issue_title=$FOUND_TITLE" >> $GITHUB_OUTPUT
+
+            # Check if there are more issues after this one
+            if [ "$FOUND_COUNT" -gt 1 ]; then
+              echo "has_more_work=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_more_work=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "No open issues to work on"
+            echo "issue_number=" >> $GITHUB_OUTPUT
+            echo "has_more_work=false" >> $GITHUB_OUTPUT
+          fi
 
   work-on-issue:
     needs: find-work
     if: needs.find-work.outputs.issue_number != ''
     runs-on: ubuntu-latest
+    outputs:
+      has_more_work: ${{ needs.find-work.outputs.has_more_work }}
     permissions:
       contents: write
       issues: write
@@ -176,3 +195,19 @@ jobs:
           gh issue edit ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
             --remove-label "claude-working" || true
+
+  # Self-chain: trigger another run if there's more work
+  continue-work:
+    needs: [find-work, work-on-issue]
+    if: always() && needs.find-work.outputs.has_more_work == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Trigger next work cycle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "More issues to process, triggering next work cycle..."
+          gh api repos/${{ github.repository }}/dispatches \
+            -f event_type=claude-work-continue

@@ -21,7 +21,8 @@ describe('Cache Control Middleware', () => {
 
   it('should document expected cache behavior for HTML pages', () => {
     // Documentation test: HTML pages should not be cached
-    const expectedCacheControl = 'no-cache, no-store, must-revalidate, max-age=0';
+    const expectedCacheControl =
+      'no-cache, no-store, must-revalidate, max-age=0';
     expect(expectedCacheControl).toContain('no-cache');
   });
 

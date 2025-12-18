@@ -100,9 +100,153 @@ This ensures comprehensive test coverage and prevents regressions.
 
 ## Git
 
-- Work on `main` branch
+- Work directly on `main` branch - no feature branches needed for this project
 - Commit frequently with clear messages
 - One logical change per commit
+- Push to main after tests pass locally
+
+## Task & Bug Tracking with GitHub Issues (MANDATORY)
+
+All bugs AND tasks must be tracked via GitHub Issues for audit history and traceability.
+
+### When to Create Issues
+
+Create a GitHub issue for:
+1. **Every bug found** - Whether discovered by Claude, CI/CD, or user-reported
+2. **Every failing test** - If tests fail in CI, file an issue before fixing
+3. **Every feature request** - Track requested features as issues
+4. **Every task/todo** - Before starting work on non-trivial tasks, create an issue
+5. **Multi-step work** - Break larger work into multiple linked issues
+
+### Issue Workflow
+
+1. **File the issue first** - Before starting work, create a GitHub issue:
+   ```bash
+   # For bugs
+   gh issue create --title "Bug: <brief description>" --body "<detailed description>"
+
+   # For features/tasks
+   gh issue create --title "Feature: <brief description>" --body "<detailed description>"
+
+   # For tasks
+   gh issue create --title "Task: <brief description>" --body "<detailed description>"
+   ```
+
+2. **Reference issues in commits** - When committing, reference the issue:
+   ```bash
+   git commit -m "Fix <description>
+
+   Fixes #<issue-number>"
+   ```
+
+   Or for partial progress:
+   ```bash
+   git commit -m "Progress on <description>
+
+   Relates to #<issue-number>"
+   ```
+
+3. **Verify the fix** - Run tests and CI to confirm the fix works
+
+4. **Close or reopen** - If CI passes, the issue auto-closes. If the fix fails, reopen:
+   ```bash
+   gh issue reopen <issue-number> --comment "Fix failed: <reason>"
+   ```
+
+### Issue Labels
+
+Use labels to categorize issues:
+- `bug` - Something isn't working
+- `feature` - New feature request
+- `task` - General task/work item
+- `ci` - CI/CD related
+- `urgent` - High priority
+
+### Issue Templates
+
+**Bug Report:**
+```markdown
+## Description
+<What's broken?>
+
+## Steps to Reproduce
+1. <step 1>
+2. <step 2>
+
+## Expected Behavior
+<What should happen?>
+
+## Actual Behavior
+<What actually happens?>
+
+## Environment
+- Browser/OS: <details>
+- Relevant logs: <paste or link>
+```
+
+**Feature Request:**
+```markdown
+## Description
+<What feature is needed?>
+
+## Use Case
+<Why is this needed? What problem does it solve?>
+
+## Proposed Solution
+<How might this be implemented?>
+```
+
+**Task:**
+```markdown
+## Description
+<What needs to be done?>
+
+## Acceptance Criteria
+- [ ] <criterion 1>
+- [ ] <criterion 2>
+
+## Related Issues
+- #<related-issue-number>
+```
+
+## GitHub CLI Access (Claude Code)
+
+The `gh` CLI is available and authenticated in Claude Code for managing GitHub operations. This works even though the git remote uses a local proxy.
+
+### Setup (First Session Only)
+
+If gh is not authenticated:
+```bash
+# Interactive web authentication
+gh auth login --web --git-protocol https
+# Follow the device code flow in browser
+```
+
+### Using gh with This Repo
+
+Because the git remote points to a local proxy, always specify the repo explicitly:
+```bash
+# Check CI status
+gh run list --repo jeremymatthewwerner/thinkers-chat --limit 5
+
+# View failed CI logs
+gh run view <run-id> --repo jeremymatthewwerner/thinkers-chat --log-failed
+
+# Create issues
+gh issue create --repo jeremymatthewwerner/thinkers-chat --title "Bug: ..." --body "..."
+
+# List issues
+gh issue list --repo jeremymatthewwerner/thinkers-chat
+
+# Create PR
+gh pr create --repo jeremymatthewwerner/thinkers-chat --title "..." --body "..."
+```
+
+### Important Notes
+
+- CI only runs on `main` branch or PRs targeting `main` (see `.github/workflows/ci.yml`)
+- Feature branch pushes don't trigger CI - create a PR to run CI
+- Always verify gh works: `gh auth status`
 
 ## Architecture
 

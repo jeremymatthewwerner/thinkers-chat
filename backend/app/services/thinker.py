@@ -14,17 +14,8 @@ from anthropic.types import TextBlock, ThinkingBlock
 
 from app.api.websocket import manager
 from app.core.config import get_settings
+from app.exceptions import ThinkerAPIError
 from app.schemas import ThinkerProfile, ThinkerSuggestion
-
-
-class ThinkerAPIError(Exception):
-    """Exception raised when the thinker API fails."""
-
-    def __init__(self, message: str, is_quota_error: bool = False):
-        self.message = message
-        self.is_quota_error = is_quota_error
-        super().__init__(message)
-
 
 if TYPE_CHECKING:
     from app.models import ConversationThinker, Message
@@ -649,6 +640,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
         Transforms raw LLM thinking into thinker's internal monologue style.
         Returns the last complete thought, rephrased as if the thinker is talking to themselves.
+        Returns empty string if text is too short (< 80 chars) to show meaningful preview.
         """
         if not thinking_text:
             return ""
@@ -656,19 +648,32 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         # Clean up the text
         text = thinking_text.strip()
 
-        # Get the last ~150 characters for display
-        if len(text) > 150:
-            text = text[-150:]
+        # Don't display if too short - wait for more content
+        # This avoids showing truncated snippets like "Har..."
+        if len(text) < 80:
+            return ""
+
+        # Get the last ~200 characters for display (increased for better context)
+        if len(text) > 200:
+            text = text[-200:]
             # Try to start at a sentence boundary
             for punct in [". ", "! ", "? ", "\n"]:
                 idx = text.find(punct)
-                if idx != -1 and idx < 50:
+                if idx != -1 and idx < 80:
                     text = text[idx + len(punct) :]
                     break
 
         # Clean up any incomplete words at the start
         if text and not text[0].isupper() and " " in text:
             text = text[text.find(" ") + 1 :]
+
+        # Also ensure we don't end mid-word - truncate at last word boundary
+        # but keep at least 40 chars to be meaningful
+        if len(text) > 60 and not text[-1].isspace() and " " in text[-30:]:
+            # Find last space and truncate there if text doesn't end properly
+            last_space = text.rfind(" ", len(text) - 30)
+            if last_space > 40:
+                text = text[:last_space]
 
         # Transform to sound like internal monologue rather than LLM reasoning
         # Remove obvious LLM-style phrases
@@ -853,6 +858,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         """
         last_response_count = 0
         consecutive_silence = 0  # Track how long since last response
+        last_message_time = 0.0  # Track when this thinker last sent a message
 
         while True:
             try:
@@ -868,6 +874,23 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                     await asyncio.sleep(0.5)
                     continue
 
+                # Get speed multiplier (higher = slower)
+                # Use non-linear scaling: speed_mult^1.5 makes higher speeds much slower
+                # At 1x: 1.0, at 2x: 2.8, at 4x: 8.0, at 6x: 14.7
+                raw_speed = manager.get_speed_multiplier(conversation_id)
+                speed_mult = raw_speed**1.5
+
+                # Enforce minimum time between messages from this thinker
+                # At 6x (Contemplative), minimum ~150s between messages from same thinker
+                # This ensures truly slow, contemplative pacing
+                min_interval = 10.0 * speed_mult  # 10s base, ~147s at 6x
+                current_time = asyncio.get_event_loop().time()
+                if last_message_time > 0:
+                    elapsed = current_time - last_message_time
+                    if elapsed < min_interval:
+                        await asyncio.sleep(min_interval - elapsed)
+                        continue
+
                 # Get current messages
                 messages = await get_messages(conversation_id)
 
@@ -879,13 +902,17 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 if should_respond:
                     consecutive_silence = 0
 
-                    # Get speed multiplier (higher = slower, more reading time)
-                    speed_mult = manager.get_speed_multiplier(conversation_id)
+                    # Check if we should prompt the user instead of normal response
+                    should_prompt = self._should_prompt_user(messages, speed_mult)
+                    user_name = (
+                        self._get_user_name_from_messages(messages) if should_prompt else None
+                    )
 
                     # Show typing indicator
                     await manager.send_thinker_typing(conversation_id, thinker.name)
 
-                    # Small initial delay before starting response generation
+                    # Initial "reading" delay - longer at slower speeds
+                    # At 6x: 3-9 seconds of reading before starting to type
                     await asyncio.sleep(random.uniform(0.5, 1.5) * speed_mult)
 
                     # Check pause state before generating (prevents spend during pause)
@@ -893,11 +920,18 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                         await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
                         continue
 
-                    # Generate response with streaming thinking
-                    # This streams thinking tokens via WebSocket as they're generated
-                    response_text, cost = await self.generate_response_with_streaming_thinking(
-                        conversation_id, thinker, messages, topic
-                    )
+                    # Generate response - either a user prompt or normal response
+                    if should_prompt and user_name:
+                        # Generate a message that invites the user to participate
+                        response_text, cost = await self.generate_user_prompt(
+                            thinker, messages, topic, user_name
+                        )
+                    else:
+                        # Generate normal response with streaming thinking
+                        # This streams thinking tokens via WebSocket as they're generated
+                        response_text, cost = await self.generate_response_with_streaming_thinking(
+                            conversation_id, thinker, messages, topic
+                        )
 
                     # Check pause state again before saving (in case paused during generation)
                     if self.is_paused(conversation_id):
@@ -913,7 +947,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
                         # Send each bubble with typing delay between them
                         for i, bubble_text in enumerate(bubbles):
-                            # Check pause state before each bubble
+                            # Check pause state IMMEDIATELY before each send
                             if self.is_paused(conversation_id):
                                 await manager.send_thinker_stopped_typing(
                                     conversation_id, thinker.name
@@ -927,6 +961,13 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                                 bubble_text,
                                 cost_per_bubble,
                             )
+
+                            # Final pause check right before sending to UI
+                            if self.is_paused(conversation_id):
+                                await manager.send_thinker_stopped_typing(
+                                    conversation_id, thinker.name
+                                )
+                                break
 
                             # Stop typing indicator before sending message
                             await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
@@ -947,20 +988,19 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                                 await asyncio.sleep(random.uniform(1.0, 3.0) * speed_mult)
 
                         last_response_count = len(messages) + len(bubbles)
+                        last_message_time = asyncio.get_event_loop().time()
                     else:
                         await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
                 else:
                     consecutive_silence += 1
 
-                # Get speed multiplier for wait times
-                speed_mult = manager.get_speed_multiplier(conversation_id)
-
                 # Variable wait before checking again
-                # At 6x (Contemplative), active = 18-48s, quiet = 48-96s between checks
+                # Base times are longer to ensure proper pacing
+                # At 6x (Contemplative): active = 30-60s, quiet = 60-120s between checks
                 if consecutive_silence > 3:
-                    wait_time = random.uniform(8.0, 16.0) * speed_mult  # Quiet conversation
+                    wait_time = random.uniform(10.0, 20.0) * speed_mult  # Quiet conversation
                 else:
-                    wait_time = random.uniform(3.0, 8.0) * speed_mult  # Active conversation
+                    wait_time = random.uniform(5.0, 10.0) * speed_mult  # Active conversation
                 await asyncio.sleep(wait_time)
 
             except asyncio.CancelledError:
@@ -968,6 +1008,125 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
             except Exception:
                 # Log error but continue running
                 await asyncio.sleep(5)
+
+    def _get_user_name_from_messages(self, messages: Sequence["Message"]) -> str | None:
+        """Extract the user's display name from message history."""
+        for msg in reversed(messages):
+            sender = msg.sender_type
+            is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
+            if is_user and msg.sender_name:
+                return msg.sender_name
+        return None
+
+    def _count_messages_since_user(self, messages: Sequence["Message"]) -> int:
+        """Count how many thinker messages have occurred since the user last spoke."""
+        count = 0
+        for msg in reversed(messages):
+            sender = msg.sender_type
+            is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
+            if is_user:
+                break
+            count += 1
+        return count
+
+    def _should_prompt_user(
+        self,
+        messages: Sequence["Message"],
+        speed_mult: float,
+    ) -> bool:
+        """Determine if we should prompt the user to participate.
+
+        Returns True if:
+        - User hasn't spoken in many messages (threshold scales with speed)
+        - There are enough messages for context
+        - Random chance (don't always prompt)
+        """
+        if len(messages) < 5:
+            return False
+
+        messages_since_user = self._count_messages_since_user(messages)
+
+        # Threshold: prompt after ~8 thinker messages at 1x, ~5 at 6x (more contemplative = more inclusive)
+        threshold = max(4, int(8 / (speed_mult**0.3)))
+
+        if messages_since_user < threshold:
+            return False
+
+        # Don't prompt too often - low probability even when threshold met
+        # Higher speed = more likely to prompt (slower pace, more natural to invite)
+        prompt_probability = 0.15 * (speed_mult**0.3)
+        return bool(random.random() < prompt_probability)
+
+    async def generate_user_prompt(
+        self,
+        thinker: "ConversationThinker",
+        messages: Sequence["Message"],
+        topic: str,
+        user_name: str,
+    ) -> tuple[str, float]:
+        """Generate a message that prompts the user to participate.
+
+        Creates a natural invitation for the user to share their thoughts.
+        """
+        if not self.client:
+            return "", 0.0
+
+        # Build recent conversation context
+        def get_sender_label(msg: "Message") -> str:
+            sender = msg.sender_type
+            is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
+            return user_name if is_user else (msg.sender_name or "Unknown")
+
+        conversation_history = "\n".join(
+            f"{get_sender_label(m)}: {m.content}" for m in messages[-15:]
+        )
+
+        prompt = f"""You are simulating {thinker.name} in a group discussion.
+
+ABOUT {thinker.name.upper()}:
+Bio: {thinker.bio}
+Known positions: {thinker.positions}
+Communication style: {thinker.style}
+
+DISCUSSION TOPIC: {topic}
+
+RECENT CONVERSATION:
+{conversation_history}
+
+The user {user_name} hasn't spoken in a while. Generate a SHORT, natural message that:
+1. Stays in character as {thinker.name}
+2. Invites {user_name} to share their perspective
+3. References something specific from the recent discussion
+4. Feels warm and curious, not demanding
+
+Examples of good prompts (adapt to your character's style):
+- "{user_name}, I'm curious what you make of all this."
+- "We've been going back and forth, but {user_name}, where do you stand?"
+- "{user_name}, you've been quiet - any thoughts on what [other thinker] said about X?"
+
+Keep it to ONE short sentence (under 20 words). Be genuine, not formulaic.
+
+Respond with ONLY what {thinker.name} would say, nothing else."""
+
+        try:
+            response = await self.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=60,
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            # Calculate cost
+            input_tokens = response.usage.input_tokens
+            output_tokens = response.usage.output_tokens
+            cost = input_tokens * INPUT_COST_PER_TOKEN + output_tokens * OUTPUT_COST_PER_TOKEN
+
+            first_block = response.content[0]
+            if not isinstance(first_block, TextBlock):
+                return "", 0.0
+            return first_block.text.strip(), cost
+        except Exception as e:
+            logging.warning(f"Failed to generate user prompt: {e}")
+            return "", 0.0
 
     def _should_respond(
         self,

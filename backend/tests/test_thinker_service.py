@@ -330,28 +330,39 @@ class TestExtractThinkingDisplay:
         result = service._extract_thinking_display("")
         assert result == ""
 
-    def test_short_text_returned_as_is(self) -> None:
-        """Test that short text is returned with ellipsis if incomplete."""
+    def test_very_short_text_returns_empty(self) -> None:
+        """Test that very short text returns empty (waits for more content)."""
         service = ThinkerService()
+        # Text under 80 chars should return empty to avoid truncated snippets
         result = service._extract_thinking_display("Considering the implications")
-        assert "Considering" in result
-        assert result.endswith("...")
+        assert result == ""
+
+    def test_medium_text_returned_with_formatting(self) -> None:
+        """Test that medium text (80+ chars) is returned with formatting."""
+        service = ThinkerService()
+        # Text over 80 chars should be returned with possible prefix/ellipsis
+        text = "This is a longer piece of thinking text that has enough content to be meaningful and worth displaying to the user."
+        result = service._extract_thinking_display(text)
+        assert len(result) > 0
+        assert "thinking" in result.lower() or "content" in result.lower()
 
     def test_long_text_truncated(self) -> None:
-        """Test that long text is truncated to ~150 chars."""
+        """Test that long text is truncated to ~200 chars."""
         service = ThinkerService()
         long_text = "This is a very long thinking text. " * 20
         result = service._extract_thinking_display(long_text)
         # Should be truncated (may include prefix)
-        assert len(result) <= 180  # ~150 + prefix + ellipsis
+        assert len(result) <= 250  # ~200 + prefix + ellipsis
 
     def test_text_ending_with_period_no_extra_ellipsis(self) -> None:
         """Test that text ending with period doesn't get extra ellipsis."""
         service = ThinkerService()
-        result = service._extract_thinking_display("This is a complete thought.")
+        # Need 80+ chars to get output
+        text = "This is a complete thought that is long enough to be meaningful and informative. It ends properly."
+        result = service._extract_thinking_display(text)
         # May have a prefix added but should end with period, not ellipsis
         assert result.endswith(".")
-        assert "complete thought" in result
+        assert "complete" in result or "thought" in result
 
     def test_preserves_sentence_boundaries(self) -> None:
         """Test that truncation tries to preserve sentence boundaries."""
@@ -359,7 +370,8 @@ class TestExtractThinkingDisplay:
         text = "First sentence. " * 5 + "Second sentence. " * 5 + "Final thought"
         result = service._extract_thinking_display(text)
         # Should try to start at a sentence boundary and produce reasonable output
-        assert len(result) <= 180  # May include prefix
+        assert len(result) <= 250  # May include prefix
+        assert len(result) >= 40  # Should have substantial content
 
 
 class TestGenerateResponseWithStreamingThinking:

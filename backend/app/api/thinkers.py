@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.core.config import get_settings
+from app.exceptions import ThinkerAPIError
 from app.schemas import (
     ThinkerProfile,
     ThinkerSuggestion,
@@ -10,7 +11,6 @@ from app.schemas import (
     ThinkerValidateRequest,
     ThinkerValidateResponse,
 )
-from app.services.thinker import ThinkerAPIError
 
 router = APIRouter()
 

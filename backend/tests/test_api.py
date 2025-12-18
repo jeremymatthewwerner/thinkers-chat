@@ -429,7 +429,8 @@ class TestThinkerAPI:
         self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that API errors are properly returned as HTTP errors."""
-        from app.services.thinker import ThinkerAPIError, thinker_service
+        from app.exceptions import ThinkerAPIError
+        from app.services.thinker import thinker_service
 
         async def mock_suggest(*_args: object, **_kwargs: object) -> None:
             raise ThinkerAPIError(
@@ -456,7 +457,8 @@ class TestThinkerAPI:
         self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that validation API errors are properly returned as HTTP errors."""
-        from app.services.thinker import ThinkerAPIError, thinker_service
+        from app.exceptions import ThinkerAPIError
+        from app.services.thinker import thinker_service
 
         async def mock_validate(*_args: object, **_kwargs: object) -> None:
             raise ThinkerAPIError(

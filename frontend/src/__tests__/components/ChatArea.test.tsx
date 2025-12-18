@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { ChatArea } from '@/components/ChatArea';
 import type { Conversation, Message } from '@/types';
 
@@ -118,5 +118,65 @@ describe('ChatArea', () => {
     );
 
     expect(screen.getByTestId('message-textarea')).toBeDisabled();
+  });
+
+  it('displays error message banner when errorMessage is provided', () => {
+    const conversation = createConversation();
+    const errorMessage = 'Credit balance is too low to continue';
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        errorMessage={errorMessage}
+      />
+    );
+
+    expect(screen.getByTestId('error-banner')).toBeInTheDocument();
+    expect(screen.getByText(errorMessage)).toBeInTheDocument();
+    expect(screen.getByText('Error')).toBeInTheDocument();
+  });
+
+  it('does not display error banner when errorMessage is null', () => {
+    const conversation = createConversation();
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        errorMessage={null}
+      />
+    );
+
+    expect(screen.queryByTestId('error-banner')).not.toBeInTheDocument();
+  });
+
+  it('allows dismissing error message', async () => {
+    const conversation = createConversation();
+    const errorMessage = 'Test error message';
+    const { rerender } = render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        errorMessage={errorMessage}
+      />
+    );
+
+    const dismissButton = screen.getByTestId('dismiss-error-button');
+    expect(screen.getByTestId('error-banner')).toBeInTheDocument();
+
+    // Click dismiss button
+    act(() => {
+      dismissButton.click();
+    });
+
+    // Re-render with same props - banner should be hidden due to dismissed state
+    rerender(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        errorMessage={errorMessage}
+      />
+    );
+
+    expect(screen.queryByTestId('error-banner')).not.toBeInTheDocument();
   });
 });

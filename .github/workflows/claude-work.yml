@@ -203,6 +203,7 @@ jobs:
 
           claude_args: |
             --max-turns 50
+            --dangerously-skip-permissions
 
       - name: Comment - Work completed
         if: success()

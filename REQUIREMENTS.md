@@ -60,6 +60,12 @@ Create an engaging, educational chat experience where users can have real-time g
 - Messages appear in real-time as thinkers "type"
 - Multiple thinkers can compose/send messages concurrently
 - Typing indicators show when thinkers are composing
+- **Thinking preview display**:
+  - When thinkers are thinking, a preview of their thought process is shown
+  - Thinking should sound like authentic inner monologue, not LLM reasoning
+  - Only display when there's enough content to be meaningful (not truncated fragments)
+  - Update frequency scales with pace setting (slower pace = less frequent updates)
+  - Text should not be cut off mid-word; truncate at word/sentence boundaries
 - Natural conversation flow:
   - Thinkers respond to each other, not just the user
   - Agreements, disagreements, and building on ideas

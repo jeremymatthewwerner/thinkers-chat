@@ -649,6 +649,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
         Transforms raw LLM thinking into thinker's internal monologue style.
         Returns the last complete thought, rephrased as if the thinker is talking to themselves.
+        Returns empty string if text is too short (< 80 chars) to show meaningful preview.
         """
         if not thinking_text:
             return ""
@@ -656,19 +657,32 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         # Clean up the text
         text = thinking_text.strip()
 
-        # Get the last ~150 characters for display
-        if len(text) > 150:
-            text = text[-150:]
+        # Don't display if too short - wait for more content
+        # This avoids showing truncated snippets like "Har..."
+        if len(text) < 80:
+            return ""
+
+        # Get the last ~200 characters for display (increased for better context)
+        if len(text) > 200:
+            text = text[-200:]
             # Try to start at a sentence boundary
             for punct in [". ", "! ", "? ", "\n"]:
                 idx = text.find(punct)
-                if idx != -1 and idx < 50:
+                if idx != -1 and idx < 80:
                     text = text[idx + len(punct) :]
                     break
 
         # Clean up any incomplete words at the start
         if text and not text[0].isupper() and " " in text:
             text = text[text.find(" ") + 1 :]
+
+        # Also ensure we don't end mid-word - truncate at last word boundary
+        # but keep at least 40 chars to be meaningful
+        if len(text) > 60 and not text[-1].isspace() and " " in text[-30:]:
+            # Find last space and truncate there if text doesn't end properly
+            last_space = text.rfind(" ", len(text) - 30)
+            if last_space > 40:
+                text = text[:last_space]
 
         # Transform to sound like internal monologue rather than LLM reasoning
         # Remove obvious LLM-style phrases

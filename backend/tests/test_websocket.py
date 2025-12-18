@@ -295,7 +295,9 @@ class TestCostAccumulation:
     """Tests for cost accumulation to user.total_spend."""
 
     @pytest.mark.asyncio
-    async def test_save_thinker_message_updates_user_total_spend(self, db_session: AsyncSession) -> None:
+    async def test_save_thinker_message_updates_user_total_spend(
+        self, db_session: AsyncSession
+    ) -> None:
         """Test that saving a thinker message updates the user's total_spend."""
         # Create a user
         user = User(

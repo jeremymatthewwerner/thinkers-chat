@@ -31,6 +31,8 @@ jobs:
             --add-label "claude-triaging"
 
       - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
@@ -67,11 +69,11 @@ jobs:
             2. Add type label (bug, enhancement, or task) based on the issue content
             3. Add a brief comment explaining your triage decision and priority rationale
 
-            Use these commands:
-            - `gh issue edit ${{ github.event.issue.number }} --remove-label "P3" --add-label "P1,bug"` (adjust labels as needed)
-            - `gh issue edit ${{ github.event.issue.number }} --add-label "P2,enhancement"` (for new issues without P3)
-            - `gh issue comment ${{ github.event.issue.number }} --body "..."`
-            - `gh issue list` to check for duplicates
+            Use these commands (always include --repo ${{ github.repository }}):
+            - `gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --remove-label "P3" --add-label "P1,bug"` (adjust labels as needed)
+            - `gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label "P2,enhancement"` (for new issues without P3)
+            - `gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "..."`
+            - `gh issue list --repo ${{ github.repository }}` to check for duplicates
 
           claude_args: |
             --dangerously-skip-permissions

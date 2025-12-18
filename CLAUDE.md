@@ -100,9 +100,10 @@ This ensures comprehensive test coverage and prevents regressions.
 
 ## Git
 
-- Work on `main` branch
+- Work directly on `main` branch - no feature branches needed for this project
 - Commit frequently with clear messages
 - One logical change per commit
+- Push to main after tests pass locally
 
 ## Task & Bug Tracking with GitHub Issues (MANDATORY)
 

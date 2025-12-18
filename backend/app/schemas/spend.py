@@ -16,7 +16,7 @@ class ConversationSpend(BaseModel):
 
     conversation_id: str
     session_id: str
-    title: str | None = None
+    topic: str
     total_spend: float = Field(ge=0, description="Total spend for this conversation")
     message_count: int = Field(ge=0, description="Number of messages with cost")
 

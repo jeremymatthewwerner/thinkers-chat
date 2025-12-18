@@ -33,7 +33,7 @@ jobs:
             e2e:
               - 'backend/**'
               - 'frontend/**'
-              - '.github/workflows/**'
+            # Note: workflow-only changes don't trigger e2e - app code unchanged
 
   backend:
     name: Backend Tests

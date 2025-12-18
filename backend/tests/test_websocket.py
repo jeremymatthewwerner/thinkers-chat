@@ -2,11 +2,20 @@
 
 import json
 
+import pytest
+from sqlalchemy import select
 from starlette.testclient import TestClient
 
-from app.api.websocket import ConnectionManager, WSMessage, WSMessageType
+from app.api.websocket import (
+    ConnectionManager,
+    WSMessage,
+    WSMessageType,
+    save_thinker_message,
+)
 from app.core.auth import create_access_token
 from app.main import app
+from app.models import Conversation, Message, Session, User
+from app.models.message import SenderType
 
 
 def get_test_token(user_id: str = "test-user-id", session_id: str = "test-session-id") -> str:
@@ -279,3 +288,190 @@ class TestWebSocketMessageTypes:
             # Verify no pause message comes through
             # (we can't directly check "no message", but we can verify the state)
             assert thinker_service.is_paused(conversation_id) is False
+
+
+class TestCostAccumulation:
+    """Tests for cost accumulation to user.total_spend."""
+
+    @pytest.mark.asyncio
+    async def test_save_thinker_message_updates_user_total_spend(self, db_session) -> None:
+        """Test that saving a thinker message updates the user's total_spend."""
+        # Create a user
+        user = User(
+            username="test_user",
+            password_hash="test_hash",
+            total_spend=0.0,
+        )
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+
+        # Create a session for the user
+        session = Session(
+            user_id=user.id,
+        )
+        db_session.add(session)
+        await db_session.commit()
+        await db_session.refresh(session)
+
+        # Create a conversation for the session
+        conversation = Conversation(
+            session_id=session.id,
+            topic="Test conversation about philosophy",
+        )
+        db_session.add(conversation)
+        await db_session.commit()
+        await db_session.refresh(conversation)
+
+        # Save a thinker message with cost
+        cost_1 = 0.05
+        message_1 = await save_thinker_message(
+            conversation_id=conversation.id,
+            thinker_name="Socrates",
+            content="What is the nature of knowledge?",
+            cost=cost_1,
+            db=db_session,
+        )
+
+        # Verify message was saved with cost
+        assert message_1.cost == cost_1
+        assert message_1.sender_type == SenderType.THINKER
+        assert message_1.sender_name == "Socrates"
+
+        # Verify user's total_spend was updated
+        result = await db_session.execute(select(User).where(User.id == user.id))
+        updated_user = result.scalar_one()
+        assert updated_user.total_spend == cost_1
+
+        # Save another message with different cost
+        cost_2 = 0.03
+        message_2 = await save_thinker_message(
+            conversation_id=conversation.id,
+            thinker_name="Plato",
+            content="I think knowledge is justified true belief.",
+            cost=cost_2,
+            db=db_session,
+        )
+
+        # Verify second message was saved
+        assert message_2.cost == cost_2
+
+        # Verify user's total_spend accumulated both costs
+        result = await db_session.execute(select(User).where(User.id == user.id))
+        updated_user = result.scalar_one()
+        assert updated_user.total_spend == pytest.approx(cost_1 + cost_2)
+
+    @pytest.mark.asyncio
+    async def test_save_thinker_message_with_zero_cost(self, db_session) -> None:
+        """Test that saving a message with zero cost still works correctly."""
+        # Create a user
+        user = User(
+            username="test_user_zero",
+            password_hash="test_hash",
+            total_spend=0.0,
+        )
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+
+        # Create a session for the user
+        session = Session(
+            user_id=user.id,
+        )
+        db_session.add(session)
+        await db_session.commit()
+        await db_session.refresh(session)
+
+        # Create a conversation for the session
+        conversation = Conversation(
+            session_id=session.id,
+            topic="Test conversation",
+        )
+        db_session.add(conversation)
+        await db_session.commit()
+        await db_session.refresh(conversation)
+
+        # Save a message with zero cost
+        message = await save_thinker_message(
+            conversation_id=conversation.id,
+            thinker_name="Einstein",
+            content="E=mc²",
+            cost=0.0,
+            db=db_session,
+        )
+
+        # Verify message was saved
+        assert message.cost == 0.0
+
+        # Verify user's total_spend is still 0
+        result = await db_session.execute(select(User).where(User.id == user.id))
+        updated_user = result.scalar_one()
+        assert updated_user.total_spend == 0.0
+
+    @pytest.mark.asyncio
+    async def test_save_thinker_message_multiple_users(self, db_session) -> None:
+        """Test that costs are tracked separately for different users."""
+        # Create two users
+        user1 = User(
+            username="user1",
+            password_hash="test_hash",
+            total_spend=0.0,
+        )
+        user2 = User(
+            username="user2",
+            password_hash="test_hash",
+            total_spend=0.0,
+        )
+        db_session.add_all([user1, user2])
+        await db_session.commit()
+        await db_session.refresh(user1)
+        await db_session.refresh(user2)
+
+        # Create sessions for both users
+        session1 = Session(user_id=user1.id)
+        session2 = Session(user_id=user2.id)
+        db_session.add_all([session1, session2])
+        await db_session.commit()
+        await db_session.refresh(session1)
+        await db_session.refresh(session2)
+
+        # Create conversations for both sessions
+        conversation1 = Conversation(
+            session_id=session1.id,
+            topic="User 1's conversation",
+        )
+        conversation2 = Conversation(
+            session_id=session2.id,
+            topic="User 2's conversation",
+        )
+        db_session.add_all([conversation1, conversation2])
+        await db_session.commit()
+        await db_session.refresh(conversation1)
+        await db_session.refresh(conversation2)
+
+        # Save messages for each user with different costs
+        cost1 = 0.10
+        cost2 = 0.25
+        await save_thinker_message(
+            conversation_id=conversation1.id,
+            thinker_name="Socrates",
+            content="User 1 message",
+            cost=cost1,
+            db=db_session,
+        )
+        await save_thinker_message(
+            conversation_id=conversation2.id,
+            thinker_name="Plato",
+            content="User 2 message",
+            cost=cost2,
+            db=db_session,
+        )
+
+        # Verify each user has their own correct total_spend
+        result = await db_session.execute(select(User).where(User.id == user1.id))
+        updated_user1 = result.scalar_one()
+        assert updated_user1.total_spend == cost1
+
+        result = await db_session.execute(select(User).where(User.id == user2.id))
+        updated_user2 = result.scalar_one()
+        assert updated_user2.total_spend == cost2

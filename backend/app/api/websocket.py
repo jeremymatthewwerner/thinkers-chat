@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Conversation, Message
+from app.models import Conversation, Message, User
 from app.models.message import SenderType
 
 if TYPE_CHECKING:
@@ -230,7 +230,8 @@ async def get_messages_for_conversation(
 async def save_thinker_message(
     conversation_id: str, thinker_name: str, content: str, cost: float, db: AsyncSession
 ) -> Message:
-    """Save a thinker's message to the database."""
+    """Save a thinker's message to the database and update user's total spend."""
+    # Create and save the message
     message = Message(
         conversation_id=conversation_id,
         sender_type=SenderType.THINKER,
@@ -239,6 +240,26 @@ async def save_thinker_message(
         cost=cost,
     )
     db.add(message)
+
+    # Update the user's total_spend by traversing the relationship chain
+    # Conversation -> Session -> User
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.id == conversation_id)
+        .options(selectinload(Conversation.session))
+    )
+    conversation = result.scalar_one_or_none()
+
+    if conversation and conversation.session:
+        # Get the user and update their total spend
+        user_result = await db.execute(
+            select(User).where(User.id == conversation.session.user_id)
+        )
+        user = user_result.scalar_one_or_none()
+
+        if user:
+            user.total_spend += cost
+
     await db.commit()
     await db.refresh(message)
     return message

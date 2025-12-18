@@ -117,4 +117,56 @@ describe('Sidebar', () => {
       screen.getByText('Discuss ideas with AI-simulated thinkers')
     ).toBeInTheDocument();
   });
+
+  it('renders bug report link when username is provided', () => {
+    render(<Sidebar {...defaultProps} username="testuser" />);
+    const bugReportLink = screen.getByTestId('bug-report-link');
+    expect(bugReportLink).toBeInTheDocument();
+    expect(bugReportLink).toHaveAttribute('target', '_blank');
+    expect(bugReportLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('bug report URL includes username in the body', () => {
+    render(<Sidebar {...defaultProps} username="testuser" />);
+    const bugReportLink = screen.getByTestId(
+      'bug-report-link'
+    ) as HTMLAnchorElement;
+
+    const url = bugReportLink.href;
+    const decodedUrl = decodeURIComponent(url);
+
+    // Check that URL contains GitHub issue creation path
+    expect(url).toContain(
+      'github.com/jeremymatthewwerner/thinkers-chat/issues/new'
+    );
+
+    // Check that user info is in the body
+    expect(decodedUrl).toContain('testuser');
+    expect(decodedUrl).toContain('Filed from thinkers-chat app');
+  });
+
+  it('bug report URL includes display name when provided', () => {
+    render(
+      <Sidebar {...defaultProps} username="testuser" displayName="Test User" />
+    );
+    const bugReportLink = screen.getByTestId(
+      'bug-report-link'
+    ) as HTMLAnchorElement;
+
+    const decodedUrl = decodeURIComponent(bugReportLink.href);
+    expect(decodedUrl).toContain('Display Name: Test User');
+    expect(decodedUrl).toContain('Filed from thinkers-chat app by Test User');
+  });
+
+  it('bug report URL includes browser and OS information', () => {
+    render(<Sidebar {...defaultProps} username="testuser" />);
+    const bugReportLink = screen.getByTestId(
+      'bug-report-link'
+    ) as HTMLAnchorElement;
+
+    const decodedUrl = decodeURIComponent(bugReportLink.href);
+    expect(decodedUrl).toContain('Browser:');
+    expect(decodedUrl).toContain('OS:');
+    expect(decodedUrl).toContain('User Agent:');
+  });
 });

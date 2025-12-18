@@ -50,11 +50,13 @@ function renderContentWithMentions(
   const thinkerMap = new Map<string, ConversationThinker>();
   thinkers.forEach((t) => {
     thinkerMap.set(t.name.toLowerCase(), t);
-    // Also map first name only for partial matches
-    const firstName = t.name.split(' ')[0];
-    if (firstName.length > 2) {
-      thinkerMap.set(firstName.toLowerCase(), t);
-    }
+    // Also map individual name parts for partial matches (first name, last name, etc.)
+    const nameParts = t.name.split(' ');
+    nameParts.forEach((part) => {
+      if (part.length > 2) {
+        thinkerMap.set(part.toLowerCase(), t);
+      }
+    });
   });
 
   // Create regex pattern matching any thinker name (case-insensitive)

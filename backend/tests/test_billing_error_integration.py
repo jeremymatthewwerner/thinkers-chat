@@ -183,9 +183,6 @@ async def test_github_api_failure_does_not_crash_request(
         assert any("GitHub API failed" in record.message for record in caplog.records)
 
 
-@pytest.mark.skip(
-    reason="Requires complete exception handler with GitHub integration (issues #112, #113, #124)"
-)
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "exception_type,exception_message",

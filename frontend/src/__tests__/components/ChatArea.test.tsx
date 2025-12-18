@@ -119,4 +119,46 @@ describe('ChatArea', () => {
 
     expect(screen.getByTestId('message-textarea')).toBeDisabled();
   });
+
+  it('renders error banner when error message is provided', () => {
+    const conversation = createConversation();
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        errorMessage="Test error message"
+      />
+    );
+
+    expect(screen.getByTestId('error-banner')).toBeInTheDocument();
+    expect(screen.getByText('Test error message')).toBeInTheDocument();
+  });
+
+  it('does not render error banner when error message is empty', () => {
+    const conversation = createConversation();
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        errorMessage=""
+      />
+    );
+
+    expect(screen.queryByTestId('error-banner')).not.toBeInTheDocument();
+  });
+
+  it('renders billing error message in error banner', () => {
+    const conversation = createConversation();
+    const billingError = 'Spend limit reached ($10.00/$10.00). Contact admin to increase your limit.';
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        errorMessage={billingError}
+      />
+    );
+
+    expect(screen.getByTestId('error-banner')).toBeInTheDocument();
+    expect(screen.getByText(billingError)).toBeInTheDocument();
+  });
 });

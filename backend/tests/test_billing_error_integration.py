@@ -148,7 +148,9 @@ async def test_billing_error_triggers_github_issue_filing(client: AsyncClient) -
     reason="Requires complete exception handler with GitHub integration (issues #112, #113, #124)"
 )
 @pytest.mark.asyncio
-async def test_github_api_failure_does_not_crash_request(client: AsyncClient) -> None:
+async def test_github_api_failure_does_not_crash_request(
+    client: AsyncClient, caplog: pytest.LogCaptureFixture
+) -> None:
     """Test that GitHub API failures don't crash the user-facing request.
 
     This test will be enabled once issue #124 is complete.
@@ -159,21 +161,80 @@ async def test_github_api_failure_does_not_crash_request(client: AsyncClient) ->
     - HTTP 503 response still returned successfully
     - Error is logged but not propagated to client
     """
+    import logging
+
     # Arrange: Mock GitHubIssueService to raise exception
-    # with patch("app.services.github_issue.GitHubIssueService") as mock_service:
-    #     mock_file_issue = AsyncMock(side_effect=Exception("GitHub API failed"))
-    #     mock_service.return_value.file_billing_error_issue = mock_file_issue
+    with patch("app.main.GitHubIssueService") as mock_service:
+        mock_file_issue = AsyncMock(side_effect=Exception("GitHub API failed"))
+        mock_service.return_value.file_billing_error_issue = mock_file_issue
 
-    #     # Act: Call endpoint that raises BillingError
-    #     response = await client.get("/api/test/billing-error")
+        # Act: Call endpoint that raises BillingError
+        with caplog.at_level(logging.ERROR):
+            response = await client.get("/api/test/billing-error")
 
-    #     # Assert: Request still succeeds (HTTP 503 returned)
-    #     assert response.status_code == 503
-    #     assert "billing" in response.json()["detail"].lower()
+        # Assert: Request still succeeds (HTTP 503 returned)
+        assert response.status_code == 503
+        assert "billing" in response.json()["detail"].lower()
 
-    #     # Assert: GitHub API was attempted
-    #     mock_file_issue.assert_called_once()
-    pass
+        # Assert: GitHub API was attempted
+        mock_file_issue.assert_called_once()
+
+        # Assert: Error was logged (exception from GitHub API)
+        assert any("GitHub API failed" in record.message for record in caplog.records)
+
+
+@pytest.mark.skip(
+    reason="Requires complete exception handler with GitHub integration (issues #112, #113, #124)"
+)
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_type,exception_message",
+    [
+        (ConnectionError, "Network connection failed"),
+        (TimeoutError, "GitHub API request timed out"),
+        (ValueError, "Invalid response from GitHub API"),
+        (RuntimeError, "Unexpected error in GitHub API"),
+    ],
+)
+async def test_github_api_failure_with_different_exceptions(
+    client: AsyncClient,
+    caplog: pytest.LogCaptureFixture,
+    exception_type: type[Exception],
+    exception_message: str,
+) -> None:
+    """Test that various GitHub API exception types are handled gracefully.
+
+    This test will be enabled once issue #124 is complete.
+
+    Expected behavior:
+    - Test endpoint raises BillingError
+    - GitHub issue filing fails with various exception types
+    - HTTP 503 response still returned successfully for all exception types
+    - Each exception type is logged appropriately
+    """
+    import logging
+
+    # Arrange: Mock GitHubIssueService to raise different exception types
+    with patch("app.main.GitHubIssueService") as mock_service:
+        mock_file_issue = AsyncMock(side_effect=exception_type(exception_message))
+        mock_service.return_value.file_billing_error_issue = mock_file_issue
+
+        # Act: Call endpoint that raises BillingError
+        with caplog.at_level(logging.ERROR):
+            response = await client.get("/api/test/billing-error")
+
+        # Assert: Request still succeeds (HTTP 503 returned)
+        assert response.status_code == 503
+        assert "billing" in response.json()["detail"].lower()
+
+        # Assert: GitHub API was attempted
+        mock_file_issue.assert_called_once()
+
+        # Assert: Error was logged with exception details
+        assert any(
+            exception_message in record.message or exception_type.__name__ in record.message
+            for record in caplog.records
+        )
 
 
 @pytest.mark.skip(

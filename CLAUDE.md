@@ -333,7 +333,7 @@ Background automation handles issue triage and work without manual intervention.
 
 ### How It Works
 
-1. User reports bug via "Report a Bug" button → Creates P3 issue
+1. User reports issue via "Report an Issue" button → Creates P3 issue
 2. Triage workflow runs → Assigns P0/P1/P2 label with comment
 3. Work workflow triggers immediately (event-driven by label)
 4. Claude implements fix → Creates PR with `Fixes #N` + enables auto-merge

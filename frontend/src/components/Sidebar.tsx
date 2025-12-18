@@ -146,16 +146,16 @@ export function Sidebar({
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {/* Bug report button - creates GitHub issue with pre-populated user info */}
+                  {/* Issue report button - creates GitHub issue with pre-populated user info */}
                   <a
                     href={bugReportUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2 py-1 text-xs text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"
-                    title="Report a bug on GitHub"
+                    title="Report an issue on GitHub"
                     data-testid="bug-report-link"
                   >
-                    Report Bug
+                    Report Issue
                   </a>
                   {isAdmin && (
                     <a

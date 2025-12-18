@@ -1,5 +1,5 @@
 /**
- * Utility functions for generating bug report URLs
+ * Utility functions for generating issue report URLs
  */
 
 export interface BugReportParams {
@@ -47,9 +47,9 @@ Please describe the issue:
 ${userInfoSection}`;
 
   // URL encode the parameters
-  const title = encodeURIComponent('Bug: ');
+  const title = encodeURIComponent('');
   const encodedBody = encodeURIComponent(body);
-  const labels = encodeURIComponent('P3,bug');
+  const labels = encodeURIComponent('P3');
 
   return `https://github.com/jeremymatthewwerner/thinkers-chat/issues/new?title=${title}&body=${encodedBody}&labels=${labels}`;
 }

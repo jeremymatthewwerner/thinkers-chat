@@ -135,16 +135,16 @@ Create a GitHub issue for:
 
 ### Issue Workflow
 
-1. **File the issue first** - Before starting work, create a GitHub issue with priority:
+1. **File the issue first** - Before starting work, create a GitHub issue with type prefix and priority label:
    ```bash
-   # For bugs (include priority in title)
-   gh issue create --title "[P1] Bug: <brief description>" --body "<detailed description>"
+   # For bugs
+   gh issue create --title "Bug: <brief description>" --body "<detailed description>" --label "P1,bug"
 
    # For features
-   gh issue create --title "[P2] Feature: <brief description>" --body "<detailed description>"
+   gh issue create --title "Feature: <brief description>" --body "<detailed description>" --label "P1,enhancement"
 
    # For tasks
-   gh issue create --title "[P2] Task: <brief description>" --body "<detailed description>"
+   gh issue create --title "Task: <brief description>" --body "<detailed description>" --label "P2,task"
    ```
 
 2. **Mark issue as in-progress** - Add the `claude-working` label when starting work:
@@ -175,13 +175,13 @@ Create a GitHub issue for:
 
 ### Issue Priority (MANDATORY)
 
-**Always assign a priority when creating issues:**
+**Always assign a priority label when creating issues:**
 - **P0** - Blocks most or all functionality from working (critical bugs, system down)
 - **P1** - Blocks some functionality from working correctly, OR new functionality requests
 - **P2** - Optimizations, cleanup, refactoring, or minor improvements
 - **P3** - Unprioritized (user-reported issues that need triage)
 
-Include priority in issue title: `[P0] Bug: Critical auth failure` or `[P1] Feature: Add export button`
+Use labels for priority (not title prefix). Example: `--label "P1,bug"`
 
 ### Working from Issues
 
@@ -209,11 +209,8 @@ Use labels to categorize issues:
 
 ### Issue Templates
 
-**Bug Report:** (title format: `[P0/P1/P2] Bug: <description>`)
+**Bug Report:** (title: `Bug: <description>`, labels: `P0/P1/P2, bug`)
 ```markdown
-## Priority
-P0/P1/P2 - <justification>
-
 ## Description
 <What's broken?>
 
@@ -232,11 +229,8 @@ P0/P1/P2 - <justification>
 - Relevant logs: <paste or link>
 ```
 
-**Feature Request:** (title format: `[P1/P2] Feature: <description>`)
+**Feature Request:** (title: `Feature: <description>`, labels: `P1/P2, enhancement`)
 ```markdown
-## Priority
-P1/P2 - <justification>
-
 ## Description
 <What feature is needed?>
 
@@ -247,11 +241,8 @@ P1/P2 - <justification>
 <How might this be implemented?>
 ```
 
-**Task:** (title format: `[P1/P2] Task: <description>`)
+**Task:** (title: `Task: <description>`, labels: `P1/P2, task`)
 ```markdown
-## Priority
-P1/P2 - <justification>
-
 ## Description
 <What needs to be done?>
 

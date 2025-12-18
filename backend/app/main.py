@@ -4,14 +4,16 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.api import api_router, ws_router
 from app.core.auth import get_password_hash
 from app.core.config import get_settings
 from app.core.database import async_session, close_db, init_db
+from app.exceptions import BillingError
 from app.models import User
 
 settings = get_settings()
@@ -57,6 +59,34 @@ app = FastAPI(
     version="0.2.0",
     lifespan=lifespan,
 )
+
+
+# Exception handler for BillingError
+@app.exception_handler(BillingError)
+async def billing_error_handler(request: Request, exc: BillingError) -> JSONResponse:
+    """Handle BillingError exceptions by returning 503 Service Unavailable.
+
+    When a BillingError occurs (e.g., quota exceeded, billing issues):
+    1. Log the error for debugging
+    2. Return HTTP 503 with user-friendly message
+    3. TODO: File GitHub issue in background (issue #124)
+
+    Args:
+        request: The incoming request
+        exc: The BillingError exception
+
+    Returns:
+        JSONResponse with 503 status code
+    """
+    logger.error(f"BillingError occurred: {exc.message}")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "Service temporarily unavailable due to billing or quota issues. "
+            "The issue has been reported and will be addressed shortly."
+        },
+    )
+
 
 # CORS configuration - origins from environment variable
 app.add_middleware(

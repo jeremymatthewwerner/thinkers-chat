@@ -8,3 +8,11 @@ class ThinkerAPIError(Exception):
         self.message = message
         self.is_quota_error = is_quota_error
         super().__init__(message)
+
+
+class BillingError(Exception):
+    """Exception raised when there is a billing or quota-related error."""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)

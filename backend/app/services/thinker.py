@@ -556,9 +556,13 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
 
             return response_text.strip(), cost
 
+        except APIError as e:
+            # Log API-specific errors with more detail
+            logging.error(f"Anthropic API error in streaming thinking: {e}")
+            raise ThinkerAPIError(f"AI service error: {e}") from e
         except Exception as e:
-            logging.warning(f"Error in streaming thinking response: {e}")
-            return "", 0.0
+            logging.error(f"Unexpected error in streaming thinking response: {e}", exc_info=True)
+            raise ThinkerAPIError(f"Failed to generate response: {e}") from e
 
     def _split_response_into_bubbles(self, response_text: str) -> list[str]:
         """Split a response into multiple chat bubbles for natural conversation flow.
@@ -799,8 +803,12 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
             if not isinstance(first_block, TextBlock):
                 return "", 0.0
             return first_block.text, cost
-        except Exception:
-            return "", 0.0
+        except APIError as e:
+            logging.error(f"Anthropic API error in generate_response: {e}")
+            raise ThinkerAPIError(f"AI service error: {e}") from e
+        except Exception as e:
+            logging.error(f"Error in generate_response: {e}", exc_info=True)
+            raise ThinkerAPIError(f"Failed to generate response: {e}") from e
 
     async def start_conversation_agents(
         self,
@@ -1043,8 +1051,33 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
                     ),
                 )
                 break  # Stop this thinker agent
-            except Exception:
-                # Log error but continue running
+            except ThinkerAPIError as e:
+                # API error - notify user and retry after delay
+                logging.error(f"Thinker API error for {thinker.name}: {e}")
+                await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                await manager.broadcast_to_conversation(
+                    conversation_id,
+                    WSMessage(
+                        type=WSMessageType.ERROR,
+                        conversation_id=conversation_id,
+                        content=f"{thinker.name} encountered an error: {e}. Retrying...",
+                    ),
+                )
+                await asyncio.sleep(10)  # Wait longer before retry
+            except Exception as e:
+                # Unexpected error - log with traceback and notify user
+                logging.error(
+                    f"Unexpected error in thinker agent {thinker.name}: {e}", exc_info=True
+                )
+                await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                await manager.broadcast_to_conversation(
+                    conversation_id,
+                    WSMessage(
+                        type=WSMessageType.ERROR,
+                        conversation_id=conversation_id,
+                        content=f"{thinker.name} encountered an unexpected error. Retrying...",
+                    ),
+                )
                 await asyncio.sleep(5)
 
     def _get_user_name_from_messages(self, messages: Sequence["Message"]) -> str | None:

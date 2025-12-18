@@ -316,12 +316,13 @@ jobs:
           fi
           # Generate unique username for this test run
           TEST_USER="smoketest_$(date +%s)"
+          TEST_DISPLAY="Smoke Test User"
           TEST_PASS="testpass123"
           echo "Testing registration with user: $TEST_USER"
 
           response=$(curl -s -w "\n%{http_code}" -X POST "$BACKEND_URL/api/auth/register" \
             -H "Content-Type: application/json" \
-            -d "{\"username\": \"$TEST_USER\", \"password\": \"$TEST_PASS\"}")
+            -d "{\"username\": \"$TEST_USER\", \"display_name\": \"$TEST_DISPLAY\", \"password\": \"$TEST_PASS\"}")
 
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n-1)

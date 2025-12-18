@@ -66,11 +66,16 @@ jobs:
             1. Remove P3 label if present and add the correct priority label (P0, P1, or P2)
             2. Add type label (bug, enhancement, or task) based on the issue content
             3. Add a brief comment explaining your triage decision and priority rationale
+            4. If this is a DUPLICATE of an existing issue:
+               - Add the "duplicate" label
+               - Comment explaining which issue it duplicates
+               - Close the issue as "not planned" with `gh issue close --reason "not planned"`
 
             Use these commands:
             - `gh issue edit ${{ github.event.issue.number }} --remove-label "P3" --add-label "P1,bug"` (adjust labels as needed)
             - `gh issue edit ${{ github.event.issue.number }} --add-label "P2,enhancement"` (for new issues without P3)
             - `gh issue comment ${{ github.event.issue.number }} --body "..."`
+            - `gh issue close ${{ github.event.issue.number }} --reason "not planned"` (for duplicates)
             - `gh issue list` to check for duplicates
 
           claude_args: |

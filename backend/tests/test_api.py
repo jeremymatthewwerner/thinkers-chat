@@ -586,3 +586,90 @@ class TestAdminAPI:
 
         response = await client.delete("/api/admin/users/nonexistent-id", headers=headers)
         assert response.status_code == 404
+
+
+class TestSpendAPI:
+    """Tests for spend tracking endpoints."""
+
+    async def test_get_spend_as_admin(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test that admins can get user spend data."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        # Create a user to check spend for
+        user_data = await register_and_get_token(client, "spenduser", "password123")
+        user_id = user_data["user"]["id"]
+
+        # Get spend data
+        response = await client.get(f"/api/spend/{user_id}", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user_id"] == user_id
+        assert data["username"] == "spenduser"
+        assert data["total_spend"] == 0.0
+        assert "sessions" in data
+        assert "conversations" in data
+
+    async def test_get_spend_with_conversations(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test spend data includes conversation details."""
+        admin_data = await create_admin_user(client, db_session)
+        admin_headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        # Create a user with conversations
+        user_data = await register_and_get_token(client, "convspenduser", "password123")
+        user_id = user_data["user"]["id"]
+        user_headers = {"Authorization": f"Bearer {user_data['access_token']}"}
+
+        # Create a conversation
+        await client.post(
+            "/api/conversations",
+            headers=user_headers,
+            json={
+                "topic": "Test topic for spend",
+                "thinkers": [
+                    {
+                        "name": "Thinker",
+                        "bio": "Bio",
+                        "positions": "Positions",
+                        "style": "Style",
+                    },
+                ],
+            },
+        )
+
+        # Get spend data
+        response = await client.get(f"/api/spend/{user_id}", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["conversations"]) == 1
+        assert data["conversations"][0]["topic"] == "Test topic for spend"
+
+    async def test_get_spend_user_not_found(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test 404 when user doesn't exist."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        response = await client.get("/api/spend/nonexistent-user-id", headers=headers)
+        assert response.status_code == 404
+        assert "User not found" in response.json()["detail"]
+
+    async def test_get_spend_as_non_admin(self, client: AsyncClient) -> None:
+        """Test that non-admins cannot access spend data."""
+        headers = await get_auth_headers(client, "regularspenduser", "password123")
+        user_data = await register_and_get_token(client, "targetuser", "password123")
+
+        response = await client.get(
+            f"/api/spend/{user_data['user']['id']}", headers=headers
+        )
+        assert response.status_code == 403
+
+    async def test_get_spend_no_auth(self, client: AsyncClient) -> None:
+        """Test that unauthenticated requests are rejected."""
+        response = await client.get("/api/spend/some-user-id")
+        assert response.status_code == 401

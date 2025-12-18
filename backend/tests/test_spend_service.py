@@ -85,7 +85,6 @@ async def test_get_user_spend_data_user_with_conversations_no_messages(
         id="conv-1",
         session_id="session-1",
         topic="Test topic",
-        title="Test Title",
     )
     db_session.add_all([user, session, conversation])
     await db_session.commit()
@@ -97,7 +96,7 @@ async def test_get_user_spend_data_user_with_conversations_no_messages(
     assert result.sessions[0].conversation_count == 1
     assert len(result.conversations) == 1
     assert result.conversations[0].conversation_id == "conv-1"
-    assert result.conversations[0].title == "Test Title"
+    assert result.conversations[0].topic == "Test topic"
     assert result.conversations[0].total_spend == 0.0
     assert result.conversations[0].message_count == 0
 

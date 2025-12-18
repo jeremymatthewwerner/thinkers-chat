@@ -35,14 +35,14 @@ async def get_user_spend_data(db: AsyncSession, user_id: str) -> UserSpendData |
         select(
             Conversation.id.label("conversation_id"),
             Conversation.session_id,
-            Conversation.title,
+            Conversation.topic,
             func.coalesce(func.sum(Message.cost), 0.0).label("total_spend"),
             func.count(Message.id).filter(Message.cost.isnot(None)).label("message_count"),
         )
         .join(UserSession, Conversation.session_id == UserSession.id)
         .outerjoin(Message, Conversation.id == Message.conversation_id)
         .where(UserSession.user_id == user_id)
-        .group_by(Conversation.id, Conversation.session_id, Conversation.title)
+        .group_by(Conversation.id, Conversation.session_id, Conversation.topic)
     )
 
     conv_result = await db.execute(conversation_spend_query)
@@ -53,7 +53,7 @@ async def get_user_spend_data(db: AsyncSession, user_id: str) -> UserSpendData |
         ConversationSpend(
             conversation_id=row.conversation_id,
             session_id=row.session_id,
-            title=row.title,
+            topic=row.topic,
             total_spend=float(row.total_spend),
             message_count=int(row.message_count),
         )

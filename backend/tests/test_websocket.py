@@ -14,7 +14,7 @@ from app.api.websocket import (
 )
 from app.core.auth import create_access_token
 from app.main import app
-from app.models import Conversation, Message, Session, User
+from app.models import Conversation, Session, User
 from app.models.message import SenderType
 
 

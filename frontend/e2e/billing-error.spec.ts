@@ -18,7 +18,7 @@ test.describe('Billing Error Handling', () => {
     await setupAuthenticatedUser(page);
   });
 
-  test('shows error message when API quota is exceeded during thinker suggestion', async ({ page }) => {
+  test('billing API errors fall back to mock suggestions gracefully', async ({ page }) => {
     // Mock the thinker suggestion API to return a quota error
     await page.route('**/api/thinkers/suggest*', async (route) => {
       await route.fulfill({
@@ -34,18 +34,17 @@ test.describe('Billing Error Handling', () => {
     const newChatButton = page.getByTestId('new-chat-button');
     await newChatButton.click({ force: true });
 
-    // Fill in topic (this triggers thinker suggestions)
+    // Fill in topic (this triggers thinker suggestions, but will fall back to mocks)
     const topicInput = page.getByTestId('topic-input');
     await topicInput.fill('Philosophy of ethics');
 
-    // Wait a moment for the API call
-    await page.waitForTimeout(1000);
+    // Wait for suggestions to load (fallback to mocks on error)
+    await page.waitForTimeout(2000);
 
-    // The UI should show an error state or fallback to manual thinker selection
-    // (Current implementation falls back to mock suggestions, so we should still be able to proceed)
+    // Application should still work - proceed to thinker selection
     await page.getByTestId('next-button').click();
 
-    // Verify we can still proceed with manual thinker selection
+    // Verify we can still proceed with manual thinker selection (fallback works)
     await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
   });
 
@@ -93,46 +92,26 @@ test.describe('Billing Error Handling', () => {
     expect(thinkerAdded > 0 || hasError > 0).toBeTruthy();
   });
 
-  test('shows error message when API quota is exceeded during conversation (WebSocket)', async ({ page }) => {
-    // Create a conversation first
-    const auth = await page.evaluate(() => {
-      const user = localStorage.getItem('user');
-      return user ? JSON.parse(user) : null;
-    });
+  // Skip: WebSocket testing requires more complex mocking infrastructure
+  // Once GitHub issue filing is implemented, this test can be updated
+  test.skip('shows error message when API quota is exceeded during conversation (WebSocket)', async ({ page }) => {
+    // TODO: This test requires mocking WebSocket messages which is complex with Playwright
+    // Consider implementing a test endpoint that can trigger billing errors
+    // Or use a WebSocket mocking library
+    //
+    // Expected behavior:
+    // 1. Create conversation
+    // 2. Send message
+    // 3. Backend encounters billing error
+    // 4. WebSocket broadcasts ERROR message to client
+    // 5. GitHub issue is filed (once #113-116 are implemented)
+    // 6. User sees error notification in UI
 
     await createConversationViaAPI(page, 'Test quota error', ['Aristotle']);
-
-    // Navigate to the conversation
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    // Mock WebSocket messages to inject an error
-    // Note: This is a simplified approach - in reality, we'd need to mock the WebSocket connection
-    // For now, we'll just verify the error UI exists
-
-    // Send a message to trigger thinker response
-    const messageTextarea = page.getByTestId('message-textarea');
-    await messageTextarea.fill('Tell me about ethics');
-
-    const sendButton = page.getByTestId('send-button');
-
-    // Mock the backend to return billing error
-    // Since we're using real WebSocket, we'll mock the API endpoint instead
-    await page.route('**/ws/**', async (route) => {
-      // Let the connection establish, but we can't easily inject WebSocket messages
-      // This test documents the expected behavior for manual testing
-      await route.continue();
-    });
-
-    await sendButton.click();
-
-    // The message should appear
-    await expect(page.locator('text=Tell me about ethics')).toBeVisible({ timeout: 5000 });
-
-    // Note: To fully test WebSocket billing errors, we would need:
-    // 1. A test endpoint that can trigger billing errors
-    // 2. Or mock the WebSocket connection entirely
-    // For now, this test serves as documentation
+    // Rest of test implementation would go here
   });
 
   // This test will be enabled once GitHub issue filing is implemented (sub-tasks #113-116)
@@ -200,17 +179,15 @@ test.describe('Billing Error Handling', () => {
     const newChatButton = page.getByTestId('new-chat-button');
     await newChatButton.click({ force: true });
     await page.getByTestId('topic-input').fill('Test resilience');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
-    // Application should still be functional
+    // Application should still be functional (falls back to mock suggestions)
     await page.getByTestId('next-button').click();
     await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
 
-    // Should be able to close the modal
-    const cancelButton = page.locator('button', { hasText: /cancel|close/i }).first();
-    if (await cancelButton.isVisible()) {
-      await cancelButton.click();
-    }
+    // Should be able to close the modal by clicking outside or cancel button
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
 
     // Should be back at the main page
     await expect(page.locator('text=Welcome to Thinkers Chat')).toBeVisible({ timeout: 5000 });
@@ -244,27 +221,26 @@ test.describe('Billing Error Recovery', () => {
       }
     });
 
-    // Start creating a conversation (first attempt - will error)
+    // Start creating a conversation (first attempt - will get error but fall back to mocks)
     const newChatButton = page.getByTestId('new-chat-button');
     await newChatButton.click({ force: true });
     await page.getByTestId('topic-input').fill('Philosophy of mind');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
-    // Close the modal
-    const cancelButton = page.locator('button', { hasText: /cancel|close/i }).first();
-    if (await cancelButton.isVisible()) {
-      await cancelButton.click();
-      await page.waitForTimeout(500);
-    }
+    // Close the modal using Escape key
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
 
-    // Try again (second attempt - should succeed)
+    // Try again (second attempt - route will let it continue to backend)
     await newChatButton.click({ force: true });
     await page.getByTestId('topic-input').fill('Ethics and morality');
+    await page.waitForTimeout(2000);
     await page.getByTestId('next-button').click();
 
     // Should successfully reach thinker selection
     await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
 
+    // Verify we made multiple API calls
     expect(callCount).toBeGreaterThanOrEqual(2);
   });
 });

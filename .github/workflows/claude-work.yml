@@ -151,6 +151,20 @@ jobs:
             --repo ${{ github.repository }} \
             --add-label "claude-working"
 
+      - name: Comment - Starting work
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --body "## 🤖 Claude is working on this issue
+
+**Status:** Starting automated work
+
+**Workflow Run:** [View progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+I'll analyze the issue, implement a fix, run tests, and create a PR. Updates will be posted here."
+
       - name: Work on issue
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -186,6 +200,53 @@ jobs:
 
           claude_args: |
             --max-turns 50
+
+      - name: Comment - Work completed
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Check if a PR was created for this issue
+          PR_URL=$(gh pr list --repo ${{ github.repository }} \
+            --search "Fixes #${{ needs.find-work.outputs.issue_number }}" \
+            --json url --jq '.[0].url' 2>/dev/null || echo "")
+
+          if [ -n "$PR_URL" ]; then
+            gh issue comment ${{ needs.find-work.outputs.issue_number }} \
+              --repo ${{ github.repository }} \
+              --body "## ✅ Claude completed work
+
+**Status:** Work completed successfully
+
+**Pull Request:** $PR_URL
+
+The PR is ready for review. Once CI passes and it's approved, it can be merged to close this issue."
+          else
+            gh issue comment ${{ needs.find-work.outputs.issue_number }} \
+              --repo ${{ github.repository }} \
+              --body "## ✅ Claude completed work
+
+**Status:** Work completed
+
+**Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+Check the workflow run for details on what was done."
+          fi
+
+      - name: Comment - Work failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --body "## ❌ Claude encountered an issue
+
+**Status:** Work failed or was blocked
+
+**Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+Please check the workflow logs for details. This issue may need manual intervention or clarification."
 
       - name: Remove in-progress label on completion
         if: always()

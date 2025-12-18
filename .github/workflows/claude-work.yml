@@ -254,10 +254,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Add needs-human-help label
+          # Add needs-human-help label and remove claude-working
           gh issue edit ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
-            --add-label "needs-human-help" || true
+            --add-label "needs-human-help" \
+            --remove-label "claude-working" || true
 
           # Post comment with @mention for notification
           gh issue comment ${{ needs.find-work.outputs.issue_number }} \

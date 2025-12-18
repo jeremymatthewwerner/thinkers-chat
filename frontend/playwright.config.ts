@@ -8,8 +8,8 @@ export default defineConfig({
   /* Use 4 workers in CI for parallel test execution across multiple test files */
   workers: process.env.CI ? 4 : undefined,
   reporter: 'html',
-  /* Increase timeout for tests using real API calls */
-  timeout: process.env.CI ? 90000 : 90000,
+  /* Increase timeout for tests using real Claude API calls */
+  timeout: process.env.CI ? 180000 : 90000, // 3 min in CI, 90s locally
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',

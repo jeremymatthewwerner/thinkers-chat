@@ -11,7 +11,9 @@ test.describe('New Conversation Flow', () => {
     await setupAuthenticatedUser(page);
   });
 
-  test('can create a new conversation with suggested thinkers', async ({ page }) => {
+  test('can create a new conversation with suggested thinkers', async ({
+    page,
+  }) => {
     // Click new chat button in sidebar
     const newChatButton = page.getByTestId('new-chat-button');
     await newChatButton.click();
@@ -29,7 +31,9 @@ test.describe('New Conversation Flow', () => {
     await nextButton.click();
 
     // Wait for thinker suggestions (this calls the real backend API)
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     // Should see suggested thinkers
     const thinkerCards = page.getByTestId('thinker-suggestion');
@@ -58,7 +62,9 @@ test.describe('New Conversation Flow', () => {
     await expect(chatArea).toBeVisible({ timeout: 10000 });
 
     // Should see the topic in the chat area header
-    await expect(chatArea.locator('h2', { hasText: 'The nature of consciousness' })).toBeVisible();
+    await expect(
+      chatArea.locator('h2', { hasText: 'The nature of consciousness' })
+    ).toBeVisible();
   });
 
   test('can add custom thinker', async ({ page }) => {
@@ -68,7 +74,9 @@ test.describe('New Conversation Flow', () => {
     await page.getByTestId('next-button').click();
 
     // Wait for thinker step
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     // Enter a custom thinker name
     const customInput = page.getByTestId('custom-thinker-input');
@@ -89,14 +97,18 @@ test.describe('New Conversation Flow', () => {
     await page.getByTestId('topic-input').fill('Test topic');
     await page.getByTestId('next-button').click();
 
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     // Create button should be disabled
     const createButton = page.getByTestId('create-button');
     await expect(createButton).toBeDisabled();
   });
 
-  test('shows loading spinner on Next button while generating suggestions', async ({ page }) => {
+  test('shows loading spinner on Next button while generating suggestions', async ({
+    page,
+  }) => {
     // Open modal
     await page.getByTestId('new-chat-button').click();
     await page.getByTestId('topic-input').fill('The meaning of life');
@@ -110,15 +122,23 @@ test.describe('New Conversation Flow', () => {
     // The button should show a spinner (svg with animate-spin class)
     // Wait for either the spinner to appear OR the thinkers step to load
     const spinnerOrThinkers = await Promise.race([
-      nextButton.locator('svg.animate-spin').isVisible().then(() => 'spinner'),
-      page.locator('h2', { hasText: 'Select Thinkers' }).waitFor({ timeout: 30000 }).then(() => 'thinkers'),
+      nextButton
+        .locator('svg.animate-spin')
+        .isVisible()
+        .then(() => 'spinner'),
+      page
+        .locator('h2', { hasText: 'Select Thinkers' })
+        .waitFor({ timeout: 30000 })
+        .then(() => 'thinkers'),
     ]);
 
     // If we caught the spinner, great! If thinkers loaded too fast, that's also fine
     console.log(`Loading animation test: saw ${spinnerOrThinkers}`);
 
     // Verify we end up at the thinker selection step
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
     // Button should no longer be in loading state
     await expect(nextButton).not.toBeVisible();
   });
@@ -135,7 +155,9 @@ test.describe('Thinker Suggestions', () => {
     await page.getByTestId('topic-input').fill('Ancient philosophy');
     await page.getByTestId('next-button').click();
 
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     // Get initial thinker name
     const firstSuggestion = page.getByTestId('thinker-suggestion').first();
@@ -149,13 +171,17 @@ test.describe('Thinker Suggestions', () => {
     await expect(firstSuggestion).toBeVisible({ timeout: 15000 });
   });
 
-  test('refresh suggestion replaces with different thinker', async ({ page }) => {
+  test('refresh suggestion replaces with different thinker', async ({
+    page,
+  }) => {
     // Open modal and go to thinker step
     await page.getByTestId('new-chat-button').click();
     await page.getByTestId('topic-input').fill('Quantum physics');
     await page.getByTestId('next-button').click();
 
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     // Wait for initial suggestions
     const suggestions = page.getByTestId('thinker-suggestion');
@@ -163,7 +189,9 @@ test.describe('Thinker Suggestions', () => {
 
     // Get initial thinker name
     const firstSuggestion = page.getByTestId('thinker-suggestion').first();
-    const initialName = await firstSuggestion.locator('div.font-medium').textContent();
+    const initialName = await firstSuggestion
+      .locator('div.font-medium')
+      .textContent();
 
     // Click refresh button
     const refreshButton = page.getByTestId('refresh-suggestion').first();
@@ -174,39 +202,49 @@ test.describe('Thinker Suggestions', () => {
 
     // The suggestion should have been replaced (or at least refreshed)
     await expect(firstSuggestion).toBeVisible({ timeout: 15000 });
-    const newName = await firstSuggestion.locator('div.font-medium').textContent();
+    const newName = await firstSuggestion
+      .locator('div.font-medium')
+      .textContent();
 
     // Verify that the suggestion exists (might be same or different person)
     expect(newName).toBeTruthy();
     console.log(`Refreshed: ${initialName} -> ${newName}`);
   });
 
-  // SKIP: Flaky in CI - depends on Claude API response times which can timeout
-  // TODO: Mock Claude API or add better retry logic
-  test.skip('auto-fetches new suggestion when selecting a thinker', async ({ page }) => {
+  // This test depends on real Claude API responses - use longer timeouts
+  test('auto-fetches new suggestion when selecting a thinker', async ({
+    page,
+  }) => {
+    test.setTimeout(180000); // 3 minutes for Claude API calls
+
     // Open modal and go to thinker step
     await page.getByTestId('new-chat-button').click();
     await page.getByTestId('topic-input').fill('Ancient Greek philosophy');
     await page.getByTestId('next-button').click();
 
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 60000 });
 
     // Wait for initial suggestions to load
     const suggestions = page.getByTestId('thinker-suggestion');
-    await expect(suggestions.first()).toBeVisible({ timeout: 15000 });
+    await expect(suggestions.first()).toBeVisible({ timeout: 60000 });
 
     // Count initial suggestions and get names
     const initialCount = await suggestions.count();
     const initialNames: string[] = [];
     for (let i = 0; i < initialCount; i++) {
-      const name = await suggestions.nth(i).locator('div.font-medium').textContent();
+      const name = await suggestions
+        .nth(i)
+        .locator('div.font-medium')
+        .textContent();
       if (name) initialNames.push(name);
     }
 
     // Set up listener for auto-fetch API call BEFORE clicking
     const autoFetchPromise = page.waitForResponse(
-      response => response.url().includes('/thinkers/suggest'),
-      { timeout: 20000 }
+      (response) => response.url().includes('/thinkers/suggest'),
+      { timeout: 60000 }
     );
 
     // Select the first thinker
@@ -220,18 +258,23 @@ test.describe('Thinker Suggestions', () => {
     await autoFetchPromise;
 
     // Wait for state to update after API response
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
     // Get the final count and names
     const finalCount = await suggestions.count();
     const finalNames: string[] = [];
     for (let i = 0; i < finalCount; i++) {
-      const name = await suggestions.nth(i).locator('div.font-medium').textContent();
+      const name = await suggestions
+        .nth(i)
+        .locator('div.font-medium')
+        .textContent();
       if (name) finalNames.push(name);
     }
 
     // Check if a new thinker was added (different from original suggestions)
-    const newThinkers = finalNames.filter(name => !initialNames.includes(name));
+    const newThinkers = finalNames.filter(
+      (name) => !initialNames.includes(name)
+    );
 
     // With auto-fetch working, we should have at least as many suggestions as before
     expect(finalCount).toBeGreaterThanOrEqual(initialCount - 1);

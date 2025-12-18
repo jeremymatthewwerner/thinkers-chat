@@ -58,7 +58,9 @@ test.describe('Login Page', () => {
     await expect(page).toHaveURL(/\/login/);
 
     // Should show login form
-    await expect(page.locator('h1', { hasText: 'Welcome to Thinkers Chat' })).toBeVisible();
+    await expect(
+      page.locator('h1', { hasText: 'Welcome to Thinkers Chat' })
+    ).toBeVisible();
     await expect(page.locator('#username')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
   });
@@ -75,7 +77,9 @@ test.describe('Register Page', () => {
     await page.goto('/register');
 
     // Should show register form
-    await expect(page.locator('h1', { hasText: 'Create an Account' })).toBeVisible();
+    await expect(
+      page.locator('h1', { hasText: 'Create an Account' })
+    ).toBeVisible();
     await expect(page.locator('#username')).toBeVisible();
     await expect(page.locator('#displayName')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();

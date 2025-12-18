@@ -105,23 +105,23 @@ export function ChatArea({
       data-testid="chat-area"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
             {conversation.topic}
           </h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">
             with {conversation.thinkers.map((t) => t.name).join(', ')}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
           {/* Speed control */}
           {onSpeedChange && (
             <div
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 sm:gap-2"
               data-testid="speed-control"
             >
-              <label className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+              <label className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap hidden sm:inline">
                 Pace:
               </label>
               <input
@@ -131,11 +131,11 @@ export function ChatArea({
                 step="0.5"
                 value={speedMultiplier}
                 onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-                className="w-24 h-1.5 accent-blue-600 cursor-pointer"
+                className="w-16 sm:w-24 h-1.5 accent-blue-600 cursor-pointer"
                 title={`Conversation pace: ${getSpeedLabel(speedMultiplier)}`}
                 data-testid="speed-slider"
               />
-              <span className="text-xs text-zinc-600 dark:text-zinc-300 w-16">
+              <span className="text-xs text-zinc-600 dark:text-zinc-300 w-12 sm:w-16 text-center">
                 {getSpeedLabel(speedMultiplier)}
               </span>
             </div>
@@ -145,7 +145,7 @@ export function ChatArea({
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-sm rounded-lg transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               data-testid="export-button"
               title="Export conversation"
             >
@@ -158,7 +158,7 @@ export function ChatArea({
                 <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
                 <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
               </svg>
-              Export
+              <span className="hidden sm:inline">Export</span>
             </button>
             {showExportMenu && (
               <>
@@ -219,7 +219,7 @@ export function ChatArea({
           {(onPause || onResume) && (
             <button
               onClick={isPaused ? onResume : onPause}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 isPaused
                   ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                   : 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50'
@@ -237,7 +237,7 @@ export function ChatArea({
                   >
                     <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                   </svg>
-                  Resume
+                  <span className="hidden sm:inline">Resume</span>
                 </>
               ) : (
                 <>
@@ -249,7 +249,7 @@ export function ChatArea({
                   >
                     <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
                   </svg>
-                  Pause
+                  <span className="hidden sm:inline">Pause</span>
                 </>
               )}
             </button>

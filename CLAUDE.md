@@ -104,9 +104,15 @@ This ensures comprehensive test coverage and prevents regressions.
 1. Create branch: `claude/<description>-<session-id>` (branch name is auto-assigned)
 2. Commit changes with issue references (`Fixes #N` or `Relates to #N`)
 3. Push to feature branch and create PR
-4. CI runs on PR - must pass before merge
-5. Merge PR (squash) - triggers deploy CI on main
+4. CI runs on PR (including E2E) - must pass before merge
+5. Merge PR (squash) - triggers deploy CI on main (E2E skipped, trusts PR)
 6. Issues auto-close when PR merges
+
+**IMPORTANT: Work one branch at a time**
+- Do NOT work multiple feature branches in parallel
+- Each branch passes E2E independently, but parallel branches could conflict on main
+- Merge current branch before starting new work
+- Feature branches can collect multiple logical commits into one merge
 
 **Best practices:**
 - Commit frequently with clear messages
@@ -255,8 +261,8 @@ gh pr merge <number> --repo jeremymatthewwerner/thinkers-chat --squash --delete-
 
 ### CI Pipeline
 
-- **PR triggers**: Backend tests, Frontend tests, E2E tests only
-- **Main branch triggers**: Tests + Docker build + Railway deploy + Smoke tests
+- **PR triggers**: Backend tests, Frontend tests, E2E tests
+- **Main branch triggers**: Backend/Frontend tests + Docker build + Railway deploy + Smoke tests (E2E skipped - already passed on PR)
 - Feature branch pushes don't trigger CI - must create a PR
 - Always verify gh works: `gh auth status`
 

@@ -297,6 +297,53 @@ gh pr merge <number> --repo jeremymatthewwerner/thinkers-chat --squash --delete-
 - Feature branch pushes don't trigger CI - must create a PR
 - Always verify gh works: `gh auth status`
 
+## Claude Automation (GitHub Actions)
+
+Background automation handles issue triage and work without manual intervention.
+
+### Automated Workflows
+
+**Issue Triage** (`.github/workflows/claude-triage.yml`):
+- Triggers when new issues are opened or labeled with P3
+- Analyzes issue content and assigns appropriate priority (P0/P1/P2)
+- Adds type labels (bug, feature, task)
+- Comments with triage reasoning
+- Checks for duplicate issues
+
+**Automated Work** (`.github/workflows/claude-work.yml`):
+- Runs hourly on schedule
+- Finds highest priority open issue (P0 → P1 → P2)
+- Adds `claude-working` label while in progress
+- Implements changes, runs tests, creates PR
+- Removes `claude-working` label when done
+- Can be triggered manually via workflow_dispatch
+
+### How It Works
+
+1. User reports bug via "Report a Bug" button → Creates P3 issue
+2. Triage workflow runs → Upgrades to P0/P1/P2 with comment
+3. Work workflow runs hourly → Picks up highest priority issue
+4. Claude implements fix → Creates PR with `Fixes #N`
+5. CI runs → PR merged → Issue auto-closes
+
+### Manual Trigger
+
+To manually trigger work on a specific issue:
+```bash
+gh workflow run claude-work.yml --repo jeremymatthewwerner/thinkers-chat -f issue_number=123
+```
+
+### Monitoring
+
+- View automation runs: `gh run list --workflow=claude-triage.yml` or `claude-work.yml`
+- View logs: `gh run view <run-id> --log`
+- Check `claude-working` label for in-progress issues
+
+### Requirements
+
+- `ANTHROPIC_API_KEY` secret must be set in repository settings
+- Workflows need `contents: write`, `issues: write`, `pull-requests: write` permissions
+
 ## Architecture
 
 - Thinker agents run as independent async tasks (concurrent responses)

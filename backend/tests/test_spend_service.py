@@ -7,7 +7,7 @@ from app.models.conversation import Conversation
 from app.models.message import Message, SenderType
 from app.models.session import Session as UserSession
 from app.models.user import User
-from app.services.spend import get_user_spend_data
+from app.services.spend import can_user_spend, check_spend_limit, get_user_spend_data
 
 
 @pytest.mark.asyncio
@@ -213,3 +213,144 @@ async def test_get_user_spend_data_multiple_sessions_and_conversations(
     assert session1_data.conversation_count == 2
     assert session2_data.total_spend == 0.50  # conv3
     assert session2_data.conversation_count == 1
+
+
+# Spend limit checking tests
+
+
+@pytest.mark.asyncio
+async def test_check_spend_limit_user_not_found(db_session: AsyncSession) -> None:
+    """Test check_spend_limit returns None for non-existent user."""
+    result = await check_spend_limit(db_session, "nonexistent-user")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_check_spend_limit_under_limit(db_session: AsyncSession) -> None:
+    """Test user under spend limit."""
+    user = User(
+        id="user-1",
+        username="testuser",
+        password_hash="hash",
+        total_spend=5.0,
+        spend_limit=10.0,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await check_spend_limit(db_session, "user-1")
+
+    assert result is not None
+    assert result.current_spend == 5.0
+    assert result.spend_limit == 10.0
+    assert result.is_over_limit is False
+    assert result.is_near_limit is False
+    assert result.remaining == 5.0
+    assert result.percentage_used == 50.0
+
+
+@pytest.mark.asyncio
+async def test_check_spend_limit_at_limit(db_session: AsyncSession) -> None:
+    """Test user at exactly their spend limit."""
+    user = User(
+        id="user-1",
+        username="testuser",
+        password_hash="hash",
+        total_spend=10.0,
+        spend_limit=10.0,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await check_spend_limit(db_session, "user-1")
+
+    assert result is not None
+    assert result.is_over_limit is True
+    assert result.is_near_limit is True
+    assert result.remaining == 0.0
+    assert result.percentage_used == 100.0
+
+
+@pytest.mark.asyncio
+async def test_check_spend_limit_over_limit(db_session: AsyncSession) -> None:
+    """Test user over their spend limit."""
+    user = User(
+        id="user-1",
+        username="testuser",
+        password_hash="hash",
+        total_spend=15.0,
+        spend_limit=10.0,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await check_spend_limit(db_session, "user-1")
+
+    assert result is not None
+    assert result.is_over_limit is True
+    assert result.is_near_limit is True
+    assert result.remaining == 0.0
+    assert result.percentage_used == 100.0  # Capped at 100
+
+
+@pytest.mark.asyncio
+async def test_check_spend_limit_near_limit(db_session: AsyncSession) -> None:
+    """Test user near (85%+) their spend limit."""
+    user = User(
+        id="user-1",
+        username="testuser",
+        password_hash="hash",
+        total_spend=8.5,
+        spend_limit=10.0,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await check_spend_limit(db_session, "user-1")
+
+    assert result is not None
+    assert result.is_over_limit is False
+    assert result.is_near_limit is True
+    assert result.remaining == 1.5
+    assert result.percentage_used == 85.0
+
+
+@pytest.mark.asyncio
+async def test_can_user_spend_under_limit(db_session: AsyncSession) -> None:
+    """Test can_user_spend returns True when under limit."""
+    user = User(
+        id="user-1",
+        username="testuser",
+        password_hash="hash",
+        total_spend=5.0,
+        spend_limit=10.0,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await can_user_spend(db_session, "user-1")
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_can_user_spend_at_limit(db_session: AsyncSession) -> None:
+    """Test can_user_spend returns False when at limit."""
+    user = User(
+        id="user-1",
+        username="testuser",
+        password_hash="hash",
+        total_spend=10.0,
+        spend_limit=10.0,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await can_user_spend(db_session, "user-1")
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_can_user_spend_user_not_found(db_session: AsyncSession) -> None:
+    """Test can_user_spend returns False for non-existent user."""
+    result = await can_user_spend(db_session, "nonexistent-user")
+    assert result is False

@@ -45,6 +45,11 @@ class User(Base, TimestampMixin):
         default=0.0,
         nullable=False,
     )
+    spend_limit: Mapped[float] = mapped_column(
+        Float,
+        default=10.0,  # Default $10 limit per user
+        nullable=False,
+    )
     display_name: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,

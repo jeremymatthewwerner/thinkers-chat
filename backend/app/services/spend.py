@@ -1,5 +1,7 @@
 """Service for spend tracking and retrieval."""
 
+from dataclasses import dataclass
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +10,62 @@ from app.models.message import Message
 from app.models.session import Session as UserSession
 from app.models.user import User
 from app.schemas.spend import ConversationSpend, SessionSpend, UserSpendData
+
+
+@dataclass
+class SpendStatus:
+    """Status of user's spend relative to their limit."""
+
+    current_spend: float
+    spend_limit: float
+    is_over_limit: bool
+    is_near_limit: bool  # True if at 85% or more of limit
+    remaining: float
+    percentage_used: float
+
+
+async def check_spend_limit(db: AsyncSession, user_id: str) -> SpendStatus | None:
+    """Check if a user is at or over their spend limit.
+
+    Args:
+        db: Async database session
+        user_id: ID of the user to check
+
+    Returns:
+        SpendStatus with limit information, or None if user not found
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return None
+
+    percentage = (user.total_spend / user.spend_limit * 100) if user.spend_limit > 0 else 100
+    remaining = max(0, user.spend_limit - user.total_spend)
+
+    return SpendStatus(
+        current_spend=user.total_spend,
+        spend_limit=user.spend_limit,
+        is_over_limit=user.total_spend >= user.spend_limit,
+        is_near_limit=percentage >= 85,
+        remaining=remaining,
+        percentage_used=min(100, percentage),
+    )
+
+
+async def can_user_spend(db: AsyncSession, user_id: str) -> bool:
+    """Quick check if user can make Claude API calls.
+
+    Args:
+        db: Async database session
+        user_id: ID of the user to check
+
+    Returns:
+        True if user is under their spend limit, False otherwise
+    """
+    status = await check_spend_limit(db, user_id)
+    if status is None:
+        return False  # User not found, deny
+    return not status.is_over_limit
 
 
 async def get_user_spend_data(db: AsyncSession, user_id: str) -> UserSpendData | None:

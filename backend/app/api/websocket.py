@@ -227,10 +227,41 @@ async def get_messages_for_conversation(
     return result.scalars().all()
 
 
+class SpendLimitExceeded(Exception):
+    """Raised when a user exceeds their spend limit."""
+
+    def __init__(self, current_spend: float, spend_limit: float) -> None:
+        self.current_spend = current_spend
+        self.spend_limit = spend_limit
+        super().__init__(f"Spend limit exceeded: ${current_spend:.2f} / ${spend_limit:.2f}")
+
+
 async def save_thinker_message(
     conversation_id: str, thinker_name: str, content: str, cost: float, db: AsyncSession
 ) -> Message:
-    """Save a thinker's message to the database and update user's total spend."""
+    """Save a thinker's message to the database and update user's total spend.
+
+    Raises:
+        SpendLimitExceeded: If the user has reached their spend limit
+    """
+    # Update the user's total_spend by traversing the relationship chain
+    # Conversation -> Session -> User
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.id == conversation_id)
+        .options(selectinload(Conversation.session))
+    )
+    conversation = result.scalar_one_or_none()
+
+    user = None
+    if conversation and conversation.session:
+        # Get the user and check spend limit BEFORE creating message
+        user_result = await db.execute(select(User).where(User.id == conversation.session.user_id))
+        user = user_result.scalar_one_or_none()
+
+        if user and user.total_spend >= user.spend_limit:
+            raise SpendLimitExceeded(user.total_spend, user.spend_limit)
+
     # Create and save the message
     message = Message(
         conversation_id=conversation_id,
@@ -241,22 +272,9 @@ async def save_thinker_message(
     )
     db.add(message)
 
-    # Update the user's total_spend by traversing the relationship chain
-    # Conversation -> Session -> User
-    result = await db.execute(
-        select(Conversation)
-        .where(Conversation.id == conversation_id)
-        .options(selectinload(Conversation.session))
-    )
-    conversation = result.scalar_one_or_none()
-
-    if conversation and conversation.session:
-        # Get the user and update their total spend
-        user_result = await db.execute(select(User).where(User.id == conversation.session.user_id))
-        user = user_result.scalar_one_or_none()
-
-        if user:
-            user.total_spend += cost
+    # Update user's total spend
+    if user:
+        user.total_spend += cost
 
     await db.commit()
     await db.refresh(message)

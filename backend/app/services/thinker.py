@@ -12,7 +12,7 @@ import httpx
 from anthropic import APIError, AsyncAnthropic
 from anthropic.types import TextBlock, ThinkingBlock
 
-from app.api.websocket import manager
+from app.api.websocket import SpendLimitExceeded, WSMessage, WSMessageType, manager
 from app.core.config import get_settings
 from app.exceptions import ThinkerAPIError
 from app.schemas import ThinkerProfile, ThinkerSuggestion
@@ -1022,6 +1022,27 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
 
             except asyncio.CancelledError:
                 break
+            except SpendLimitExceeded as e:
+                # User hit spend limit - pause and notify
+                logging.info(f"Spend limit exceeded for conversation {conversation_id}: {e}")
+                self.pause_conversation(conversation_id)
+                await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
+                await manager.broadcast_to_conversation(
+                    conversation_id,
+                    WSMessage(
+                        type=WSMessageType.ERROR,
+                        conversation_id=conversation_id,
+                        content=f"Spend limit reached (${e.current_spend:.2f}/${e.spend_limit:.2f}). Contact admin to increase your limit.",
+                    ),
+                )
+                await manager.broadcast_to_conversation(
+                    conversation_id,
+                    WSMessage(
+                        type=WSMessageType.PAUSED,
+                        conversation_id=conversation_id,
+                    ),
+                )
+                break  # Stop this thinker agent
             except Exception:
                 # Log error but continue running
                 await asyncio.sleep(5)

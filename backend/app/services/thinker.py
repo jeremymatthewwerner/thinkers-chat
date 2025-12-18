@@ -487,6 +487,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
             # At 6x (Contemplative), this gives 12s between updates
             thinking_update_interval = 2.0 * speed_mult
 
+            paused_during_stream = False
             async with self.client.messages.stream(
                 model="claude-sonnet-4-20250514",
                 max_tokens=max_tokens + 2000,  # Extra for thinking budget
@@ -497,6 +498,17 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 messages=[{"role": "user", "content": prompt}],
             ) as stream:
                 async for event in stream:
+                    # Check if paused - stop streaming updates if so
+                    if self.is_paused(conversation_id):
+                        if not paused_during_stream:
+                            await manager.send_thinker_stopped_typing(
+                                conversation_id, thinker.name
+                            )
+                            paused_during_stream = True
+                        # Continue consuming stream but don't send updates
+                        # We still need to get the response for potential later use
+                        continue
+
                     # Handle different event types
                     if event.type == "content_block_start":
                         pass  # Block started

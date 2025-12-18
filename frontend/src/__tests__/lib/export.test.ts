@@ -12,10 +12,11 @@ import {
 describe('Export utilities', () => {
   const mockConversation: Conversation = {
     id: 'conv-1',
-    user_id: 'user-1',
+    session_id: 'session-1',
     topic: 'Philosophy Discussion',
     thinkers: [
       {
+        id: 'thinker-1',
         name: 'Socrates',
         bio: 'Ancient Greek philosopher',
         positions: 'Socratic method',
@@ -23,6 +24,7 @@ describe('Export utilities', () => {
         color: '#3B82F6',
       },
       {
+        id: 'thinker-2',
         name: 'Aristotle',
         bio: 'Student of Plato',
         positions: 'Logic and ethics',
@@ -30,9 +32,9 @@ describe('Export utilities', () => {
         color: '#10B981',
       },
     ],
+    messages: [],
     created_at: '2024-01-01T12:00:00Z',
     updated_at: '2024-01-01T12:30:00Z',
-    message_count: 3,
     total_cost: 0.0123,
   };
 

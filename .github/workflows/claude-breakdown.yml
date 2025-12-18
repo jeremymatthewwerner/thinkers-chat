@@ -1,0 +1,145 @@
+name: Claude Issue Breakdown
+
+# Automatically break down complex issues that exceeded max-turns into smaller sub-tasks
+
+on:
+  # Triggered by work workflow when max-turns is hit
+  repository_dispatch:
+    types: [claude-breakdown-needed]
+
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to break down'
+        required: true
+        type: number
+
+jobs:
+  breakdown:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get issue details
+        id: issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ISSUE_NUMBER="${{ inputs.issue_number }}"
+          else
+            ISSUE_NUMBER="${{ github.event.client_payload.issue_number }}"
+          fi
+
+          echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+
+          # Get issue details
+          ISSUE_DATA=$(gh api repos/${{ github.repository }}/issues/$ISSUE_NUMBER)
+          ISSUE_TITLE=$(echo "$ISSUE_DATA" | jq -r '.title')
+          ISSUE_BODY=$(echo "$ISSUE_DATA" | jq -r '.body')
+          ISSUE_LABELS=$(echo "$ISSUE_DATA" | jq -r '[.labels[].name] | join(",")')
+
+          echo "issue_title=$ISSUE_TITLE" >> $GITHUB_OUTPUT
+
+          # Save body to file (may be long)
+          echo "$ISSUE_BODY" > /tmp/issue_body.txt
+
+      - name: Mark issue as being broken down
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue edit ${{ steps.issue.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --add-label "breaking-down" \
+            --remove-label "needs-human-help" || true
+
+      - name: Break down issue with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            ## Task: Break Down Complex Issue
+
+            Issue #${{ steps.issue.outputs.issue_number }} exceeded the 50-turn limit, indicating it's too complex for a single automated run. Your job is to break it into smaller, manageable sub-tasks.
+
+            ### Original Issue
+            **Title:** ${{ steps.issue.outputs.issue_title }}
+            **Body:**
+            $(cat /tmp/issue_body.txt)
+
+            ### Instructions
+
+            1. **Analyze the issue** - Understand what's being requested
+            2. **Identify natural sub-tasks** - Break it into 3-6 smaller pieces that can each be done in ~20 turns
+            3. **Create sub-issues** - Each should be:
+               - Self-contained and independently testable
+               - Clearly scoped with specific acceptance criteria
+               - Ordered by dependency (what needs to be done first)
+
+            ### Creating Sub-Issues
+
+            Use this format for each sub-issue:
+            ```bash
+            gh issue create \
+              --repo ${{ github.repository }} \
+              --title "Sub-task: <specific task>" \
+              --label "P1,task" \
+              --body "## Parent Issue
+            Part of #${{ steps.issue.outputs.issue_number }}
+
+            ## Description
+            <what needs to be done>
+
+            ## Acceptance Criteria
+            - [ ] <criterion 1>
+            - [ ] <criterion 2>
+
+            ## Dependencies
+            <any sub-tasks that must be done first, or 'None'>"
+            ```
+
+            ### After Creating Sub-Issues
+
+            1. Comment on the parent issue listing all created sub-issues:
+            ```bash
+            gh issue comment ${{ steps.issue.outputs.issue_number }} --body "## Issue Breakdown
+
+            This issue has been broken down into smaller sub-tasks:
+
+            - #<num1> - <title1>
+            - #<num2> - <title2>
+            ...
+
+            The parent issue will be closed when all sub-tasks are complete."
+            ```
+
+            2. Add the 'epic' label to the parent issue and remove priority labels (sub-issues have their own priorities):
+            ```bash
+            gh issue edit ${{ steps.issue.outputs.issue_number }} --add-label "epic" --remove-label "P0,P1,P2,P3"
+            ```
+
+            ### Guidelines
+            - Each sub-task should be small enough to complete in one automated run
+            - Order sub-tasks by dependency - infrastructure/schema first, then backend, then frontend
+            - Keep acceptance criteria specific and testable
+            - Don't over-engineer - keep scope minimal
+
+          claude_args: |
+            --max-turns 30
+            --dangerously-skip-permissions
+            --allowedTools "Bash(gh issue:*),Bash(gh search:*)"
+
+      - name: Cleanup labels
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue edit ${{ steps.issue.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "breaking-down" || true

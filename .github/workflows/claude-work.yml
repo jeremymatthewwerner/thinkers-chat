@@ -87,7 +87,10 @@ jobs:
             exit 0
           fi
 
-          # Find all issues by priority (P0 > P1 > P2), excluding claude-working
+          # Find all issues by priority (P0 > P1 > P2), excluding:
+          # - claude-working: currently being worked on
+          # - needs-human-help: blocked, needs human intervention
+          # - epic: parent issue broken into sub-tasks
           FOUND_COUNT=0
           FOUND_NUMBER=""
           FOUND_TITLE=""
@@ -97,7 +100,7 @@ jobs:
               --label "$priority" \
               --state open \
               --json number,title,labels \
-              --jq '[.[] | select(.labels | map(.name) | index("claude-working") | not)]' 2>/dev/null || echo "[]")
+              --jq '[.[] | select(.labels | map(.name) | (index("claude-working") | not) and (index("needs-human-help") | not) and (index("epic") | not))]' 2>/dev/null || echo "[]")
 
             COUNT=$(echo "$ISSUES" | jq 'length')
 
@@ -199,8 +202,55 @@ jobs:
             --dangerously-skip-permissions
             --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh:*),Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)"
 
-      - name: Mark as needing human help and notify
+      - name: Check failure type and handle appropriately
         if: failure()
+        id: check-failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Check if this was a max-turns failure (issue too complex)
+          # The claude-code-action saves output with "error_max_turns" subtype
+          LOG_FILE="${RUNNER_TEMP}/claude-execution-output.json"
+
+          if [ -f "$LOG_FILE" ] && grep -q "error_max_turns" "$LOG_FILE"; then
+            echo "max_turns_exceeded=true" >> $GITHUB_OUTPUT
+            echo "Detected max-turns failure - will trigger breakdown"
+          else
+            echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+            echo "Other failure type - will request human help"
+          fi
+
+      - name: Trigger breakdown for complex issues
+        if: failure() && steps.check-failure.outputs.max_turns_exceeded == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Remove claude-working label so issue isn't stuck
+          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "claude-working" || true
+
+          # Comment about breakdown
+          gh issue comment ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --body "$(cat <<'EOF'
+          ## 🔄 Issue Too Complex - Breaking Down
+
+          This issue exceeded the 50-turn limit, indicating it's too complex for a single automated run.
+
+          **Triggering automatic breakdown** into smaller sub-tasks...
+
+          [View workflow progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+          )"
+
+          # Trigger breakdown workflow
+          gh api repos/${{ github.repository }}/dispatches \
+            -f event_type=claude-breakdown-needed \
+            -f 'client_payload[issue_number]=${{ needs.find-work.outputs.issue_number }}'
+
+      - name: Mark as needing human help for other failures
+        if: failure() && steps.check-failure.outputs.max_turns_exceeded != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

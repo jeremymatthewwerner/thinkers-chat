@@ -84,6 +84,7 @@ addopts = "-v --tb=short"
 # This occurs when sync TestClient closes before async DB operations complete
 filterwarnings = [
     "ignore:Exception ignored:pytest.PytestUnraisableExceptionWarning",
+    "ignore:Exception in thread:pytest.PytestUnhandledThreadExceptionWarning",
 ]
 
 [tool.coverage.run]

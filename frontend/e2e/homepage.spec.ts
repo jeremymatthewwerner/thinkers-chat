@@ -77,6 +77,7 @@ test.describe('Register Page', () => {
     // Should show register form
     await expect(page.locator('h1', { hasText: 'Create an Account' })).toBeVisible();
     await expect(page.locator('#username')).toBeVisible();
+    await expect(page.locator('#displayName')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.locator('#confirmPassword')).toBeVisible();
   });
@@ -90,6 +91,7 @@ test.describe('Register Page', () => {
   test('shows error for mismatched passwords', async ({ page }) => {
     await page.goto('/register');
     await page.fill('#username', 'newuser');
+    await page.fill('#displayName', 'New User');
     await page.fill('#password', 'password123');
     await page.fill('#confirmPassword', 'different');
     await page.click('button[type="submit"]');

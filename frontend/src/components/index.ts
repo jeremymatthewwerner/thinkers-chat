@@ -2,6 +2,8 @@
  * Component exports for Thinkers Chat.
  */
 
+export { BuildInfo } from './BuildInfo';
+
 export { ChatArea } from './ChatArea';
 export type { ChatAreaProps } from './ChatArea';
 

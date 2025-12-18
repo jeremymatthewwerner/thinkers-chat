@@ -1,0 +1,289 @@
+name: Claude CI/CD Fix
+
+# Automatically fix CI/CD failures on PRs created by Claude
+# Creates an iterative loop: analyze failure → commit fix → re-run CI/CD
+
+on:
+  # Trigger when CI completes on a PR
+  workflow_run:
+    workflows: ["CI/CD"]
+    types: [completed]
+
+  # Also allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to fix'
+        required: true
+        type: number
+
+# Concurrency: only one fix attempt per PR at a time
+concurrency:
+  group: claude-cicd-fix-${{ github.event.workflow_run.pull_requests[0].number || github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
+env:
+  MAX_RETRIES: 15
+  REPO_OWNER: jeremymatthewwerner
+
+jobs:
+  check-and-fix:
+    # Only run if:
+    # 1. CI failed (workflow_run) OR manual trigger
+    # 2. PR exists and was created by claude[bot]
+    if: >
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.pull_requests[0])
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+
+    steps:
+      - name: Get PR information
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+          else
+            PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+          # Get PR details
+          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json author,headRefName,state)
+          PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login')
+          PR_BRANCH=$(echo "$PR_DATA" | jq -r '.headRefName')
+          PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
+
+          echo "pr_author=$PR_AUTHOR" >> $GITHUB_OUTPUT
+          echo "pr_branch=$PR_BRANCH" >> $GITHUB_OUTPUT
+          echo "pr_state=$PR_STATE" >> $GITHUB_OUTPUT
+
+          echo "PR #$PR_NUMBER by $PR_AUTHOR on branch $PR_BRANCH (state: $PR_STATE)"
+
+      - name: Check if PR is by Claude and still open
+        id: should-fix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_AUTHOR="${{ steps.pr-info.outputs.pr_author }}"
+          PR_STATE="${{ steps.pr-info.outputs.pr_state }}"
+
+          # Only fix PRs created by claude[bot] that are still open
+          if [[ "$PR_AUTHOR" != "claude[bot]" ]]; then
+            echo "PR not created by claude[bot], skipping"
+            echo "should_fix=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if [[ "$PR_STATE" != "OPEN" ]]; then
+            echo "PR is not open, skipping"
+            echo "should_fix=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "should_fix=true" >> $GITHUB_OUTPUT
+
+      - name: Count previous fix attempts
+        if: steps.should-fix.outputs.should_fix == 'true'
+        id: count-retries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+
+          # Count commits with "Fix CI/CD:" in the message
+          RETRY_COUNT=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json commits \
+            --jq '[.commits[].messageHeadline | select(startswith("Fix CI/CD:"))] | length')
+
+          echo "Current retry count: $RETRY_COUNT"
+          echo "retry_count=$RETRY_COUNT" >> $GITHUB_OUTPUT
+
+          NEXT_RETRY=$((RETRY_COUNT + 1))
+          echo "next_retry=$NEXT_RETRY" >> $GITHUB_OUTPUT
+
+      - name: Check retry limit
+        if: steps.should-fix.outputs.should_fix == 'true'
+        id: check-limit
+        run: |
+          RETRY_COUNT="${{ steps.count-retries.outputs.retry_count }}"
+
+          if [ "$RETRY_COUNT" -ge "$MAX_RETRIES" ]; then
+            echo "Max retries ($MAX_RETRIES) reached"
+            echo "limit_reached=true" >> $GITHUB_OUTPUT
+          else
+            echo "Retry $((RETRY_COUNT + 1)) of $MAX_RETRIES"
+            echo "limit_reached=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify human - max retries reached
+        if: steps.check-limit.outputs.limit_reached == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+
+          # Add label for visibility
+          gh pr edit $PR_NUMBER --repo ${{ github.repository }} --add-label "needs-human-help" || true
+
+          # Post comment mentioning the owner (triggers notification + email)
+          gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "$(cat <<'EOF'
+          ## 🚨 CI/CD Fix Limit Reached
+
+          @${{ env.REPO_OWNER }} - This PR has failed CI/CD **${{ env.MAX_RETRIES }} times** and needs human intervention.
+
+          **What was tried:**
+          - ${{ steps.count-retries.outputs.retry_count }} automated fix attempts
+          - Each attempt analyzed the CI failure and committed a fix
+
+          **Next steps:**
+          1. Review the [CI logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id || github.run_id }})
+          2. Check the commit history for patterns in the failures
+          3. Fix manually or provide guidance in a comment
+
+          The `needs-human-help` label has been added for visibility.
+          EOF
+          )"
+
+          echo "::error::Max retries reached for PR #$PR_NUMBER - human intervention needed"
+
+      - name: Get failed CI logs
+        if: steps.should-fix.outputs.should_fix == 'true' && steps.check-limit.outputs.limit_reached == 'false'
+        id: get-logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual trigger, get the latest failed run for this PR
+            PR_BRANCH="${{ steps.pr-info.outputs.pr_branch }}"
+            RUN_ID=$(gh run list --repo ${{ github.repository }} --branch "$PR_BRANCH" --status failure --limit 1 --json databaseId --jq '.[0].databaseId')
+          else
+            RUN_ID="${{ github.event.workflow_run.id }}"
+          fi
+
+          echo "Getting logs for run $RUN_ID"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+          # Get failed logs (truncate to avoid token limits)
+          FAILED_LOGS=$(gh run view $RUN_ID --repo ${{ github.repository }} --log-failed 2>&1 | tail -200)
+
+          # Save to file for the action to read
+          echo "$FAILED_LOGS" > /tmp/failed_logs.txt
+
+          # Also save a summary
+          echo "Failed logs saved ($(wc -l < /tmp/failed_logs.txt) lines)"
+
+      - name: Get previous fix commits
+        if: steps.should-fix.outputs.should_fix == 'true' && steps.check-limit.outputs.limit_reached == 'false'
+        id: prev-commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+
+          # Get list of previous fix commits
+          PREV_FIXES=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json commits \
+            --jq '[.commits[] | select(.messageHeadline | startswith("Fix CI/CD:")) | "- \(.oid[0:7]): \(.messageHeadline)"] | join("\n")')
+
+          if [ -n "$PREV_FIXES" ]; then
+            echo "Previous fix attempts:"
+            echo "$PREV_FIXES"
+            echo "$PREV_FIXES" > /tmp/prev_fixes.txt
+          else
+            echo "No previous fix attempts"
+            echo "" > /tmp/prev_fixes.txt
+          fi
+
+      - name: Checkout PR branch
+        if: steps.should-fix.outputs.should_fix == 'true' && steps.check-limit.outputs.limit_reached == 'false'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr-info.outputs.pr_branch }}
+          fetch-depth: 0
+
+      - name: Run Claude to fix CI
+        if: steps.should-fix.outputs.should_fix == 'true' && steps.check-limit.outputs.limit_reached == 'false'
+        id: claude-fix
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_bots: '*'
+          prompt: |
+            ## CI/CD Fix Required - Attempt ${{ steps.count-retries.outputs.next_retry }} of ${{ env.MAX_RETRIES }}
+
+            A CI/CD check failed on this PR. Your job is to analyze the failure and commit a fix.
+
+            ### Failed CI Logs
+            ```
+            $(cat /tmp/failed_logs.txt)
+            ```
+
+            ### Previous Fix Attempts
+            $(cat /tmp/prev_fixes.txt || echo "None yet - this is the first attempt")
+
+            ### Instructions
+
+            1. **Analyze the failure** - Read the logs carefully. Common issues:
+               - Missing type annotations (mypy)
+               - Formatting issues (ruff format)
+               - Lint errors (ruff check)
+               - Test failures (pytest)
+               - Import errors
+
+            2. **Fix the issue** - Make the minimal change needed to fix the CI failure
+
+            3. **Run validation locally** before committing:
+               ```bash
+               cd backend
+               uv run ruff format .
+               uv run ruff check --fix .
+               uv run mypy .
+               uv run pytest
+               ```
+
+            4. **Commit with this exact format**:
+               ```
+               Fix CI/CD: <brief description of fix>
+
+               Failing check: <which CI/CD check failed>
+               Error: <one-line summary of the error>
+               Previous attempt: <sha of last Fix CI/CD commit, or "none">
+               Retry: ${{ steps.count-retries.outputs.next_retry }}/${{ env.MAX_RETRIES }}
+               ```
+
+            5. **Push the fix** - Use `git push origin ${{ steps.pr-info.outputs.pr_branch }}`
+
+            ### Important
+            - Do NOT create a new PR - commit to the existing branch
+            - Focus only on fixing the CI failure, don't add new features
+            - If the same fix was tried before and failed, try a different approach
+            - Read CLAUDE.md for project conventions
+
+          claude_args: |
+            --max-turns 30
+            --dangerously-skip-permissions
+
+      - name: Post progress comment
+        if: steps.should-fix.outputs.should_fix == 'true' && steps.check-limit.outputs.limit_reached == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+          RETRY="${{ steps.count-retries.outputs.next_retry }}"
+
+          gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "$(cat <<EOF
+          🔧 **CI/CD Fix Attempt $RETRY/${{ env.MAX_RETRIES }}**
+
+          Analyzed the [failed CI/CD run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ steps.get-logs.outputs.run_id }}) and pushed a fix.
+
+          Waiting for CI/CD to re-run...
+          EOF
+          )"

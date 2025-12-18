@@ -53,14 +53,6 @@ describe('NewChatModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('calls onClose when cancel button is clicked', () => {
-    const onClose = jest.fn();
-    render(<NewChatModal {...defaultProps} onClose={onClose} />);
-
-    fireEvent.click(screen.getByText('Cancel'));
-    expect(onClose).toHaveBeenCalled();
-  });
-
   it('calls onClose when clicking outside modal', () => {
     const onClose = jest.fn();
     render(<NewChatModal {...defaultProps} onClose={onClose} />);

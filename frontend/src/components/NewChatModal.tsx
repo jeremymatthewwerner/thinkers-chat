@@ -317,12 +317,6 @@ export function NewChatModal({
             </button>
           )}
           <div className="flex gap-2 ml-auto">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
             {step === 'topic' ? (
               <button
                 onClick={(e) => handleTopicSubmit(e as unknown as FormEvent)}

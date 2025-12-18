@@ -252,9 +252,7 @@ async def save_thinker_message(
 
     if conversation and conversation.session:
         # Get the user and update their total spend
-        user_result = await db.execute(
-            select(User).where(User.id == conversation.session.user_id)
-        )
+        user_result = await db.execute(select(User).where(User.id == conversation.session.user_id))
         user = user_result.scalar_one_or_none()
 
         if user:

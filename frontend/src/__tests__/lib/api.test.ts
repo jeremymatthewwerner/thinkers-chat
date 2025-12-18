@@ -30,7 +30,11 @@ describe('API Client', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      const response = await api.register('testuser', 'Test User', 'password123');
+      const response = await api.register(
+        'testuser',
+        'Test User',
+        'password123'
+      );
 
       expect(response).toEqual(mockResponse);
       expect(localStorage.setItem).toHaveBeenCalledWith(

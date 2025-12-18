@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAdminUsers, deleteUser } from '@/lib/api';
+import { getAdminUsers, deleteUser, updateUserSpendLimit } from '@/lib/api';
 import type { UserWithStats } from '@/types';
 
 export default function AdminPage() {
@@ -13,6 +13,8 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
+  const [editingLimitValue, setEditingLimitValue] = useState<string>('');
 
   useEffect(() => {
     if (authLoading) return;
@@ -60,6 +62,38 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : 'Failed to delete user');
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  function startEditingLimit(userId: string, currentLimit: number) {
+    setEditingLimitId(userId);
+    setEditingLimitValue(currentLimit.toString());
+  }
+
+  function cancelEditingLimit() {
+    setEditingLimitId(null);
+    setEditingLimitValue('');
+  }
+
+  async function handleUpdateSpendLimit(userId: string) {
+    const newLimit = parseFloat(editingLimitValue);
+    if (isNaN(newLimit) || newLimit <= 0) {
+      setError('Spend limit must be a positive number');
+      return;
+    }
+
+    try {
+      await updateUserSpendLimit(userId, newLimit);
+      setUsers(
+        users.map((u) =>
+          u.id === userId ? { ...u, spend_limit: newLimit } : u
+        )
+      );
+      cancelEditingLimit();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to update spend limit'
+      );
     }
   }
 
@@ -182,6 +216,9 @@ export default function AdminPage() {
                     Total Spend
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Spend Limit
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     Joined
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
@@ -227,6 +264,50 @@ export default function AdminPage() {
                     <td className="whitespace-nowrap px-6 py-4 text-zinc-700 dark:text-zinc-300">
                       {formatCurrency(u.total_spend)}
                     </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-zinc-700 dark:text-zinc-300">
+                      {editingLimitId === u.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-zinc-500 dark:text-zinc-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            value={editingLimitValue}
+                            onChange={(e) =>
+                              setEditingLimitValue(e.target.value)
+                            }
+                            className="w-20 rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-700"
+                            min="0.01"
+                            step="0.01"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleUpdateSpendLimit(u.id)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEditingLimit}
+                            className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>{formatCurrency(u.spend_limit)}</span>
+                          <button
+                            onClick={() =>
+                              startEditingLimit(u.id, u.spend_limit)
+                            }
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-6 py-4 text-zinc-500 dark:text-zinc-400">
                       {formatDate(u.created_at)}
                     </td>
@@ -251,7 +332,7 @@ export default function AdminPage() {
                 {users.length === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-6 py-8 text-center text-zinc-500 dark:text-zinc-400"
                     >
                       No users found

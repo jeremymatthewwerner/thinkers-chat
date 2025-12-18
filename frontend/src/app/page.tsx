@@ -27,6 +27,11 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [spendLimitExceeded, setSpendLimitExceeded] = useState(false);
+
+  // Calculate current total spend (user's base spend + this session's cost)
+  const userTotalSpend = (user?.total_spend || 0) + sessionCost;
+  const userSpendLimit = user?.spend_limit || 10;
 
   // WebSocket connection
   const {
@@ -63,6 +68,13 @@ export default function Home() {
           )
         );
       }
+    }, []),
+    onError: useCallback((errorMessage: string) => {
+      // Check if this is a spend limit error
+      if (errorMessage.toLowerCase().includes('spend limit')) {
+        setSpendLimitExceeded(true);
+      }
+      console.error('WebSocket error:', errorMessage);
     }, []),
   });
 
@@ -256,6 +268,9 @@ export default function Home() {
         onResume={sendResume}
         speedMultiplier={speedMultiplier}
         onSpeedChange={sendSetSpeed}
+        userTotalSpend={userTotalSpend}
+        userSpendLimit={userSpendLimit}
+        spendLimitExceeded={spendLimitExceeded}
       />
 
       <NewChatModal

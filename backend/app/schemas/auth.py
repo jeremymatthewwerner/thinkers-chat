@@ -28,6 +28,7 @@ class UserResponse(BaseModel):
     display_name: str | None
     is_admin: bool
     total_spend: float
+    spend_limit: float
     created_at: datetime
 
 
@@ -39,6 +40,7 @@ class UserWithStats(BaseModel):
     display_name: str | None
     is_admin: bool
     total_spend: float
+    spend_limit: float
     conversation_count: int
     created_at: datetime
 

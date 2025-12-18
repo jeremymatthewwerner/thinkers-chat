@@ -111,6 +111,7 @@ async def register(
             display_name=user.display_name,
             is_admin=user.is_admin,
             total_spend=user.total_spend,
+            spend_limit=user.spend_limit,
             created_at=user.created_at,
         ),
     )
@@ -153,6 +154,7 @@ async def login(
             display_name=user.display_name,
             is_admin=user.is_admin,
             total_spend=user.total_spend,
+            spend_limit=user.spend_limit,
             created_at=user.created_at,
         ),
     )
@@ -169,6 +171,7 @@ async def get_me(
         display_name=user.display_name,
         is_admin=user.is_admin,
         total_spend=user.total_spend,
+        spend_limit=user.spend_limit,
         created_at=user.created_at,
     )
 

@@ -172,8 +172,9 @@ Create a GitHub issue for:
 
 **Always assign a priority when creating issues:**
 - **P0** - Blocks most or all functionality from working (critical bugs, system down)
-- **P1** - Blocks some functionality from working correctly (significant bugs, broken features)
-- **P2** - Way of working improvements or optimizations (nice-to-haves, refactoring)
+- **P1** - Blocks some functionality from working correctly, OR new functionality requests
+- **P2** - Optimizations, cleanup, refactoring, or minor improvements
+- **P3** - Unprioritized (user-reported issues that need triage)
 
 Include priority in issue title: `[P0] Bug: Critical auth failure` or `[P1] Feature: Add export button`
 
@@ -183,6 +184,12 @@ Include priority in issue title: `[P0] Bug: Critical auth failure` or `[P1] Feat
 1. Check for open issues: `gh issue list --repo jeremymatthewwerner/thinkers-chat`
 2. Work from highest to lowest priority (P0 → P1 → P2)
 3. If no open issues, ask the user what to work on
+
+**P3 Triage workflow:**
+- Periodically check for P3 (unprioritized) issues
+- Review each P3 issue and assign appropriate priority (P0/P1/P2)
+- Comment on the issue explaining the priority decision
+- Update the issue title with the new priority
 
 **This ensures critical bugs are always addressed first.**
 

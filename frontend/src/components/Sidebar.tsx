@@ -143,27 +143,14 @@ export function Sidebar({
                 <div className="flex items-center gap-1">
                   {/* Bug report button - creates GitHub issue */}
                   <a
-                    href="https://github.com/jeremymatthewwerner/thinkers-chat/issues/new?title=%5BP3%5D%20User%20Report%3A%20&body=%23%23%20Description%0APlease%20describe%20the%20issue%3A%0A%0A%23%23%20Steps%20to%20Reproduce%0A1.%20%0A2.%20%0A%0A%23%23%20Expected%20Behavior%0A%0A%23%23%20Actual%20Behavior%0A%0A%23%23%20Browser%2FDevice%0A&labels=P3,bug"
+                    href="https://github.com/jeremymatthewwerner/thinkers-chat/issues/new?title=Bug%3A%20&body=%23%23%20Description%0APlease%20describe%20the%20issue%3A%0A%0A%23%23%20Steps%20to%20Reproduce%0A1.%20%0A2.%20%0A%0A%23%23%20Expected%20Behavior%0A%0A%23%23%20Actual%20Behavior%0A%0A%23%23%20Browser%2FDevice%0A&labels=P3,bug"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                    className="px-2 py-1 text-xs text-zinc-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"
                     title="Report a bug on GitHub"
                     data-testid="bug-report-link"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="w-5 h-5"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M6.56 1.14a.75.75 0 01.177 1.045 3.989 3.989 0 00-.464.86c.185.17.382.329.59.473A3.993 3.993 0 0110 2c1.272 0 2.405.594 3.137 1.518.208-.144.405-.302.59-.473a3.989 3.989 0 00-.464-.86.75.75 0 011.222-.869c.369.519.65 1.105.822 1.736a.75.75 0 01-.174.707 7.03 7.03 0 01-1.299 1.098A4 4 0 0114 6c0 .52-.301.963-.723 1.187a6.961 6.961 0 01-.635 3.044l1.165 1.165a.75.75 0 11-1.06 1.06l-1.235-1.234a6.99 6.99 0 01-3.024 0l-1.235 1.234a.75.75 0 01-1.06-1.06l1.165-1.165A6.961 6.961 0 016.723 7.187C6.301 6.963 6 6.52 6 6c0-.14.072-.342.166-.586.047-.124.109-.264.175-.402a7.03 7.03 0 01-1.299-1.098.75.75 0 01-.174-.707 5.48 5.48 0 01.822-1.736.75.75 0 011.046-.177z"
-                        clipRule="evenodd"
-                      />
-                      <path d="M10 6a2 2 0 100 4 2 2 0 000-4z" />
-                      <path d="M10 12a6 6 0 100-12 6 6 0 000 12zm0 2a8 8 0 100-16 8 8 0 000 16z" />
-                    </svg>
+                    Report Bug
                   </a>
                   {isAdmin && (
                     <a

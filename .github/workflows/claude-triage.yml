@@ -2,13 +2,17 @@ name: Claude Issue Triage
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled]
 
 jobs:
   triage:
-    # Only run when P3 label is added (user-reported issues needing triage)
-    # This prevents duplicate runs - opened+labeled would fire twice
-    if: github.event.label.name == 'P3'
+    # Run when:
+    # 1. New issue is opened (GitHub ignores labels= URL param, so we must trigger on opened)
+    # 2. P3 label is manually added
+    # Skip if issue already has a priority label (P0/P1/P2) to prevent re-triage
+    if: >
+      (github.event.action == 'opened') ||
+      (github.event.action == 'labeled' && github.event.label.name == 'P3')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,22 +41,30 @@ jobs:
             - P2: Optimizations, cleanup, refactoring, minor improvements
             - P3: Unprioritized (needs triage) - should be upgraded to P0/P1/P2
 
+            ## Type Definitions
+            - bug: Something isn't working correctly
+            - enhancement: New feature or improvement request
+            - task: General work item, cleanup, or maintenance
+
             ## Your Task
             1. Read and understand the issue
             2. Determine the appropriate priority (P0, P1, or P2)
-            3. Determine the type (bug, feature, task)
+            3. Determine the type (bug, enhancement, or task) based on the content
+               - Don't assume "Bug:" prefix means it's a bug - read the content!
             4. Check if this might be a duplicate of existing issues
             5. Update the issue with correct labels
 
             ## Actions to Take
-            1. Remove P3 label if present and add the correct priority label
-            2. Add type label (bug, feature, or task) if not present
-            3. Add a brief comment explaining your triage decision
+            1. Remove P3 label if present and add the correct priority label (P0, P1, or P2)
+            2. Add type label (bug, enhancement, or task) based on the issue content
+            3. Add a brief comment explaining your triage decision and priority rationale
 
             Use these commands:
-            - `gh issue edit ${{ github.event.issue.number }} --remove-label "P3" --add-label "P1,bug"`
+            - `gh issue edit ${{ github.event.issue.number }} --remove-label "P3" --add-label "P1,bug"` (adjust labels as needed)
+            - `gh issue edit ${{ github.event.issue.number }} --add-label "P2,enhancement"` (for new issues without P3)
             - `gh issue comment ${{ github.event.issue.number }} --body "..."`
             - `gh issue list` to check for duplicates
 
           claude_args: |
+            --dangerously-skip-permissions
             --allowedTools "Bash(gh issue:*),Bash(gh search:*)"

@@ -176,6 +176,7 @@ jobs:
             - Make changes and commit with message referencing the issue
             - Push the branch
             - Create a PR using: gh pr create --title "..." --body "Fixes #${{ needs.find-work.outputs.issue_number }}"
+            - Enable auto-merge: gh pr merge --auto --squash (this merges automatically when CI passes)
 
             ## Testing Requirements
             - Run backend tests: cd backend && uv run pytest
@@ -191,7 +192,7 @@ jobs:
             ## Status Comments (IMPORTANT)
             Post status updates to the issue using `gh issue comment ${{ needs.find-work.outputs.issue_number }} --body "..."`:
             1. **Before starting**: Post "🤖 Starting work on this issue. [View workflow progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-            2. **After creating PR**: Post "✅ Created PR: <PR_URL>. Ready for review."
+            2. **After creating PR with auto-merge**: Post "✅ Created PR: <PR_URL>. Auto-merge enabled - will merge when CI passes."
 
           claude_args: |
             --max-turns 50

@@ -318,8 +318,9 @@ Background automation handles issue triage and work without manual intervention.
 - Finds highest priority open issue (P0 → P1 → P2)
 - Adds `claude-working` label while in progress
 - **Status comments**: Posts updates to issue when starting and completing work
-- Implements changes, runs tests, creates PR
-- Removes `claude-working` label when done
+- Implements changes, runs tests, creates PR with **auto-merge enabled**
+- PRs merge automatically when CI passes (no manual intervention needed)
+- Removes `claude-working` label when done (on success only - failed issues keep label)
 - Concurrency control: only one work job runs at a time (others queue)
 
 **CI/CD Fix Loop** (`.github/workflows/claude-cicd-fix.yml`):
@@ -335,7 +336,7 @@ Background automation handles issue triage and work without manual intervention.
 1. User reports bug via "Report a Bug" button → Creates P3 issue
 2. Triage workflow runs → Assigns P0/P1/P2 label with comment
 3. Work workflow triggers immediately (event-driven by label)
-4. Claude implements fix → Creates PR with `Fixes #N`
+4. Claude implements fix → Creates PR with `Fixes #N` + enables auto-merge
 5. CI/CD runs on PR
 6. **If CI/CD fails**: CI/CD Fix workflow triggers
    - Analyzes failure logs

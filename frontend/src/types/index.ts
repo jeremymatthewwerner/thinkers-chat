@@ -10,6 +10,7 @@ export interface User {
   display_name: string | null;
   is_admin: boolean;
   total_spend: number;
+  spend_limit: number;
   created_at: string;
 }
 
@@ -20,6 +21,12 @@ export interface AuthResponse {
 
 export interface UserWithStats extends User {
   conversation_count: number;
+}
+
+export interface SpendLimitError {
+  currentSpend: number;
+  spendLimit: number;
+  message: string;
 }
 
 export interface Session {

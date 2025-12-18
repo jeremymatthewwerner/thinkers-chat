@@ -28,6 +28,9 @@ export type { NewChatModalProps } from './NewChatModal';
 export { Sidebar } from './Sidebar';
 export type { SidebarProps } from './Sidebar';
 
+export { SpendLimitBanner } from './SpendLimitBanner';
+export type { SpendLimitBannerProps } from './SpendLimitBanner';
+
 export { ThinkerAvatar } from './ThinkerAvatar';
 export type { ThinkerAvatarProps } from './ThinkerAvatar';
 

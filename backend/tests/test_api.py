@@ -587,6 +587,119 @@ class TestAdminAPI:
         response = await client.delete("/api/admin/users/nonexistent-id", headers=headers)
         assert response.status_code == 404
 
+    async def test_update_spend_limit_success(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test that admins can update a user's spend limit."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        # Create a user to update
+        user_data = await register_and_get_token(client, "limituser", "password123")
+        user_id = user_data["user"]["id"]
+
+        # Update spend limit
+        response = await client.patch(
+            f"/api/admin/users/{user_id}/spend-limit",
+            json={"spend_limit": 50.0},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user_id"] == user_id
+        assert data["spend_limit"] == 50.0
+        assert "updated" in data["message"].lower()
+
+    async def test_update_spend_limit_not_admin(self, client: AsyncClient) -> None:
+        """Test that non-admins cannot update spend limits."""
+        headers = await get_auth_headers(client, "nonadminlimit", "password123")
+        user_data = await register_and_get_token(client, "targetlimit", "password123")
+
+        response = await client.patch(
+            f"/api/admin/users/{user_data['user']['id']}/spend-limit",
+            json={"spend_limit": 50.0},
+            headers=headers,
+        )
+        assert response.status_code == 403
+
+    async def test_update_spend_limit_user_not_found(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test 404 when updating non-existent user's spend limit."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        response = await client.patch(
+            "/api/admin/users/nonexistent-id/spend-limit",
+            json={"spend_limit": 50.0},
+            headers=headers,
+        )
+        assert response.status_code == 404
+
+    async def test_update_spend_limit_invalid_value(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test validation for invalid spend limit values."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        user_data = await register_and_get_token(client, "validationuser", "password123")
+        user_id = user_data["user"]["id"]
+
+        # Test zero
+        response = await client.patch(
+            f"/api/admin/users/{user_id}/spend-limit",
+            json={"spend_limit": 0},
+            headers=headers,
+        )
+        assert response.status_code == 422
+
+        # Test negative
+        response = await client.patch(
+            f"/api/admin/users/{user_id}/spend-limit",
+            json={"spend_limit": -5.0},
+            headers=headers,
+        )
+        assert response.status_code == 422
+
+    async def test_update_spend_limit_persists(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test that updated spend limit persists and shows in user list."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        user_data = await register_and_get_token(client, "persistuser", "password123")
+        user_id = user_data["user"]["id"]
+
+        # Update spend limit
+        await client.patch(
+            f"/api/admin/users/{user_id}/spend-limit",
+            json={"spend_limit": 75.0},
+            headers=headers,
+        )
+
+        # Verify via user list endpoint
+        response = await client.get("/api/admin/users", headers=headers)
+        assert response.status_code == 200
+        users = response.json()
+        user = next(u for u in users if u["id"] == user_id)
+        assert user["spend_limit"] == 75.0
+
+    async def test_list_users_includes_spend_limit(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """Test that user list includes spend_limit field."""
+        admin_data = await create_admin_user(client, db_session)
+        headers = {"Authorization": f"Bearer {admin_data['access_token']}"}
+
+        response = await client.get("/api/admin/users", headers=headers)
+        assert response.status_code == 200
+        users = response.json()
+        assert len(users) >= 1
+        assert "spend_limit" in users[0]
+        assert isinstance(users[0]["spend_limit"], (int, float))
+
 
 class TestSpendAPI:
     """Tests for spend tracking endpoints."""

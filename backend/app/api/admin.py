@@ -3,6 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,12 +43,54 @@ async def list_users(
                 display_name=user.display_name,
                 is_admin=user.is_admin,
                 total_spend=user.total_spend,
+                spend_limit=user.spend_limit,
                 conversation_count=conv_count,
                 created_at=user.created_at,
             )
         )
 
     return users_with_stats
+
+
+class UpdateSpendLimitRequest(BaseModel):
+    """Request schema for updating spend limit."""
+
+    spend_limit: float = Field(..., gt=0, description="New spend limit in dollars")
+
+
+class UpdateSpendLimitResponse(BaseModel):
+    """Response schema for spend limit update."""
+
+    user_id: str
+    spend_limit: float
+    message: str
+
+
+@router.patch("/users/{user_id}/spend-limit", response_model=UpdateSpendLimitResponse)
+async def update_spend_limit(
+    user_id: str,
+    request: UpdateSpendLimitRequest,
+    _: Annotated[User, Depends(require_admin)],
+    db: AsyncSession = Depends(get_db),
+) -> UpdateSpendLimitResponse:
+    """Update a user's spend limit (admin only)."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    user.spend_limit = request.spend_limit
+    await db.commit()
+
+    return UpdateSpendLimitResponse(
+        user_id=user.id,
+        spend_limit=user.spend_limit,
+        message=f"Spend limit updated to ${request.spend_limit:.2f}",
+    )
 
 
 @router.delete("/users/{user_id}")

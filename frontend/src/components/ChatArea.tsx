@@ -9,6 +9,7 @@ import type { Conversation, Message } from '@/types';
 import { exportAsHtml, exportAsMarkdown } from '@/lib/export';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
+import { SpendLimitBanner } from './SpendLimitBanner';
 
 export interface ChatAreaProps {
   conversation: Conversation | null;
@@ -26,6 +27,12 @@ export interface ChatAreaProps {
   /** Speed multiplier (1.0 = normal, 0.5 = fast, 2.0+ = slow) */
   speedMultiplier?: number;
   onSpeedChange?: (multiplier: number) => void;
+  /** User's current total spend */
+  userTotalSpend?: number;
+  /** User's spend limit */
+  userSpendLimit?: number;
+  /** Whether the spend limit has been exceeded (from WebSocket error) */
+  spendLimitExceeded?: boolean;
 }
 
 // Speed labels for display
@@ -60,8 +67,17 @@ export function ChatArea({
   onResume,
   speedMultiplier = 1.0,
   onSpeedChange,
+  userTotalSpend = 0,
+  userSpendLimit = 10,
+  spendLimitExceeded = false,
 }: ChatAreaProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [dismissedWarning, setDismissedWarning] = useState(false);
+
+  // Calculate spend limit status
+  const percentUsed = userSpendLimit > 0 ? (userTotalSpend / userSpendLimit) * 100 : 0;
+  const isNearLimit = percentUsed >= 85 && !spendLimitExceeded;
+  const showSpendBanner = (isNearLimit && !dismissedWarning) || spendLimitExceeded;
 
   const handleExportHtml = () => {
     if (conversation) {
@@ -265,6 +281,16 @@ export function ChatArea({
         </div>
       </div>
 
+      {/* Spend limit warning/error banner */}
+      {showSpendBanner && (
+        <SpendLimitBanner
+          currentSpend={userTotalSpend}
+          spendLimit={userSpendLimit}
+          isExceeded={spendLimitExceeded}
+          onDismiss={isNearLimit ? () => setDismissedWarning(true) : undefined}
+        />
+      )}
+
       {/* Messages */}
       <MessageList
         messages={messages}
@@ -278,11 +304,13 @@ export function ChatArea({
         onSend={onSendMessage}
         onTypingStart={onTypingStart}
         onTypingStop={onTypingStop}
-        disabled={!isConnected}
+        disabled={!isConnected || spendLimitExceeded}
         placeholder={
-          isConnected
-            ? `Message ${conversation.thinkers.map((t) => t.name).join(', ')}...`
-            : 'Connecting...'
+          spendLimitExceeded
+            ? 'Spend limit reached - contact admin to continue'
+            : isConnected
+              ? `Message ${conversation.thinkers.map((t) => t.name).join(', ')}...`
+              : 'Connecting...'
         }
       />
     </div>

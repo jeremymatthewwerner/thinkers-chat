@@ -282,5 +282,24 @@ export async function deleteUser(userId: string): Promise<{ message: string }> {
   });
 }
 
+export interface UpdateSpendLimitResponse {
+  user_id: string;
+  spend_limit: number;
+  message: string;
+}
+
+export async function updateUserSpendLimit(
+  userId: string,
+  spendLimit: number
+): Promise<UpdateSpendLimitResponse> {
+  return fetchWithAuth<UpdateSpendLimitResponse>(
+    `/api/admin/users/${userId}/spend-limit`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ spend_limit: spendLimit }),
+    }
+  );
+}
+
 // Export for testing
 export { API_BASE_URL };

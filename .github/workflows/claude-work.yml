@@ -185,6 +185,42 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Test Anthropic API key
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Test if API key is valid with a minimal API call
+          echo "Testing Anthropic API key..."
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "ERROR: ANTHROPIC_API_KEY is not set!"
+            exit 1
+          fi
+          echo "Key length: ${#ANTHROPIC_API_KEY} chars"
+          echo "Key prefix: ${ANTHROPIC_API_KEY:0:10}..."
+
+          # Make a minimal API call to verify the key works
+          RESPONSE=$(curl -s -w "\n%{http_code}" https://api.anthropic.com/v1/messages \
+            -H "content-type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d '{
+              "model": "claude-sonnet-4-20250514",
+              "max_tokens": 10,
+              "messages": [{"role": "user", "content": "Say hi"}]
+            }')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          echo "HTTP Status: $HTTP_CODE"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "API key is VALID"
+          else
+            echo "API key test FAILED!"
+            echo "Response: $BODY"
+            exit 1
+          fi
+
       - name: Mark issue as in-progress
         env:
           GH_TOKEN: ${{ github.token }}

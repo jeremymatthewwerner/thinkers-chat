@@ -28,14 +28,14 @@ test.describe('Homepage', () => {
     await expect(emptyState).toBeVisible();
   });
 
-  test('shows username in sidebar', async ({ page }) => {
-    // Should show the username in the sidebar footer
+  test('shows display name in sidebar', async ({ page }) => {
+    // Should show the display name in the sidebar footer
     const sidebar = page.getByTestId('sidebar');
     await expect(sidebar).toBeVisible();
 
-    // The username should be displayed (starts with "testuser_")
-    const usernameElement = sidebar.locator('text=/testuser_/');
-    await expect(usernameElement).toBeVisible();
+    // The display name should be displayed (starts with "Test User")
+    const displayNameElement = sidebar.locator('text=/Test User/');
+    await expect(displayNameElement).toBeVisible();
   });
 
   test('logout redirects to login page', async ({ page }) => {

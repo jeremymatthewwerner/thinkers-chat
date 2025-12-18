@@ -157,13 +157,16 @@ jobs:
         run: |
           gh issue comment ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
-            --body "## 🤖 Claude is working on this issue
+            --body "$(cat <<'EOF'
+          ## 🤖 Claude is working on this issue
 
-**Status:** Starting automated work
+          **Status:** Starting automated work
 
-**Workflow Run:** [View progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Workflow Run:** [View progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-I'll analyze the issue, implement a fix, run tests, and create a PR. Updates will be posted here."
+          I'll analyze the issue, implement a fix, run tests, and create a PR. Updates will be posted here.
+          EOF
+          )"
 
       - name: Work on issue
         id: claude
@@ -214,23 +217,29 @@ I'll analyze the issue, implement a fix, run tests, and create a PR. Updates wil
           if [ -n "$PR_URL" ]; then
             gh issue comment ${{ needs.find-work.outputs.issue_number }} \
               --repo ${{ github.repository }} \
-              --body "## ✅ Claude completed work
+              --body "$(cat <<EOF
+          ## ✅ Claude completed work
 
-**Status:** Work completed successfully
+          **Status:** Work completed successfully
 
-**Pull Request:** $PR_URL
+          **Pull Request:** $PR_URL
 
-The PR is ready for review. Once CI passes and it's approved, it can be merged to close this issue."
+          The PR is ready for review. Once CI passes and it's approved, it can be merged to close this issue.
+          EOF
+          )"
           else
             gh issue comment ${{ needs.find-work.outputs.issue_number }} \
               --repo ${{ github.repository }} \
-              --body "## ✅ Claude completed work
+              --body "$(cat <<'EOF'
+          ## ✅ Claude completed work
 
-**Status:** Work completed
+          **Status:** Work completed
 
-**Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-Check the workflow run for details on what was done."
+          Check the workflow run for details on what was done.
+          EOF
+          )"
           fi
 
       - name: Comment - Work failed
@@ -240,13 +249,16 @@ Check the workflow run for details on what was done."
         run: |
           gh issue comment ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
-            --body "## ❌ Claude encountered an issue
+            --body "$(cat <<'EOF'
+          ## ❌ Claude encountered an issue
 
-**Status:** Work failed or was blocked
+          **Status:** Work failed or was blocked
 
-**Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Workflow Run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-Please check the workflow logs for details. This issue may need manual intervention or clarification."
+          Please check the workflow logs for details. This issue may need manual intervention or clarification.
+          EOF
+          )"
 
       - name: Remove in-progress label on completion
         if: always()

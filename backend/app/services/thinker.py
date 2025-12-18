@@ -501,9 +501,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                     # Check if paused - stop streaming updates if so
                     if self.is_paused(conversation_id):
                         if not paused_during_stream:
-                            await manager.send_thinker_stopped_typing(
-                                conversation_id, thinker.name
-                            )
+                            await manager.send_thinker_stopped_typing(conversation_id, thinker.name)
                             paused_during_stream = True
                         # Continue consuming stream but don't send updates
                         # We still need to get the response for potential later use

@@ -216,7 +216,10 @@ jobs:
           )"
 
       - name: Remove in-progress label on completion
-        if: always()
+        # Only remove on SUCCESS - failed issues keep the label so they're skipped
+        # in the next run (prevents same issue from failing repeatedly)
+        # The label will be removed when: PR merges (issue closes) or human intervenes
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -225,10 +228,11 @@ jobs:
             --remove-label "claude-working" || true
 
   # Self-chain: trigger another run if there's more work
-  # IMPORTANT: Only chain on SUCCESS to prevent infinite failure loops
+  # Runs on always() so failures don't stop the queue - other issues still get processed
+  # Failed issues keep claude-working label, so they're skipped (prevents infinite loops)
   continue-work:
     needs: [find-work, work-on-issue]
-    if: success() && needs.find-work.outputs.has_more_work == 'true'
+    if: always() && needs.find-work.outputs.has_more_work == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

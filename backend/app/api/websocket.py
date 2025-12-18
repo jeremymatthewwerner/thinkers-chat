@@ -289,6 +289,15 @@ async def websocket_endpoint(
         ),
     )
 
+    # Send current pause state to the newly connected client
+    if thinker_service.is_paused(conversation_id):
+        await websocket.send_text(
+            WSMessage(
+                type=WSMessageType.PAUSED,
+                conversation_id=conversation_id,
+            ).model_dump_json()
+        )
+
     # Get the conversation and start thinker agents
     # We need to create a new db session for the agent callbacks
     from app.core.database import async_session_maker

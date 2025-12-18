@@ -342,22 +342,24 @@ class TestExtractThinkingDisplay:
         service = ThinkerService()
         long_text = "This is a very long thinking text. " * 20
         result = service._extract_thinking_display(long_text)
-        # Should be truncated
-        assert len(result) <= 160  # ~150 + some buffer for ellipsis
+        # Should be truncated (may include prefix)
+        assert len(result) <= 180  # ~150 + prefix + ellipsis
 
     def test_text_ending_with_period_no_extra_ellipsis(self) -> None:
         """Test that text ending with period doesn't get extra ellipsis."""
         service = ThinkerService()
         result = service._extract_thinking_display("This is a complete thought.")
-        assert result == "This is a complete thought."
+        # May have a prefix added but should end with period, not ellipsis
+        assert result.endswith(".")
+        assert "complete thought" in result
 
     def test_preserves_sentence_boundaries(self) -> None:
         """Test that truncation tries to preserve sentence boundaries."""
         service = ThinkerService()
         text = "First sentence. " * 5 + "Second sentence. " * 5 + "Final thought"
         result = service._extract_thinking_display(text)
-        # Should try to start at a sentence boundary
-        assert len(result) <= 160
+        # Should try to start at a sentence boundary and produce reasonable output
+        assert len(result) <= 180  # May include prefix
 
 
 class TestGenerateResponseWithStreamingThinking:

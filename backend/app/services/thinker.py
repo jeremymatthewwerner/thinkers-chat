@@ -492,8 +492,9 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
             # Track when we last sent a thinking update (throttle for readability)
             last_thinking_update = 0.0
-            # Base interval is 1.5s, multiplied by speed setting for slower display
-            thinking_update_interval = 1.5 * speed_mult
+            # Base interval is 2s, multiplied by speed setting for slower display
+            # At 6x (Contemplative), this gives 12s between updates
+            thinking_update_interval = 2.0 * speed_mult
 
             async with self.client.messages.stream(
                 model="claude-sonnet-4-20250514",
@@ -517,7 +518,9 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                             current_time = asyncio.get_event_loop().time()
                             if current_time - last_thinking_update >= thinking_update_interval:
                                 # Extract last sentence or meaningful chunk for display
-                                display_thinking = self._extract_thinking_display(thinking_text)
+                                display_thinking = self._extract_thinking_display(
+                                    thinking_text, thinker.name
+                                )
                                 if display_thinking:
                                     await manager.send_thinker_thinking(
                                         conversation_id, thinker.name, display_thinking
@@ -643,10 +646,11 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
         return [b for b in bubbles if b]  # Filter out empty strings
 
-    def _extract_thinking_display(self, thinking_text: str) -> str:
+    def _extract_thinking_display(self, thinking_text: str, thinker_name: str = "") -> str:
         """Extract a displayable portion of the thinking text.
 
-        Returns the last complete sentence or a truncated version of recent thinking.
+        Transforms raw LLM thinking into thinker's internal monologue style.
+        Returns the last complete thought, rephrased as if the thinker is talking to themselves.
         """
         if not thinking_text:
             return ""
@@ -667,6 +671,41 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
         # Clean up any incomplete words at the start
         if text and not text[0].isupper() and " " in text:
             text = text[text.find(" ") + 1 :]
+
+        # Transform to sound like internal monologue rather than LLM reasoning
+        # Remove obvious LLM-style phrases
+        replacements = [
+            ("I should ", "Perhaps I should "),
+            ("I need to ", "Hmm, I need to "),
+            ("I think ", ""),
+            ("I'll ", "I shall "),
+            ("The user ", "They "),
+            ("the user ", "they "),
+            ("I am going to ", "I shall "),
+            ("Let me ", "Let me see... "),
+            ("I can ", "I might "),
+            ("I will ", "I shall "),
+        ]
+        for old, new in replacements:
+            text = text.replace(old, new)
+
+        # Add contemplative starters for variety
+        starters = [
+            "Hmm... ",
+            "Now then... ",
+            "Interesting... ",
+            "Let me consider... ",
+            "*pondering* ",
+            "",  # Sometimes no prefix
+            "",
+        ]
+        # Use a simple hash of the text to pick a consistent starter
+        starter_idx = hash(text[:20] if len(text) > 20 else text) % len(starters)
+        prefix = starters[starter_idx]
+
+        # Only add prefix if the text doesn't already start with something similar
+        if not text.lower().startswith(("hmm", "let me", "now", "interesting", "*")):
+            text = prefix + text
 
         # Add ellipsis if truncated
         if text and not text.endswith((".", "!", "?", "...")):
@@ -919,11 +958,11 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                 speed_mult = manager.get_speed_multiplier(conversation_id)
 
                 # Variable wait before checking again
-                # Shorter waits when conversation is active, longer when quiet
+                # At 6x (Contemplative), active = 18-48s, quiet = 48-96s between checks
                 if consecutive_silence > 3:
-                    wait_time = random.uniform(5.0, 12.0) * speed_mult  # Quiet conversation
+                    wait_time = random.uniform(8.0, 16.0) * speed_mult  # Quiet conversation
                 else:
-                    wait_time = random.uniform(2.0, 6.0) * speed_mult  # Active conversation
+                    wait_time = random.uniform(3.0, 8.0) * speed_mult  # Active conversation
                 await asyncio.sleep(wait_time)
 
             except asyncio.CancelledError:

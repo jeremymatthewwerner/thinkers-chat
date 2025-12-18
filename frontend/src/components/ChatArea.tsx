@@ -30,14 +30,14 @@ export interface ChatAreaProps {
 const SPEED_LABELS: Record<number, string> = {
   0.5: 'Fast',
   1.0: 'Normal',
-  1.5: 'Relaxed',
-  2.0: 'Slow',
-  3.0: 'Very Slow',
+  2.0: 'Relaxed',
+  4.0: 'Slow',
+  6.0: 'Contemplative',
 };
 
 function getSpeedLabel(speed: number): string {
   // Find closest match
-  const speeds = [0.5, 1.0, 1.5, 2.0, 3.0];
+  const speeds = [0.5, 1.0, 2.0, 4.0, 6.0];
   const closest = speeds.reduce((prev, curr) =>
     Math.abs(curr - speed) < Math.abs(prev - speed) ? curr : prev
   );
@@ -109,11 +109,11 @@ export function ChatArea({
               <input
                 type="range"
                 min="0.5"
-                max="3"
+                max="6"
                 step="0.5"
                 value={speedMultiplier}
                 onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-                className="w-20 h-1.5 accent-blue-600 cursor-pointer"
+                className="w-24 h-1.5 accent-blue-600 cursor-pointer"
                 title={`Conversation pace: ${getSpeedLabel(speedMultiplier)}`}
                 data-testid="speed-slider"
               />

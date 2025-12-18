@@ -135,9 +135,9 @@ class ConnectionManager:
         return 1.0
 
     async def set_speed_multiplier(self, conversation_id: str, multiplier: float) -> None:
-        """Set the speed multiplier for a conversation (0.5 to 3.0)."""
-        # Clamp to valid range
-        multiplier = max(0.5, min(3.0, multiplier))
+        """Set the speed multiplier for a conversation (0.5 to 6.0)."""
+        # Clamp to valid range (6x for very slow, contemplative pace)
+        multiplier = max(0.5, min(6.0, multiplier))
         if conversation_id in self.rooms:
             self.rooms[conversation_id].speed_multiplier = multiplier
             # Notify all clients of the speed change

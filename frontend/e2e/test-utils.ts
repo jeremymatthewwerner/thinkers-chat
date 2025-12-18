@@ -29,10 +29,11 @@ export async function registerUser(
 ): Promise<AuthResponse> {
   // Generate unique username if not provided
   const uniqueUsername = username || `testuser_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const displayName = `Test User ${Date.now()}`;
   const password = 'testpass123';
 
   const response = await page.request.post(`${API_BASE}/api/auth/register`, {
-    data: { username: uniqueUsername, password },
+    data: { username: uniqueUsername, display_name: displayName, password },
   });
 
   if (!response.ok()) {

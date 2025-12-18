@@ -518,9 +518,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
                             current_time = asyncio.get_event_loop().time()
                             if current_time - last_thinking_update >= thinking_update_interval:
                                 # Extract last sentence or meaningful chunk for display
-                                display_thinking = self._extract_thinking_display(
-                                    thinking_text, thinker.name
-                                )
+                                display_thinking = self._extract_thinking_display(thinking_text)
                                 if display_thinking:
                                     await manager.send_thinker_thinking(
                                         conversation_id, thinker.name, display_thinking
@@ -646,7 +644,7 @@ Respond with ONLY what {thinker.name} would say, nothing else."""
 
         return [b for b in bubbles if b]  # Filter out empty strings
 
-    def _extract_thinking_display(self, thinking_text: str, thinker_name: str = "") -> str:
+    def _extract_thinking_display(self, thinking_text: str) -> str:
         """Extract a displayable portion of the thinking text.
 
         Transforms raw LLM thinking into thinker's internal monologue style.

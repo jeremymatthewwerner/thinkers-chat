@@ -13,6 +13,9 @@ export type { ConversationListProps } from './ConversationList';
 export { CostMeter } from './CostMeter';
 export type { CostMeterProps } from './CostMeter';
 
+export { ErrorBanner } from './ErrorBanner';
+export type { ErrorBannerProps } from './ErrorBanner';
+
 export { Message } from './Message';
 export type { MessageProps } from './Message';
 

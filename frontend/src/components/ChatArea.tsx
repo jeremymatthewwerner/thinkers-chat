@@ -10,6 +10,7 @@ import { exportAsHtml, exportAsMarkdown } from '@/lib/export';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 import { SpendLimitBanner } from './SpendLimitBanner';
+import { ErrorBanner } from './ErrorBanner';
 
 export interface ChatAreaProps {
   conversation: Conversation | null;
@@ -33,6 +34,10 @@ export interface ChatAreaProps {
   userSpendLimit?: number;
   /** Whether the spend limit has been exceeded (from WebSocket error) */
   spendLimitExceeded?: boolean;
+  /** Generic error message from WebSocket (e.g., billing errors) */
+  errorMessage?: string;
+  /** Callback to dismiss the error message */
+  onDismissError?: () => void;
 }
 
 // Speed labels for display
@@ -70,6 +75,8 @@ export function ChatArea({
   userTotalSpend = 0,
   userSpendLimit = 10,
   spendLimitExceeded = false,
+  errorMessage,
+  onDismissError,
 }: ChatAreaProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [dismissedWarning, setDismissedWarning] = useState(false);
@@ -282,6 +289,11 @@ export function ChatArea({
           )}
         </div>
       </div>
+
+      {/* Generic error banner */}
+      {errorMessage && (
+        <ErrorBanner message={errorMessage} onDismiss={onDismissError} />
+      )}
 
       {/* Spend limit warning/error banner */}
       {showSpendBanner && (

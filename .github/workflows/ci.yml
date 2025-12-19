@@ -392,19 +392,39 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Finding issues referenced in recent commits..."
+          echo "Finding issues referenced in recent PRs..."
 
-          # Get issue numbers from commit messages (looks for "Relates to #N" or "#N")
-          ISSUE_NUMBERS=$(git log --oneline -10 | grep -oE '#[0-9]+' | tr -d '#' | sort -u)
+          # Get PR numbers from recent commit messages (squash merges include PR #)
+          PR_NUMBERS=$(git log --oneline -10 | grep -oE '#[0-9]+' | tr -d '#' | sort -u)
 
-          if [ -z "$ISSUE_NUMBERS" ]; then
-            echo "No issue references found in recent commits"
+          ISSUE_NUMBERS=""
+
+          # For each PR, check its body for "Relates to #N"
+          for PR_NUM in $PR_NUMBERS; do
+            echo "Checking PR #$PR_NUM for issue references..."
+            PR_BODY=$(gh pr view $PR_NUM --json body -q .body 2>/dev/null || echo "")
+
+            # Extract issue numbers from "Relates to #N" or "Fixes #N" patterns
+            REFS=$(echo "$PR_BODY" | grep -oE '(Relates to|Fixes|Closes|Resolves) #[0-9]+' | grep -oE '#[0-9]+' | tr -d '#' || true)
+
+            if [ -n "$REFS" ]; then
+              echo "  Found issue refs in PR #$PR_NUM: $REFS"
+              ISSUE_NUMBERS="$ISSUE_NUMBERS $REFS"
+            fi
+          done
+
+          # Deduplicate
+          ISSUE_NUMBERS=$(echo "$ISSUE_NUMBERS" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+
+          if [ -z "$(echo "$ISSUE_NUMBERS" | tr -d ' ')" ]; then
+            echo "No issue references found in recent PRs"
             exit 0
           fi
 
           echo "Found issue references: $ISSUE_NUMBERS"
 
           for ISSUE_NUM in $ISSUE_NUMBERS; do
+            [ -z "$ISSUE_NUM" ] && continue
             echo "Checking issue #$ISSUE_NUM..."
 
             # Get issue state

@@ -212,29 +212,6 @@ export function Sidebar({
           </div>
         </div>
       </aside>
-
-      {/* Mobile menu button */}
-      <button
-        onClick={onToggle}
-        className={`fixed top-4 left-4 z-10 lg:hidden p-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${
-          isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
-        aria-label="Open sidebar"
-        data-testid="menu-button"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="w-5 h-5 text-zinc-700 dark:text-zinc-300"
-        >
-          <path
-            fillRule="evenodd"
-            d="M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </button>
     </>
   );
 }

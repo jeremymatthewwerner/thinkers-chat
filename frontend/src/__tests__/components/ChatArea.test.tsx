@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ChatArea } from '@/components/ChatArea';
 import type { Conversation, Message } from '@/types';
 
@@ -157,5 +157,43 @@ describe('ChatArea', () => {
 
     expect(screen.getByTestId('error-banner')).toBeInTheDocument();
     expect(screen.getByText(billingError)).toBeInTheDocument();
+  });
+
+  it('renders hamburger menu button in header when onSidebarToggle is provided', () => {
+    const conversation = createConversation();
+    const onSidebarToggle = jest.fn();
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        onSidebarToggle={onSidebarToggle}
+        sidebarOpen={false}
+      />
+    );
+
+    expect(screen.getByTestId('header-menu-button')).toBeInTheDocument();
+  });
+
+  it('calls onSidebarToggle when hamburger button is clicked', () => {
+    const conversation = createConversation();
+    const onSidebarToggle = jest.fn();
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        onSidebarToggle={onSidebarToggle}
+        sidebarOpen={false}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('header-menu-button'));
+    expect(onSidebarToggle).toHaveBeenCalled();
+  });
+
+  it('does not render hamburger button when onSidebarToggle is not provided', () => {
+    const conversation = createConversation();
+    render(<ChatArea {...defaultProps} conversation={conversation} />);
+
+    expect(screen.queryByTestId('header-menu-button')).not.toBeInTheDocument();
   });
 });

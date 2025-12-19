@@ -38,6 +38,10 @@ export interface ChatAreaProps {
   errorMessage?: string;
   /** Callback to dismiss the error message */
   onDismissError?: () => void;
+  /** Callback to toggle the sidebar (mobile only) */
+  onSidebarToggle?: () => void;
+  /** Whether the sidebar is currently open */
+  sidebarOpen?: boolean;
 }
 
 // Speed labels for display
@@ -77,6 +81,8 @@ export function ChatArea({
   spendLimitExceeded = false,
   errorMessage,
   onDismissError,
+  onSidebarToggle,
+  sidebarOpen = false,
 }: ChatAreaProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [dismissedWarning, setDismissedWarning] = useState(false);
@@ -138,6 +144,30 @@ export function ChatArea({
           willChange: 'transform',
         }}
       >
+        {/* Hamburger button - only visible on mobile */}
+        {onSidebarToggle && (
+          <button
+            onClick={onSidebarToggle}
+            className={`lg:hidden p-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex-shrink-0 ${
+              sidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
+            aria-label="Open sidebar"
+            data-testid="header-menu-button"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-5 h-5 text-zinc-700 dark:text-zinc-300"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        )}
         <div className="min-w-0 flex-1 min-w-[200px]">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
             {conversation.topic}

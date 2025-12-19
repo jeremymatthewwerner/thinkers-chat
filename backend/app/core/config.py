@@ -57,8 +57,24 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
 
+    # Test mode (enables test endpoints)
+    test_mode: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Get cached application settings."""
     return Settings()
+
+
+def is_test_mode() -> bool:
+    """Check if test mode is enabled.
+
+    Test mode enables special endpoints for integration testing.
+    Should only be enabled in test environments.
+
+    Returns:
+        True if TEST_MODE environment variable is set to true/1/yes, False otherwise.
+    """
+    settings = get_settings()
+    return settings.test_mode

@@ -1,6 +1,8 @@
 """Tests for configuration settings."""
 
-from app.core.config import Settings
+from unittest.mock import patch
+
+from app.core.config import Settings, is_test_mode
 
 
 class TestAsyncDatabaseUrl:
@@ -25,3 +27,21 @@ class TestAsyncDatabaseUrl:
         """URLs already using asyncpg should pass through unchanged."""
         settings = Settings(database_url="postgresql+asyncpg://user:pass@host:5432/db")
         assert settings.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
+
+
+class TestTestMode:
+    """Tests for test mode configuration."""
+
+    def test_is_test_mode_returns_false_by_default(self) -> None:
+        """Test mode should be disabled by default."""
+        with patch("app.core.config.get_settings") as mock_get_settings:
+            mock_settings = Settings(test_mode=False)
+            mock_get_settings.return_value = mock_settings
+            assert is_test_mode() is False
+
+    def test_is_test_mode_returns_true_when_enabled(self) -> None:
+        """Test mode should return True when TEST_MODE is enabled."""
+        with patch("app.core.config.get_settings") as mock_get_settings:
+            mock_settings = Settings(test_mode=True)
+            mock_get_settings.return_value = mock_settings
+            assert is_test_mode() is True

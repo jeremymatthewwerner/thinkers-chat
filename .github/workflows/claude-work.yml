@@ -404,6 +404,23 @@ jobs:
             --remove-label "claude-working" \
             --add-label "in-review" || true
 
+      - name: Trigger CI after auto-merge
+        # GITHUB_TOKEN merges can't trigger push events, so we manually trigger CI
+        # This ensures code gets deployed after auto-merge completes
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Waiting for auto-merge to complete..."
+          sleep 30  # Give time for PR to merge
+
+          echo "Triggering CI/CD pipeline..."
+          gh api repos/${{ github.repository }}/dispatches \
+            -f event_type=deploy-after-merge \
+            -f 'client_payload[issue_number]=${{ needs.find-work.outputs.issue_number }}'
+
+          echo "CI triggered. Deploy will close issue after success."
+
   # Self-chain: trigger another run if there's more work
   # Runs on always() so failures don't stop the queue - other issues still get processed
   # Failed issues get needs-human-help label, successful issues get in-review label

@@ -8,6 +8,38 @@
  *
  * Note: This test currently validates steps 1-2. Step 3 will be validated
  * once GitHub issue filing is implemented (sub-tasks #113-116).
+ *
+ * ## Using the trigger-error Test Endpoint
+ *
+ * The backend provides a test-only endpoint `/api/test/trigger-error` for
+ * E2E tests to simulate error conditions. This endpoint:
+ * - Only works when TEST_MODE=true (returns 403 otherwise)
+ * - Broadcasts ERROR WebSocket messages to a conversation
+ * - Requires an active WebSocket connection to the conversation
+ *
+ * Example usage:
+ * ```typescript
+ * // 1. Create conversation and navigate to it
+ * const { id: conversationId } = await createConversationViaAPI(page, 'Test', ['Aristotle']);
+ * await page.goto(`/conversation/${conversationId}`);
+ * await page.waitForTimeout(1500); // Wait for WebSocket connection
+ *
+ * // 2. Trigger error via endpoint
+ * const token = await page.evaluate(() => localStorage.getItem('access_token'));
+ * await page.request.post('http://localhost:8000/api/test/trigger-error', {
+ *   headers: { Authorization: `Bearer ${token}` },
+ *   data: {
+ *     conversation_id: conversationId,
+ *     error_message: 'API billing error: API credit limit reached.'
+ *   }
+ * });
+ *
+ * // 3. Verify error appears in UI
+ * await expect(page.getByTestId('error-banner')).toBeVisible();
+ * ```
+ *
+ * See the test "shows error banner when billing error occurs via real WebSocket"
+ * below for a complete working example.
  */
 
 import { test, expect } from '@playwright/test';
@@ -262,11 +294,23 @@ test.describe('Billing Error Handling', () => {
     await page.click(conversationSelector);
     await page.waitForSelector('[data-testid="chat-area"]', { timeout: 10000 });
 
-    // Wait for real WebSocket connection
+    // Wait for real WebSocket connection to be established
     await page.waitForTimeout(1500);
 
-    // Inject a WebSocket ERROR message to simulate billing error from backend
-    // This approach tests the complete frontend flow while using real backend infrastructure
+    // NOTE: This test currently uses page.evaluate() to inject WebSocket messages
+    // because we can't force the Anthropic API to fail in tests. However, the
+    // preferred approach for E2E tests is to use the /api/test/trigger-error endpoint.
+    //
+    // PREFERRED APPROACH (TODO - refactor this test to use trigger-error endpoint):
+    // await page.request.post('http://localhost:8000/api/test/trigger-error', {
+    //   headers: { Authorization: `Bearer ${token}` },
+    //   data: {
+    //     conversation_id: conversationId,
+    //     error_message: 'API billing error: API credit limit reached. Please contact support.'
+    //   }
+    // });
+    //
+    // The current approach below injects the message client-side:
     await page.evaluate((convId) => {
       // Find the WebSocket connection
       const wsProto = WebSocket.prototype;

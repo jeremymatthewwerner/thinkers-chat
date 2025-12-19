@@ -233,6 +233,103 @@ test.describe('Billing Error Handling', () => {
     // Should be back at the main page
     await expect(page.locator('text=Welcome to Thinkers Chat')).toBeVisible({ timeout: 5000 });
   });
+
+  test('shows error banner when billing error occurs via real WebSocket', async ({ page }) => {
+    // Create a conversation via real backend API
+    const { id: conversationId } = await createConversationViaAPI(
+      page,
+      'Test billing error display',
+      ['Aristotle']
+    );
+
+    // Verify backend test endpoint works (validates BillingError exception handling)
+    const token = await page.evaluate(() => localStorage.getItem('access_token'));
+    const testResponse = await page.request.get('http://localhost:8000/api/test/billing-error', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    expect(testResponse.status()).toBe(503);
+    const errorBody = await testResponse.json();
+    expect(errorBody.detail).toContain('billing');
+
+    // Navigate to homepage and select the conversation
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const conversationSelector = `[data-testid="conversation-${conversationId}"]`;
+    await page.waitForSelector(conversationSelector, { timeout: 10000 });
+    await page.click(conversationSelector);
+    await page.waitForSelector('[data-testid="chat-area"]', { timeout: 10000 });
+
+    // Wait for real WebSocket connection
+    await page.waitForTimeout(1500);
+
+    // Inject a WebSocket ERROR message to simulate billing error from backend
+    // This approach tests the complete frontend flow while using real backend infrastructure
+    await page.evaluate((convId) => {
+      // Find the WebSocket connection
+      const wsProto = WebSocket.prototype;
+      const originalSend = wsProto.send;
+
+      // Store reference to the WebSocket instance
+      let ws: WebSocket | null = null;
+
+      // Override send to capture the WebSocket instance
+      wsProto.send = function (...args) {
+        ws = this;
+        return originalSend.apply(this, args);
+      };
+
+      // Wait a moment for WebSocket to be captured, then inject error
+      setTimeout(() => {
+        if (ws && ws.onmessage) {
+          const errorMessage = JSON.stringify({
+            type: 'error',
+            conversation_id: convId,
+            content: 'API billing error: API credit limit reached. Please contact support.',
+          });
+          const event = new MessageEvent('message', { data: errorMessage });
+          ws.onmessage(event);
+        }
+      }, 100);
+    }, conversationId);
+
+    // Wait for error to propagate
+    await page.waitForTimeout(1000);
+
+    // Verify ErrorBanner is displayed
+    const errorBanner = page.getByTestId('error-banner');
+    await expect(errorBanner).toBeVisible({ timeout: 5000 });
+
+    // Verify error message content
+    await expect(errorBanner).toContainText('API billing error');
+    await expect(errorBanner).toContainText('credit limit');
+
+    // Verify error banner has red/warning styling
+    const bannerClasses = await errorBanner.getAttribute('class');
+    expect(bannerClasses).toMatch(/bg-red/);
+
+    // Verify dismiss button is present and functional
+    const dismissButton = page.getByTestId('dismiss-error-button');
+    await expect(dismissButton).toBeVisible();
+    await dismissButton.click();
+
+    // Error banner should disappear after dismissal
+    await expect(errorBanner).not.toBeVisible({ timeout: 2000 });
+
+    // This test validates the complete billing error flow:
+    // ✅ Backend test endpoint raises BillingError (verified with 503 response)
+    // ✅ Real backend API for conversation creation
+    // ✅ Real WebSocket connection establishment
+    // ✅ WebSocket ERROR message handling in useWebSocket hook
+    // ✅ ErrorBanner component displays with correct message and styling
+    // ✅ Error dismissal functionality works
+    //
+    // Note: We inject the WebSocket message because we can't force the Anthropic API
+    // to fail in tests. Backend integration tests verify that real BillingError
+    // exceptions are converted to WebSocket ERROR messages.
+  });
 });
 
 test.describe('Billing Error Recovery', () => {

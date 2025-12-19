@@ -895,6 +895,34 @@ prompt: |
 
 Your custom `prompt` is added AFTER these built-in instructions, so Claude follows the built-in behavior unless you explicitly override it.
 
+### 8. Workflow Permissions Must Allow PR Creation
+
+GitHub Actions default workflow permissions may be set to `read` only, which prevents Claude from creating PRs:
+
+```bash
+# Check current permissions
+gh api repos/OWNER/REPO/actions/permissions/workflow
+
+# Enable PR creation (REQUIRED for automation)
+gh api repos/OWNER/REPO/actions/permissions/workflow -X PUT \
+  -f default_workflow_permissions=write \
+  -F can_approve_pull_request_reviews=true
+```
+
+Or via GitHub UI: **Settings → Actions → General → Workflow permissions** → Select "Read and write permissions" and enable "Allow GitHub Actions to create and approve pull requests"
+
+### 9. track_progress Doesn't Support 'reopened' Events
+
+The `claude-code-action` throws `Unsupported issue action: reopened` when `track_progress` is enabled for reopened issues:
+
+```yaml
+# ❌ WRONG - fails on reopened events
+track_progress: ${{ github.event_name == 'issues' }}
+
+# ✅ CORRECT - exclude reopened events
+track_progress: ${{ github.event_name == 'issues' && github.event.action != 'reopened' }}
+```
+
 ---
 
 ## Debugging Workflow Issues

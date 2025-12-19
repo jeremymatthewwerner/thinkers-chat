@@ -130,7 +130,14 @@ export function ChatArea({
       data-testid="chat-area"
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 sm:gap-3 bg-white dark:bg-zinc-900 flex-shrink-0">
+      <div
+        className="sticky top-0 z-10 flex flex-wrap items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 sm:gap-3 bg-white dark:bg-zinc-900 flex-shrink-0"
+        style={{
+          WebkitTransform: 'translateZ(0)',
+          transform: 'translateZ(0)',
+          willChange: 'transform'
+        }}
+      >
         <div className="min-w-0 flex-1 min-w-[200px]">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
             {conversation.topic}

@@ -191,9 +191,7 @@ describe('NewChatModal', () => {
 
     // Should show the error message
     await waitFor(() => {
-      expect(
-        screen.getByText('API credit limit reached')
-      ).toBeInTheDocument();
+      expect(screen.getByText('API credit limit reached')).toBeInTheDocument();
     });
   });
 });

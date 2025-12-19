@@ -23,7 +23,9 @@ describe('ErrorBanner', () => {
 
   it('should not render dismiss button when onDismiss is not provided', () => {
     render(<ErrorBanner message="Test error" />);
-    expect(screen.queryByTestId('dismiss-error-button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('dismiss-error-button')
+    ).not.toBeInTheDocument();
   });
 
   it('should call onDismiss when dismiss button is clicked', async () => {
@@ -45,7 +47,8 @@ describe('ErrorBanner', () => {
   });
 
   it('should render billing error message', () => {
-    const billingError = 'Spend limit reached ($10.00/$10.00). Contact admin to increase your limit.';
+    const billingError =
+      'Spend limit reached ($10.00/$10.00). Contact admin to increase your limit.';
     render(<ErrorBanner message={billingError} />);
     expect(screen.getByText(billingError)).toBeInTheDocument();
   });

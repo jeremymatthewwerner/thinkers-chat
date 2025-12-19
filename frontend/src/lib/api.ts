@@ -1,5 +1,5 @@
 /**
- * API client for Thinkers Chat backend.
+ * API client for Dining Philosophers backend.
  */
 
 import type {

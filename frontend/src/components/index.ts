@@ -1,5 +1,5 @@
 /**
- * Component exports for Thinkers Chat.
+ * Component exports for Dining Philosophers.
  */
 
 export { BuildInfo } from './BuildInfo';

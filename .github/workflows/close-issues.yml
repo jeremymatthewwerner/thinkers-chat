@@ -1,0 +1,85 @@
+name: Close Related Issues
+
+# Runs on every push to main - independent of CI pipeline
+# This ensures issues are closed even when CI skips jobs due to change detection
+on:
+  push:
+    branches: [main]
+
+jobs:
+  close-issues:
+    name: Close Related Issues
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10  # Get recent commits to find issue references
+
+      - name: Find and close related issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Finding issues referenced in recent PRs..."
+
+          # Get PR numbers from recent commit messages (squash merges include PR #)
+          PR_NUMBERS=$(git log --oneline -10 | grep -oE '#[0-9]+' | tr -d '#' | sort -u)
+
+          if [ -z "$PR_NUMBERS" ]; then
+            echo "No PR references found in recent commits"
+            exit 0
+          fi
+
+          ISSUES_TO_CLOSE=""
+
+          # For each PR, check its body for "Relates to #N"
+          for PR_NUM in $PR_NUMBERS; do
+            echo "Checking PR #$PR_NUM for issue references..."
+            PR_BODY=$(gh pr view $PR_NUM --json body -q .body 2>/dev/null || echo "")
+
+            if [ -n "$PR_BODY" ]; then
+              # Extract issue numbers from "Relates to #N" patterns
+              RELATED=$(echo "$PR_BODY" | grep -oiE 'relates to #[0-9]+' | grep -oE '[0-9]+' || true)
+              if [ -n "$RELATED" ]; then
+                ISSUES_TO_CLOSE="$ISSUES_TO_CLOSE $RELATED"
+              fi
+            fi
+          done
+
+          # Remove duplicates
+          ISSUES_TO_CLOSE=$(echo "$ISSUES_TO_CLOSE" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+
+          if [ -z "$ISSUES_TO_CLOSE" ]; then
+            echo "No issues to close"
+            exit 0
+          fi
+
+          echo "Issues to close: $ISSUES_TO_CLOSE"
+
+          # Close each issue
+          for ISSUE_NUM in $ISSUES_TO_CLOSE; do
+            echo "Checking issue #$ISSUE_NUM..."
+
+            # Check if issue is still open
+            STATE=$(gh issue view $ISSUE_NUM --json state -q .state 2>/dev/null || echo "")
+
+            if [ "$STATE" = "OPEN" ]; then
+              echo "Closing issue #$ISSUE_NUM..."
+              gh issue close $ISSUE_NUM \
+                --comment "✅ Fix deployed to production via merged PR." \
+                || echo "Failed to close issue #$ISSUE_NUM"
+
+              # Remove workflow labels
+              gh issue edit $ISSUE_NUM \
+                --remove-label "in-review" \
+                --remove-label "claude-working" \
+                2>/dev/null || true
+            else
+              echo "Issue #$ISSUE_NUM is already $STATE"
+            fi
+          done
+
+          echo "Done!"

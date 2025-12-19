@@ -126,12 +126,21 @@ test.describe('Billing Error Handling', () => {
   });
 
   test('shows error banner when billing error is received via WebSocket', async ({ page }) => {
-    // Create a conversation first
-    await createConversationViaAPI(page, 'Test billing error display', ['Aristotle']);
+    // Create a conversation via API
+    const { id: conversationId } = await createConversationViaAPI(
+      page,
+      'Test billing error display',
+      ['Aristotle']
+    );
 
-    // Navigate to the conversation
+    // Navigate to homepage and select the conversation
     await page.reload();
     await page.waitForLoadState('networkidle');
+
+    // Wait for conversation to appear in sidebar, then click it
+    const conversationSelector = `[data-testid="conversation-${conversationId}"]`;
+    await page.waitForSelector(conversationSelector, { timeout: 15000 });
+    await page.click(conversationSelector);
 
     // Wait for conversation to load
     await page.waitForSelector('[data-testid="chat-area"]', { timeout: 10000 });

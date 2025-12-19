@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import './ios-safari-fixes.css';
 import { AuthProvider } from '@/contexts';
 import { BuildInfo } from '@/components';
 

@@ -253,13 +253,22 @@ jobs:
           prompt: |
             You are working on issue #${{ needs.find-work.outputs.issue_number }}: ${{ needs.find-work.outputs.issue_title }}
 
+            ## ⚠️ REOPENED ISSUE CHECK
+            ${{ github.event.action == 'reopened' && '**THIS IS A REOPENED ISSUE.** The previous fix did NOT work in production. You MUST:
+            1. Review the issue comments to understand what was tried before
+            2. Check the git history for the previous fix attempt
+            3. Understand WHY the previous fix failed in production
+            4. Take a DIFFERENT approach - do not repeat the same fix
+            5. Be more thorough with testing and verification' || 'This is a new issue (not reopened).' }}
+
             ## Instructions
             1. Read CLAUDE.md for project context and coding standards
             2. Read the full issue details with: gh issue view ${{ needs.find-work.outputs.issue_number }}
-            3. Understand the codebase structure
-            4. Implement the required changes
-            5. Run tests to verify your changes work
-            6. Create a PR with your changes
+            3. **Review issue comments** for context on previous attempts (especially for reopened issues)
+            4. Understand the codebase structure
+            5. Implement the required changes
+            6. Run tests to verify your changes work
+            7. Create a PR with your changes
 
             ## Development Workflow
             - Create a branch: git checkout -b claude/issue-${{ needs.find-work.outputs.issue_number }}-${{ github.run_id }}

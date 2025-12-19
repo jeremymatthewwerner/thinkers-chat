@@ -325,6 +325,7 @@ Background automation handles issue triage and work without manual intervention.
 
 **Automated Work** (`.github/workflows/claude-work.yml`):
 - **Event-driven**: Triggers immediately when issues get P0/P1/P2 labels
+- **Reopened issues**: Triggers when issues are reopened (fix didn't work in production)
 - **Self-chaining**: Uses `repository_dispatch` to continue processing queue
 - **Fallback**: Scheduled every 6 hours to catch edge cases
 - Finds highest priority open issue (P0 → P1 → P2)
@@ -334,6 +335,13 @@ Background automation handles issue triage and work without manual intervention.
 - PRs merge automatically when CI passes (no manual intervention needed)
 - Removes `claude-working` label when done (on success only - failed issues keep label)
 - Concurrency control: only one work job runs at a time (others queue)
+
+**Reopened Issue Handling**:
+When an issue is reopened, it means the previous fix didn't actually work in production. The workflow:
+1. Triggers automatically on the `reopened` event
+2. Removes `in-review` label (from the failed fix attempt)
+3. Works on that specific issue directly
+4. Claude is instructed to understand this is a RETRY - the original fix failed in production
 
 **CI/CD Fix Loop** (`.github/workflows/claude-cicd-fix.yml`):
 - **Triggers**: When CI/CD fails on a PR created by `claude[bot]`

@@ -50,6 +50,10 @@ export function useWebSocket({
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  // Track whether we auto-paused due to visibility (so we can auto-resume)
+  const autoPausedRef = useRef(false);
+  // Track user's manual pause preference (don't override if they manually paused)
+  const manuallyPausedRef = useRef(false);
 
   // Connect when conversationId changes
   useEffect(() => {
@@ -167,10 +171,17 @@ export function useWebSocket({
 
             case 'paused':
               setIsPaused(true);
+              // If we receive a paused message but didn't auto-pause, it means manual pause
+              if (!autoPausedRef.current) {
+                manuallyPausedRef.current = true;
+              }
               break;
 
             case 'resumed':
               setIsPaused(false);
+              // Clear manual pause flag when resumed
+              manuallyPausedRef.current = false;
+              autoPausedRef.current = false;
               break;
 
             case 'speed_changed':
@@ -209,6 +220,9 @@ export function useWebSocket({
       // when reconnecting to ensure pause state is preserved across thread switches
       setIsConnected(false);
       setSpeedMultiplier(1.0);
+      // Reset auto-pause tracking when switching conversations
+      autoPausedRef.current = false;
+      manuallyPausedRef.current = false;
     };
   }, [
     conversationId,
@@ -224,6 +238,71 @@ export function useWebSocket({
       wsRef.current.send(JSON.stringify(message));
     }
   }, []);
+
+  // Auto-pause when browser tab/window becomes hidden or loses focus
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const handleVisibilityChange = () => {
+      // Page is hidden (tab switched, window minimized, etc.)
+      if (document.hidden) {
+        // Only auto-pause if not already paused and not manually paused
+        if (!isPaused && !manuallyPausedRef.current) {
+          autoPausedRef.current = true;
+          sendMessage({
+            type: 'pause',
+            conversation_id: conversationId,
+          });
+        }
+      } else {
+        // Page is visible again
+        // Only auto-resume if we were the ones who auto-paused
+        if (autoPausedRef.current && isPaused) {
+          autoPausedRef.current = false;
+          sendMessage({
+            type: 'resume',
+            conversation_id: conversationId,
+          });
+        }
+      }
+    };
+
+    const handleWindowBlur = () => {
+      // Window lost focus (user switched to another app/window)
+      if (!isPaused && !manuallyPausedRef.current) {
+        autoPausedRef.current = true;
+        sendMessage({
+          type: 'pause',
+          conversation_id: conversationId,
+        });
+      }
+    };
+
+    const handleWindowFocus = () => {
+      // Window regained focus
+      // Only auto-resume if we were the ones who auto-paused
+      if (autoPausedRef.current && isPaused) {
+        autoPausedRef.current = false;
+        sendMessage({
+          type: 'resume',
+          conversation_id: conversationId,
+        });
+      }
+    };
+
+    // Listen for visibility changes (tab switching, minimizing)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Listen for window focus/blur (switching to other apps/windows)
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [conversationId, isPaused, sendMessage]);
 
   const sendUserMessage = useCallback(
     (content: string) => {
@@ -251,6 +330,8 @@ export function useWebSocket({
   }, [conversationId, sendMessage]);
 
   const sendPause = useCallback(() => {
+    manuallyPausedRef.current = true;
+    autoPausedRef.current = false;
     sendMessage({
       type: 'pause',
       conversation_id: conversationId || undefined,
@@ -258,6 +339,8 @@ export function useWebSocket({
   }, [conversationId, sendMessage]);
 
   const sendResume = useCallback(() => {
+    manuallyPausedRef.current = false;
+    autoPausedRef.current = false;
     sendMessage({
       type: 'resume',
       conversation_id: conversationId || undefined,

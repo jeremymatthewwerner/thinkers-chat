@@ -587,4 +587,307 @@ describe('useWebSocket', () => {
       })
     );
   });
+
+  describe('Auto-pause on visibility/focus changes', () => {
+    it('auto-pauses when document becomes hidden', async () => {
+      renderHook(() =>
+        useWebSocket({
+          conversationId: 'conv-123',
+        })
+      );
+
+      act(() => {
+        mockWsInstance.simulateOpen();
+      });
+
+      // Simulate tab switch (document becomes hidden)
+      Object.defineProperty(document, 'hidden', {
+        writable: true,
+        configurable: true,
+        value: true,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      await waitFor(() => {
+        expect(mockWsInstance.send).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'pause',
+            conversation_id: 'conv-123',
+          })
+        );
+      });
+    });
+
+    it('auto-resumes when document becomes visible after auto-pause', async () => {
+      const { result } = renderHook(() =>
+        useWebSocket({
+          conversationId: 'conv-123',
+        })
+      );
+
+      act(() => {
+        mockWsInstance.simulateOpen();
+      });
+
+      // First, auto-pause by hiding document
+      Object.defineProperty(document, 'hidden', {
+        writable: true,
+        configurable: true,
+        value: true,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      // Simulate backend confirming pause
+      act(() => {
+        mockWsInstance.simulateMessage({
+          type: 'paused',
+          conversation_id: 'conv-123',
+        });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isPaused).toBe(true);
+      });
+
+      // Now make document visible again
+      Object.defineProperty(document, 'hidden', {
+        writable: true,
+        configurable: true,
+        value: false,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      await waitFor(() => {
+        expect(mockWsInstance.send).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'resume',
+            conversation_id: 'conv-123',
+          })
+        );
+      });
+    });
+
+    it('does not auto-pause when already manually paused', async () => {
+      const { result } = renderHook(() =>
+        useWebSocket({
+          conversationId: 'conv-123',
+        })
+      );
+
+      act(() => {
+        mockWsInstance.simulateOpen();
+      });
+
+      // Manually pause first
+      act(() => {
+        result.current.sendPause();
+      });
+
+      // Clear send mock to check for new calls
+      mockWsInstance.send.mockClear();
+
+      // Simulate backend confirming pause
+      act(() => {
+        mockWsInstance.simulateMessage({
+          type: 'paused',
+          conversation_id: 'conv-123',
+        });
+      });
+
+      // Now hide document (should NOT auto-pause since already manually paused)
+      Object.defineProperty(document, 'hidden', {
+        writable: true,
+        configurable: true,
+        value: true,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      // Should not have sent another pause command
+      expect(mockWsInstance.send).not.toHaveBeenCalled();
+    });
+
+    it('does not auto-resume when manually paused', async () => {
+      const { result } = renderHook(() =>
+        useWebSocket({
+          conversationId: 'conv-123',
+        })
+      );
+
+      act(() => {
+        mockWsInstance.simulateOpen();
+      });
+
+      // Manually pause
+      act(() => {
+        result.current.sendPause();
+      });
+
+      // Simulate backend confirming pause
+      act(() => {
+        mockWsInstance.simulateMessage({
+          type: 'paused',
+          conversation_id: 'conv-123',
+        });
+      });
+
+      // Clear send mock
+      mockWsInstance.send.mockClear();
+
+      // Now make document visible (should NOT auto-resume since manually paused)
+      Object.defineProperty(document, 'hidden', {
+        writable: true,
+        configurable: true,
+        value: false,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      // Should not have sent resume command
+      expect(mockWsInstance.send).not.toHaveBeenCalled();
+    });
+
+    it('auto-pauses when window loses focus', async () => {
+      renderHook(() =>
+        useWebSocket({
+          conversationId: 'conv-123',
+        })
+      );
+
+      act(() => {
+        mockWsInstance.simulateOpen();
+      });
+
+      // Simulate window blur (user switches to another app)
+      act(() => {
+        window.dispatchEvent(new Event('blur'));
+      });
+
+      await waitFor(() => {
+        expect(mockWsInstance.send).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'pause',
+            conversation_id: 'conv-123',
+          })
+        );
+      });
+    });
+
+    it('auto-resumes when window gains focus after auto-pause', async () => {
+      const { result } = renderHook(() =>
+        useWebSocket({
+          conversationId: 'conv-123',
+        })
+      );
+
+      act(() => {
+        mockWsInstance.simulateOpen();
+      });
+
+      // First, auto-pause by blurring window
+      act(() => {
+        window.dispatchEvent(new Event('blur'));
+      });
+
+      // Simulate backend confirming pause
+      act(() => {
+        mockWsInstance.simulateMessage({
+          type: 'paused',
+          conversation_id: 'conv-123',
+        });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isPaused).toBe(true);
+      });
+
+      // Now focus window again
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+      });
+
+      await waitFor(() => {
+        expect(mockWsInstance.send).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'resume',
+            conversation_id: 'conv-123',
+          })
+        );
+      });
+    });
+
+    it('clears manual pause flag when user manually resumes', async () => {
+      const { result } = renderHook(() =>
+        useWebSocket({
+          conversationId: 'conv-123',
+        })
+      );
+
+      act(() => {
+        mockWsInstance.simulateOpen();
+      });
+
+      // Manually pause
+      act(() => {
+        result.current.sendPause();
+      });
+
+      // Simulate backend confirming pause
+      act(() => {
+        mockWsInstance.simulateMessage({
+          type: 'paused',
+          conversation_id: 'conv-123',
+        });
+      });
+
+      // Manually resume
+      act(() => {
+        result.current.sendResume();
+      });
+
+      // Simulate backend confirming resume
+      act(() => {
+        mockWsInstance.simulateMessage({
+          type: 'resumed',
+          conversation_id: 'conv-123',
+        });
+      });
+
+      // Clear mock
+      mockWsInstance.send.mockClear();
+
+      // Now hide document - should auto-pause since manual pause was cleared
+      Object.defineProperty(document, 'hidden', {
+        writable: true,
+        configurable: true,
+        value: true,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      await waitFor(() => {
+        expect(mockWsInstance.send).toHaveBeenCalledWith(
+          JSON.stringify({
+            type: 'pause',
+            conversation_id: 'conv-123',
+          })
+        );
+      });
+    });
+  });
 });

@@ -277,20 +277,36 @@ jobs:
             3. **Review issue comments** for context on previous attempts (especially for reopened issues)
             4. Understand the codebase structure
             5. Implement the required changes
-            6. Run tests to verify your changes work
-            7. Create a PR with your changes using `gh pr create` (NOT a manual link)
+            6. Run formatters and linters (MANDATORY - see below)
+            7. Run tests to verify your changes work
+            8. Create a PR with your changes using `gh pr create` (NOT a manual link)
+
+            ## MANDATORY: Run Formatters Before Every Commit
+            **CI WILL FAIL if you skip this step. Run these commands BEFORE every `git commit`:**
+
+            For frontend changes:
+            ```bash
+            cd frontend && npm run format && npm run lint -- --fix && npm run typecheck
+            ```
+
+            For backend changes:
+            ```bash
+            cd backend && uv run ruff format . && uv run ruff check . --fix && uv run mypy .
+            ```
 
             ## Development Workflow
             - Create a branch: git checkout -b claude/issue-${{ needs.find-work.outputs.issue_number }}-${{ github.run_id }}
-            - Make changes and commit with message referencing the issue
+            - Make changes
+            - Run formatters and linters (MANDATORY)
+            - Commit with message referencing the issue
             - Push the branch
             - **MUST** create PR automatically: `gh pr create --title "Fix: <description>" --body "Relates to #${{ needs.find-work.outputs.issue_number }}"`
             - **MUST** enable auto-merge: `gh pr merge --auto --squash`
 
             ## Testing Requirements
+            After formatting/linting, run tests:
             - Run backend tests: cd backend && uv run pytest
             - Run frontend tests: cd frontend && npm test
-            - Run linting: cd backend && uv run ruff check . && cd ../frontend && npm run lint
 
             ## Important
             - Follow existing code patterns

@@ -214,7 +214,11 @@ Use labels to categorize issues:
 - `task` - General task/work item
 - `ci` - CI/CD related
 - `claude-working` - Claude is actively working on this issue
-- `needs-human-help` - Claude exhausted CI/CD fix attempts (requires human intervention)
+- `in-review` - PR created, awaiting merge and deploy (prevents re-pickup)
+- `needs-human-help` - Work failed, requires human intervention
+- `epic` - Parent issue broken down into sub-tasks
+- `claude-triaging` - Issue is being triaged by Claude
+- `duplicate` - Issue is a duplicate of another
 
 ### Issue Templates
 

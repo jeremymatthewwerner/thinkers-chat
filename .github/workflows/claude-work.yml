@@ -128,6 +128,7 @@ jobs:
           # - claude-working: currently being worked on
           # - needs-human-help: blocked, needs human intervention
           # - epic: parent issue broken into sub-tasks
+          # - in-review: PR created, awaiting merge/deploy
           FOUND_COUNT=0
           FOUND_NUMBER=""
           FOUND_TITLE=""
@@ -137,7 +138,7 @@ jobs:
               --label "$priority" \
               --state open \
               --json number,title,labels \
-              --jq '[.[] | select(.labels | map(.name) | (index("claude-working") | not) and (index("needs-human-help") | not) and (index("epic") | not))]' 2>/dev/null || echo "[]")
+              --jq '[.[] | select(.labels | map(.name) | (index("claude-working") | not) and (index("needs-human-help") | not) and (index("epic") | not) and (index("in-review") | not))]' 2>/dev/null || echo "[]")
 
             COUNT=$(echo "$ISSUES" | jq 'length')
 
@@ -330,10 +331,11 @@ jobs:
           ISSUE_NUM="${{ needs.find-work.outputs.issue_number }}"
           REPO_OWNER="${{ github.repository_owner }}"
 
-          # Remove claude-working label
+          # Remove claude-working, add needs-human-help (prevents re-pickup)
           gh issue edit $ISSUE_NUM \
             --repo ${{ github.repository }} \
-            --remove-label "claude-working" || true
+            --remove-label "claude-working" \
+            --add-label "needs-human-help" || true
 
           # Unassign claude[bot] and assign to repo owner
           gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/assignees \
@@ -357,21 +359,22 @@ jobs:
           COMMENTEOF
           )"
 
-      - name: Remove in-progress label on completion
-        # Only remove on SUCCESS - failed issues keep the label so they're skipped
-        # in the next run (prevents same issue from failing repeatedly)
-        # The label will be removed when: PR merges (issue closes) or human intervenes
+      - name: Mark work complete on success
+        # On SUCCESS: remove claude-working, add in-review (prevents re-pickup)
+        # The in-review label will be removed when issue closes after deploy
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue edit ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
-            --remove-label "claude-working" || true
+            --remove-label "claude-working" \
+            --add-label "in-review" || true
 
   # Self-chain: trigger another run if there's more work
   # Runs on always() so failures don't stop the queue - other issues still get processed
-  # Failed issues keep claude-working label, so they're skipped (prevents infinite loops)
+  # Failed issues get needs-human-help label, successful issues get in-review label
+  # Both labels prevent re-pickup in find-work (prevents infinite loops/duplicate PRs)
   continue-work:
     needs: [find-work, work-on-issue]
     if: always() && needs.find-work.outputs.has_more_work == 'true'

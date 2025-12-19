@@ -15,6 +15,11 @@ on:
         required: true
         type: number
 
+# Only one breakdown at a time per issue
+concurrency:
+  group: claude-breakdown-${{ github.event.client_payload.issue_number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
 jobs:
   breakdown:
     runs-on: ubuntu-latest

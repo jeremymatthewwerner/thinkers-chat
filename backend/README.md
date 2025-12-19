@@ -1,6 +1,6 @@
-# Thinkers Chat Backend
+# Dining Philosophers Backend
 
-FastAPI backend for Thinkers Chat - real-time multi-party chat with AI-simulated thinkers.
+FastAPI backend for Dining Philosophers - real-time multi-party chat with AI-simulated thinkers.
 
 ## Development
 

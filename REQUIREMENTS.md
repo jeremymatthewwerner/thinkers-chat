@@ -1,4 +1,4 @@
-# Requirements Specification: Thinkers Chat
+# Requirements Specification: Dining Philosophers
 
 ## 1. Product Vision
 

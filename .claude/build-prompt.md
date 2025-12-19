@@ -1,8 +1,8 @@
-# Build Prompt: Thinkers Chat Application
+# Build Prompt: Dining Philosophers Application
 
 ## Context
 
-You are continuing work on the Thinkers Chat project. Read CLAUDE.md and REQUIREMENTS.md for full context.
+You are continuing work on the Dining Philosophers project. Read CLAUDE.md and REQUIREMENTS.md for full context.
 
 ## What's Already Built
 
@@ -27,7 +27,7 @@ You are continuing work on the Thinkers Chat project. Read CLAUDE.md and REQUIRE
 
 ## What Needs to Be Built
 
-Build a working local demo of Thinkers Chat with these features:
+Build a working local demo of Dining Philosophers with these features:
 
 ### 1. Database (PostgreSQL + SQLAlchemy)
 Create models in `backend/app/models/`:

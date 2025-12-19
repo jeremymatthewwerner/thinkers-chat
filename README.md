@@ -1,4 +1,4 @@
-# Thinkers Chat
+# Dining Philosophers
 
 Real-time multi-party chat with AI-simulated historical and contemporary thinkers.
 

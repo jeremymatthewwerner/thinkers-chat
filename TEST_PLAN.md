@@ -1,4 +1,4 @@
-# Test Plan - Thinkers Chat
+# Test Plan - Dining Philosophers
 
 This document outlines all features requiring testing, their test cases, and edge conditions.
 

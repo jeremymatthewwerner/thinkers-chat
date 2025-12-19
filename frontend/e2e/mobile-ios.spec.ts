@@ -141,31 +141,39 @@ test.describe('iOS Safari - Sidebar Toggle', () => {
     // Wait for chat area
     await expect(page.getByTestId('chat-area')).toBeVisible();
 
-    // Find sidebar toggle button (hamburger menu)
-    const sidebarToggle = page.getByTestId('sidebar-toggle').or(
-      page.getByRole('button', { name: /menu|sidebar/i })
-    );
+    // Find hamburger menu button (opens sidebar)
+    const sidebarToggle = page.getByTestId('sidebar-toggle');
+    await expect(sidebarToggle).toBeVisible();
 
-    // Sidebar should be closed initially on mobile
-    const sidebar = page.getByTestId('sidebar').or(
-      page.locator('[data-testid="conversation-list"]').locator('..')
-    );
-
-    // Open sidebar
-    if (await sidebarToggle.isVisible()) {
-      await sidebarToggle.click();
-      await page.waitForTimeout(300); // Wait for animation
-
-      // Sidebar should be visible
-      await expect(sidebar).toBeVisible();
-
-      // Close sidebar
-      await sidebarToggle.click();
-      await page.waitForTimeout(300); // Wait for animation
-
-      // Sidebar should be hidden
-      await expect(sidebar).not.toBeVisible();
+    // Verify hamburger button meets iOS touch target size (44x44px)
+    const toggleBox = await sidebarToggle.boundingBox();
+    expect(toggleBox).not.toBeNull();
+    if (toggleBox) {
+      expect(toggleBox.width).toBeGreaterThanOrEqual(44);
+      expect(toggleBox.height).toBeGreaterThanOrEqual(44);
     }
+
+    const sidebar = page.getByTestId('sidebar');
+    const overlay = page.getByTestId('sidebar-overlay');
+
+    // Open sidebar by clicking hamburger
+    await sidebarToggle.click();
+    await page.waitForTimeout(300); // Wait for animation
+
+    // Sidebar and overlay should be visible
+    await expect(sidebar).toBeVisible();
+    await expect(overlay).toBeVisible();
+
+    // Hamburger button should be hidden when sidebar is open
+    await expect(sidebarToggle).not.toBeVisible();
+
+    // Close sidebar by clicking overlay
+    await overlay.click();
+    await page.waitForTimeout(300); // Wait for animation
+
+    // Sidebar should be hidden, hamburger should reappear
+    await expect(sidebar).not.toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
   });
 
   test('sidebar can be reopened after closing on iPhone SE', async ({ page }) => {
@@ -173,29 +181,36 @@ test.describe('iOS Safari - Sidebar Toggle', () => {
 
     await expect(page.getByTestId('chat-area')).toBeVisible();
 
-    const sidebarToggle = page.getByTestId('sidebar-toggle').or(
-      page.getByRole('button', { name: /menu|sidebar/i })
-    );
+    const sidebarToggle = page.getByTestId('sidebar-toggle');
+    const sidebar = page.getByTestId('sidebar');
+    const overlay = page.getByTestId('sidebar-overlay');
 
-    if (await sidebarToggle.isVisible()) {
-      const sidebar = page.getByTestId('sidebar').or(
-        page.locator('[data-testid="conversation-list"]').locator('..')
-      );
+    await expect(sidebarToggle).toBeVisible();
 
-      // Open, close, reopen cycle
-      await sidebarToggle.click();
-      await page.waitForTimeout(300);
-      await expect(sidebar).toBeVisible();
+    // Open, close, reopen cycle
+    await sidebarToggle.click();
+    await page.waitForTimeout(300);
+    await expect(sidebar).toBeVisible();
+    await expect(overlay).toBeVisible();
 
-      await sidebarToggle.click();
-      await page.waitForTimeout(300);
-      await expect(sidebar).not.toBeVisible();
+    // Close via overlay
+    await overlay.click();
+    await page.waitForTimeout(300);
+    await expect(sidebar).not.toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
 
-      // Reopen should work
-      await sidebarToggle.click();
-      await page.waitForTimeout(300);
-      await expect(sidebar).toBeVisible();
-    }
+    // Reopen should work
+    await sidebarToggle.click();
+    await page.waitForTimeout(300);
+    await expect(sidebar).toBeVisible();
+    await expect(overlay).toBeVisible();
+
+    // Close via sidebar's internal close button
+    const sidebarCloseButton = page.locator('[aria-label="Close sidebar"]');
+    await sidebarCloseButton.click();
+    await page.waitForTimeout(300);
+    await expect(sidebar).not.toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
   });
 });
 

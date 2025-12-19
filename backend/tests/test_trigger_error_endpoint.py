@@ -74,7 +74,9 @@ async def test_trigger_error_endpoint_forbidden_when_not_in_test_mode(client: As
 
 
 @pytest.mark.asyncio
-async def test_trigger_error_endpoint_not_found_when_conversation_not_active(client: AsyncClient) -> None:
+async def test_trigger_error_endpoint_not_found_when_conversation_not_active(
+    client: AsyncClient,
+) -> None:
     """Test that trigger-error endpoint returns 404 when conversation has no active connections."""
     # Arrange: Enable test mode and mock inactive conversation
     with (

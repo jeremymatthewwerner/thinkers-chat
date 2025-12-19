@@ -135,7 +135,7 @@ export function ChatArea({
         style={{
           WebkitTransform: 'translateZ(0)',
           transform: 'translateZ(0)',
-          willChange: 'transform'
+          willChange: 'transform',
         }}
       >
         <div className="min-w-0 flex-1 min-w-[200px]">

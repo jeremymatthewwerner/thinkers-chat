@@ -151,13 +151,11 @@ export function ChatArea({
       >
         {/* Left side: Hamburger + Topic */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-          {/* Hamburger button - only visible on mobile */}
-          {onSidebarToggle && (
+          {/* Hamburger button - only visible on mobile when sidebar is closed */}
+          {onSidebarToggle && !sidebarOpen && (
             <button
               onClick={onSidebarToggle}
-              className={`lg:hidden p-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex-shrink-0 ${
-                sidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
-              }`}
+              className="lg:hidden p-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex-shrink-0"
               aria-label="Open sidebar"
               data-testid="header-menu-button"
             >

@@ -1,9 +1,9 @@
 name: Claude Automated Work
 
 on:
-  # Trigger when issues get priority labels OR assigned to claude[bot]
+  # Trigger when issues get priority labels, assigned to claude[bot], or reopened
   issues:
-    types: [labeled, assigned]
+    types: [labeled, assigned, reopened]
 
   # Self-chain via repository_dispatch (workflow can't listen to itself via workflow_run)
   repository_dispatch:
@@ -28,11 +28,12 @@ concurrency:
 
 jobs:
   # Gate job: check if we should run
-  # Run for: priority labels, assignment to claude[bot], manual/scheduled triggers
+  # Run for: priority labels, assignment to claude[bot], reopened issues, manual/scheduled triggers
   should-run:
     if: >
       github.event_name != 'issues' ||
       github.event.action == 'assigned' ||
+      github.event.action == 'reopened' ||
       github.event.label.name == 'P0' ||
       github.event.label.name == 'P1' ||
       github.event.label.name == 'P2'
@@ -70,6 +71,14 @@ jobs:
                 echo "should_run=false" >> $GITHUB_OUTPUT
                 exit 0
               fi
+            fi
+
+            # Reopened issue - work on THIS specific issue (production fix didn't materialize)
+            if [ "$ACTION" = "reopened" ]; then
+              echo "Triggered by reopened issue #${{ github.event.issue.number }}"
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "assigned_issue=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+              exit 0
             fi
 
             # Priority label - find highest priority issue
@@ -226,6 +235,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Remove in-review label if present (for reopened issues where fix didn't work)
+          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "in-review" || true
           gh issue edit ${{ needs.find-work.outputs.issue_number }} \
             --repo ${{ github.repository }} \
             --add-label "claude-working"

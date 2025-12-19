@@ -238,9 +238,7 @@ async def test_github_api_failure_with_different_exceptions(
         )
 
 
-@pytest.mark.skip(
-    reason="Requires complete exception handler with background tasks (issue #124)"
-)
+@pytest.mark.skip(reason="Requires complete exception handler with background tasks (issue #124)")
 @pytest.mark.asyncio
 async def test_background_task_does_not_block_response(client: AsyncClient) -> None:
     """Test that GitHub issue filing runs in background and doesn't block response.
@@ -273,9 +271,7 @@ async def test_background_task_does_not_block_response(client: AsyncClient) -> N
     pass
 
 
-@pytest.mark.skip(
-    reason="Requires test helper endpoint that raises BillingError (issue #123)"
-)
+@pytest.mark.skip(reason="Requires test helper endpoint that raises BillingError (issue #123)")
 @pytest.mark.asyncio
 async def test_billing_error_message_includes_context(client: AsyncClient) -> None:
     """Test that BillingError response includes helpful context for users.

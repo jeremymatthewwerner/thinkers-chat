@@ -527,6 +527,7 @@ class TestBillingErrorDetection:
             )
 
         # Should not contain billing-specific message
-        assert "credit" not in str(exc_info.value).lower() or "rate limit" in str(
-            exc_info.value
-        ).lower()
+        assert (
+            "credit" not in str(exc_info.value).lower()
+            or "rate limit" in str(exc_info.value).lower()
+        )

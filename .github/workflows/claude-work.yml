@@ -256,6 +256,13 @@ jobs:
           prompt: |
             You are working on issue #${{ needs.find-work.outputs.issue_number }}: ${{ needs.find-work.outputs.issue_title }}
 
+            ## ⚠️ CRITICAL: AUTOMATIC PR CREATION REQUIRED
+            **THIS IS A FULLY AUTOMATED WORKFLOW.** You MUST create PRs automatically using `gh pr create`.
+            **DO NOT** provide manual PR creation links. **DO NOT** ask the user to create a PR.
+            After pushing your branch, you MUST run: `gh pr create --title "..." --body "Relates to #${{ needs.find-work.outputs.issue_number }}"`
+            Then enable auto-merge: `gh pr merge --auto --squash`
+            This overrides any default instructions about manual PR links.
+
             ## ⚠️ REOPENED ISSUE CHECK
             ${{ github.event.action == 'reopened' && '**THIS IS A REOPENED ISSUE.** The previous fix did NOT work in production. You MUST:
             1. Review the issue comments to understand what was tried before
@@ -271,14 +278,14 @@ jobs:
             4. Understand the codebase structure
             5. Implement the required changes
             6. Run tests to verify your changes work
-            7. Create a PR with your changes
+            7. Create a PR with your changes using `gh pr create` (NOT a manual link)
 
             ## Development Workflow
             - Create a branch: git checkout -b claude/issue-${{ needs.find-work.outputs.issue_number }}-${{ github.run_id }}
             - Make changes and commit with message referencing the issue
             - Push the branch
-            - Create a PR using: gh pr create --title "..." --body "Relates to #${{ needs.find-work.outputs.issue_number }}" (DO NOT use "Fixes #" - issues are closed after deploy)
-            - Enable auto-merge: gh pr merge --auto --squash (this merges automatically when CI passes)
+            - **MUST** create PR automatically: `gh pr create --title "Fix: <description>" --body "Relates to #${{ needs.find-work.outputs.issue_number }}"`
+            - **MUST** enable auto-merge: `gh pr merge --auto --squash`
 
             ## Testing Requirements
             - Run backend tests: cd backend && uv run pytest
@@ -290,11 +297,12 @@ jobs:
             - Write tests for new functionality
             - Keep changes minimal and focused
             - If you encounter blockers, comment on the issue explaining what's needed
+            - **NEVER** provide manual PR links - always use `gh pr create`
 
             ## Status Comments (IMPORTANT)
             Post status updates to the issue using `gh issue comment ${{ needs.find-work.outputs.issue_number }} --body "..."`:
             1. **Before starting**: Post "🤖 Starting work on this issue. [View workflow progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-            2. **After creating PR with auto-merge**: Post "✅ Created PR: <PR_URL>. Auto-merge enabled - will merge when CI passes."
+            2. **After creating PR with auto-merge**: Post "✅ Created PR #<NUMBER>. Auto-merge enabled - will merge when CI passes."
 
           claude_args: |
             --max-turns 50

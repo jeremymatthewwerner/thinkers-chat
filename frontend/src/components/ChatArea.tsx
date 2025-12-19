@@ -136,9 +136,7 @@ export function ChatArea({
       data-testid="chat-area"
     >
       {/* Header */}
-      <div
-        className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 sm:gap-3 bg-white dark:bg-zinc-900 flex-shrink-0 sticky top-0 z-10"
-      >
+      <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 sm:gap-3 bg-white dark:bg-zinc-900 flex-shrink-0 sticky top-0 z-10">
         {/* Left side: Hamburger + Topic */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           {/* Hamburger button - only visible on mobile when sidebar is closed */}

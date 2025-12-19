@@ -63,7 +63,10 @@ app = FastAPI(
 
 # Exception handler for BillingError
 @app.exception_handler(BillingError)
-async def billing_error_handler(request: Request, exc: BillingError) -> JSONResponse:
+async def billing_error_handler(
+    request: Request,  # noqa: ARG001 - FastAPI requires this parameter
+    exc: BillingError,
+) -> JSONResponse:
     """Handle BillingError exceptions by returning 503 Service Unavailable.
 
     When a BillingError occurs (e.g., quota exceeded, billing issues):

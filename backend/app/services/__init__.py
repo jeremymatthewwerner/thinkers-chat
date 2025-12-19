@@ -1,4 +1,4 @@
-"""Services for Thinkers Chat business logic."""
+"""Services for Dining Philosophers business logic."""
 
 from app.services.thinker import ThinkerService
 

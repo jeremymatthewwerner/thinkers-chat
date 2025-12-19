@@ -1,1 +1,1 @@
-"""Test package for Thinkers Chat backend."""
+"""Test package for Dining Philosophers backend."""

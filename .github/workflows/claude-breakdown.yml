@@ -50,7 +50,59 @@ jobs:
           # Save body to file (may be long)
           echo "$ISSUE_BODY" > /tmp/issue_body.txt
 
+      - name: Check if already a sub-task (prevent recursive breakdown)
+        id: check-depth
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_BODY=$(cat /tmp/issue_body.txt)
+
+          # Check if this issue is already a sub-task (has "Parent Issue" or "Part of #")
+          if echo "$ISSUE_BODY" | grep -qE "(Parent Issue|Part of #)"; then
+            echo "is_subtask=true" >> $GITHUB_OUTPUT
+            echo "⚠️ This is already a sub-task - will not break down further"
+          else
+            echo "is_subtask=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Skip breakdown for sub-tasks (request human help instead)
+        if: steps.check-depth.outputs.is_subtask == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUM="${{ steps.issue.outputs.issue_number }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+
+          # Mark as needing human help
+          gh issue edit $ISSUE_NUM \
+            --repo ${{ github.repository }} \
+            --add-label "needs-human-help" \
+            --remove-label "claude-working" || true
+
+          # Assign to repo owner
+          gh issue edit $ISSUE_NUM \
+            --repo ${{ github.repository }} \
+            --add-assignee "$REPO_OWNER" || true
+
+          # Comment explaining why
+          gh issue comment $ISSUE_NUM \
+            --repo ${{ github.repository }} \
+            --body "## ⚠️ Cannot Break Down Further
+
+          This issue is already a sub-task and hit the 50-turn limit. Breaking it down further would create too much fragmentation.
+
+          **Human review needed** to either:
+          1. Simplify the scope of this sub-task
+          2. Manually break it into focused pieces
+          3. Provide additional context to help automation succeed
+
+          cc @$REPO_OWNER"
+
+          echo "Skipped breakdown - marked as needs-human-help"
+          exit 0
+
       - name: Mark issue as being broken down
+        if: steps.check-depth.outputs.is_subtask != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -60,6 +112,7 @@ jobs:
             --remove-label "needs-human-help" || true
 
       - name: Break down issue with Claude
+        if: steps.check-depth.outputs.is_subtask != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -136,7 +189,7 @@ jobs:
             --allowedTools "Bash(gh issue:*),Bash(gh search:*)"
 
       - name: Cleanup labels
-        if: always()
+        if: always() && steps.check-depth.outputs.is_subtask != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

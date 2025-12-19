@@ -317,7 +317,7 @@ Background automation handles issue triage and work without manual intervention.
 - Analyzes issue content and assigns appropriate priority (P0/P1/P2)
 - Adds type labels (bug, enhancement, task)
 - Comments with triage reasoning and priority justification
-- Checks for duplicate issues
+- Checks for duplicate issues and closes them with "not planned" reason
 
 **Automated Work** (`.github/workflows/claude-work.yml`):
 - **Event-driven**: Triggers immediately when issues get P0/P1/P2 labels

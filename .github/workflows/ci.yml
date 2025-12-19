@@ -369,3 +369,59 @@ jobs:
             echo "Auth check failed with status: $http_code"
             exit 1
           fi
+
+  # Close issues only after successful deploy and smoke tests
+  close-issues:
+    name: Close Related Issues
+    runs-on: ubuntu-latest
+    needs: [smoke-test]
+    if: |
+      always() &&
+      needs.smoke-test.result == 'success' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push'
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10  # Get recent commits to find issue references
+
+      - name: Find and close related issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Finding issues referenced in recent commits..."
+
+          # Get issue numbers from commit messages (looks for "Relates to #N" or "#N")
+          ISSUE_NUMBERS=$(git log --oneline -10 | grep -oE '#[0-9]+' | tr -d '#' | sort -u)
+
+          if [ -z "$ISSUE_NUMBERS" ]; then
+            echo "No issue references found in recent commits"
+            exit 0
+          fi
+
+          echo "Found issue references: $ISSUE_NUMBERS"
+
+          for ISSUE_NUM in $ISSUE_NUMBERS; do
+            echo "Checking issue #$ISSUE_NUM..."
+
+            # Get issue state
+            STATE=$(gh issue view $ISSUE_NUM --json state -q .state 2>/dev/null || echo "NOT_FOUND")
+
+            if [ "$STATE" = "OPEN" ]; then
+              echo "Closing issue #$ISSUE_NUM (deploy successful)"
+              gh issue close $ISSUE_NUM \
+                --comment "✅ **Deployed to production**
+
+              This issue was resolved and the fix has been successfully deployed.
+
+              Commit: ${{ github.sha }}
+              Workflow: [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            elif [ "$STATE" = "CLOSED" ]; then
+              echo "Issue #$ISSUE_NUM already closed"
+            else
+              echo "Issue #$ISSUE_NUM not found or inaccessible"
+            fi
+          done

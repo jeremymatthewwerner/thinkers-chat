@@ -344,16 +344,19 @@ Background automation handles issue triage and work without manual intervention.
 1. User reports bug via "Report a Bug" button → Creates P3 issue
 2. Triage workflow runs → Assigns P0/P1/P2 label with comment
 3. Work workflow triggers immediately (event-driven by label)
-4. Claude implements fix → Creates PR with `Fixes #N` + enables auto-merge
+4. Claude implements fix → Creates PR with `Relates to #N` + enables auto-merge
 5. CI/CD runs on PR
 6. **If CI/CD fails**: CI/CD Fix workflow triggers
    - Analyzes failure logs
    - Commits fix with `Fix CI/CD: <description>` message
    - CI/CD reruns automatically
    - Repeats up to 15 times until green or escalates to human
-7. CI/CD passes → PR merged → Issue auto-closes
-8. Work workflow self-chains → Picks up next issue if any
-9. Cycle continues until no P0-P2 issues remain
+7. CI/CD passes → PR merged → **Deployment runs**
+8. **After successful deploy + smoke tests**: Issues are auto-closed with deploy confirmation
+9. Work workflow self-chains → Picks up next issue if any
+10. Cycle continues until no P0-P2 issues remain
+
+**Important**: Issues are NOT closed on PR merge. They are only closed after successful deployment to production. This ensures users don't see "fixed" issues that haven't actually been deployed.
 
 ### Manual Trigger
 

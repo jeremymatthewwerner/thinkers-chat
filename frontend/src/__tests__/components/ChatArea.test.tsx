@@ -44,7 +44,9 @@ describe('ChatArea', () => {
   it('renders empty state when no conversation', () => {
     render(<ChatArea {...defaultProps} />);
     expect(screen.getByTestId('chat-area-empty')).toBeInTheDocument();
-    expect(screen.getByText('Welcome to Dining Philosophers')).toBeInTheDocument();
+    expect(
+      screen.getByText('Welcome to Dining Philosophers')
+    ).toBeInTheDocument();
   });
 
   it('renders chat area when conversation is selected', () => {

@@ -44,7 +44,9 @@ describe('Sidebar', () => {
 
     // First child should be text node containing "Dining Philosophers"
     const textNode = children.find(
-      (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.includes('Dining Philosophers')
+      (node) =>
+        node.nodeType === Node.TEXT_NODE &&
+        node.textContent?.includes('Dining Philosophers')
     );
     expect(textNode).toBeTruthy();
 
@@ -55,7 +57,9 @@ describe('Sidebar', () => {
 
     // Verify the image is after the text node in DOM order
     const textIndex = children.indexOf(textNode!);
-    const imageIndex = children.findIndex((node) => node === avatar || node.contains(avatar));
+    const imageIndex = children.findIndex(
+      (node) => node === avatar || node.contains(avatar)
+    );
     expect(imageIndex).toBeGreaterThan(textIndex);
   });
 

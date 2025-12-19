@@ -263,7 +263,7 @@ test.describe('Billing Error Handling', () => {
     }
 
     // Should be back at the main page
-    await expect(page.locator('text=Welcome to Thinkers Chat')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Welcome to Dining Philosophers')).toBeVisible({ timeout: 5000 });
   });
 
   test('shows error banner when billing error occurs via real WebSocket', async ({ page }) => {

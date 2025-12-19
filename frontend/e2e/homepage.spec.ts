@@ -14,7 +14,7 @@ test.describe('Homepage', () => {
 
   test('loads and shows welcome message', async ({ page }) => {
     // Should show the welcome message when no conversation selected
-    const welcomeText = page.locator('text=Welcome to Thinkers Chat');
+    const welcomeText = page.locator('text=Welcome to Dining Philosophers');
     await expect(welcomeText).toBeVisible();
 
     // Should show the new chat button in sidebar
@@ -58,7 +58,7 @@ test.describe('Login Page', () => {
     await expect(page).toHaveURL(/\/login/);
 
     // Should show login form
-    await expect(page.locator('h1', { hasText: 'Welcome to Thinkers Chat' })).toBeVisible();
+    await expect(page.locator('h1', { hasText: 'Welcome to Dining Philosophers' })).toBeVisible();
     await expect(page.locator('#username')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
   });

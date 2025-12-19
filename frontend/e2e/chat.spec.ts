@@ -59,7 +59,7 @@ test.describe('Chat Functionality', () => {
     await expect(conversationItem).not.toBeVisible({ timeout: 5000 });
 
     // Should show empty state or welcome message
-    await expect(page.locator('text=Welcome to Thinkers Chat')).toBeVisible();
+    await expect(page.locator('text=Welcome to Dining Philosophers')).toBeVisible();
   });
 
   test('can switch between conversations', async ({ page }) => {

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.api.websocket import ConnectionManager, WSMessage, WSMessageType
+from app.api.websocket import WSMessage, WSMessageType
 from app.core.database import get_db
 from app.main import app
 from app.models import Base

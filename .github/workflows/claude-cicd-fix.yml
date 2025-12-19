@@ -24,7 +24,6 @@ concurrency:
 
 env:
   MAX_RETRIES: 15
-  REPO_OWNER: jeremymatthewwerner
 
 jobs:
   check-and-fix:
@@ -138,7 +137,7 @@ jobs:
           gh pr comment $PR_NUMBER --repo ${{ github.repository }} --body "$(cat <<'EOF'
           ## 🚨 CI/CD Fix Limit Reached
 
-          @${{ env.REPO_OWNER }} - This PR has failed CI/CD **${{ env.MAX_RETRIES }} times** and needs human intervention.
+          @${{ github.repository_owner }} - This PR has failed CI/CD **${{ env.MAX_RETRIES }} times** and needs human intervention.
 
           **What was tried:**
           - ${{ steps.count-retries.outputs.retry_count }} automated fix attempts
@@ -242,11 +241,18 @@ jobs:
 
             3. **Run validation locally** before committing:
                ```bash
+               # Backend
                cd backend
                uv run ruff format .
                uv run ruff check --fix .
                uv run mypy .
                uv run pytest
+
+               # Frontend (if frontend files changed)
+               cd ../frontend
+               npm run lint
+               npm run typecheck
+               npm test
                ```
 
             4. **Commit with this exact format**:

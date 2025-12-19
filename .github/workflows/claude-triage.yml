@@ -4,6 +4,11 @@ on:
   issues:
     types: [opened, labeled]
 
+# Only one triage at a time per issue to prevent conflicts
+concurrency:
+  group: claude-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   triage:
     # Run when:
@@ -22,7 +27,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check issue state
+        id: check-state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STATE=$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json state -q .state)
+          if [ "$STATE" != "OPEN" ]; then
+            echo "Issue is $STATE, skipping triage"
+            echo "should_triage=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_triage=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Mark issue as being triaged
+        if: steps.check-state.outputs.should_triage == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -31,6 +50,7 @@ jobs:
             --add-label "claude-triaging"
 
       - uses: anthropics/claude-code-action@v1
+        if: steps.check-state.outputs.should_triage == 'true'
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
@@ -83,7 +103,7 @@ jobs:
             --allowedTools "Bash(gh issue:*),Bash(gh search:*)"
 
       - name: Remove triaging label
-        if: always()
+        if: always() && steps.check-state.outputs.should_triage == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

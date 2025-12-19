@@ -276,6 +276,8 @@ export default function Home() {
         spendLimitExceeded={spendLimitExceeded}
         errorMessage={errorMessage}
         onDismissError={() => setErrorMessage('')}
+        onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
+        sidebarOpen={sidebarOpen}
       />
 
       <NewChatModal

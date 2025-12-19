@@ -85,10 +85,8 @@ describe('Sidebar', () => {
     expect(onToggle).toHaveBeenCalled();
   });
 
-  it('shows menu button when closed on mobile', () => {
-    render(<Sidebar {...defaultProps} isOpen={false} />);
-    expect(screen.getByTestId('menu-button')).toBeInTheDocument();
-  });
+  // Hamburger menu button moved to ChatArea header (see issue #204)
+  // This test is no longer needed since Sidebar doesn't render the menu button
 
   it('displays username when provided', () => {
     render(<Sidebar {...defaultProps} username="testuser" />);

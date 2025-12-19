@@ -14,7 +14,14 @@ router = APIRouter(prefix="/test")
 
 
 class TriggerErrorRequest(BaseModel):
-    """Request body for trigger-error endpoint."""
+    """Request body for trigger-error endpoint.
+
+    Attributes:
+        conversation_id: UUID of the conversation to send the error message to.
+                        Must have active WebSocket connections.
+        error_message: The error message content to display in the frontend.
+                      Example: "API billing error: API credit limit reached."
+    """
 
     conversation_id: str
     error_message: str
@@ -36,8 +43,63 @@ async def trigger_billing_error() -> None:
 async def trigger_error(request: TriggerErrorRequest) -> dict[str, str]:
     """Test endpoint that sends ERROR type WebSocket messages to a conversation.
 
-    This endpoint is only available when TEST_MODE=true and is used by E2E tests
-    to verify error handling in the frontend.
+    **SECURITY**: This endpoint is only available when TEST_MODE=true and is used
+    by E2E tests to verify error handling in the frontend. In production
+    (TEST_MODE=false), requests to this endpoint return 403 Forbidden.
+
+    **Purpose**: Allows E2E tests to simulate billing errors and other error
+    conditions that would normally be triggered by the backend, without needing
+    to actually cause those errors to occur (which may be difficult or impossible
+    to reliably reproduce in test environments).
+
+    **Usage Example** (from E2E test):
+    ```typescript
+    // 1. Create a conversation via API
+    const { id: conversationId } = await createConversationViaAPI(
+      page,
+      'Test error handling',
+      ['Aristotle']
+    );
+
+    // 2. Navigate to the conversation and wait for WebSocket connection
+    await page.goto(`/conversation/${conversationId}`);
+    await page.waitForSelector('[data-testid="chat-area"]');
+    await page.waitForTimeout(1500); // Wait for WebSocket connection
+
+    // 3. Trigger error via backend endpoint
+    const token = await page.evaluate(() => localStorage.getItem('access_token'));
+    await page.request.post('http://localhost:8000/api/test/trigger-error', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        conversation_id: conversationId,
+        error_message: 'API billing error: API credit limit reached.'
+      }
+    });
+
+    // 4. Verify error banner appears in UI
+    await expect(page.getByTestId('error-banner')).toBeVisible();
+    ```
+
+    **Request Body**:
+    ```json
+    {
+      "conversation_id": "550e8400-e29b-41d4-a716-446655440000",
+      "error_message": "API billing error: API credit limit reached."
+    }
+    ```
+
+    **Success Response** (200 OK):
+    ```json
+    {
+      "status": "success",
+      "message": "Error message broadcast to conversation 550e8400-e29b-41d4-a716-446655440000"
+    }
+    ```
+
+    **Error Responses**:
+    - 403 Forbidden: TEST_MODE is not enabled
+    - 404 Not Found: No active WebSocket connections for the conversation
+    - 422 Unprocessable Entity: Invalid request body (missing fields)
 
     Args:
         request: Contains conversation_id and error_message

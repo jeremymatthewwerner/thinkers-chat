@@ -171,7 +171,7 @@ describe('ChatArea', () => {
       />
     );
 
-    expect(screen.getByTestId('header-menu-button')).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-toggle')).toBeInTheDocument();
   });
 
   it('calls onSidebarToggle when hamburger button is clicked', () => {
@@ -186,7 +186,7 @@ describe('ChatArea', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('header-menu-button'));
+    fireEvent.click(screen.getByTestId('sidebar-toggle'));
     expect(onSidebarToggle).toHaveBeenCalled();
   });
 
@@ -194,6 +194,42 @@ describe('ChatArea', () => {
     const conversation = createConversation();
     render(<ChatArea {...defaultProps} conversation={conversation} />);
 
-    expect(screen.queryByTestId('header-menu-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-toggle')).not.toBeInTheDocument();
+  });
+
+  it('hamburger button meets iOS touch target guidelines (44x44px)', () => {
+    const conversation = createConversation();
+    const onSidebarToggle = jest.fn();
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        onSidebarToggle={onSidebarToggle}
+        sidebarOpen={false}
+      />
+    );
+
+    const button = screen.getByTestId('sidebar-toggle');
+
+    // Check that minWidth and minHeight are set to 44px for iOS touch targets
+    expect(button).toHaveStyle({
+      minWidth: '44px',
+      minHeight: '44px',
+    });
+  });
+
+  it('hides hamburger button when sidebar is open', () => {
+    const conversation = createConversation();
+    const onSidebarToggle = jest.fn();
+    render(
+      <ChatArea
+        {...defaultProps}
+        conversation={conversation}
+        onSidebarToggle={onSidebarToggle}
+        sidebarOpen={true}
+      />
+    );
+
+    expect(screen.queryByTestId('sidebar-toggle')).not.toBeInTheDocument();
   });
 });

@@ -33,10 +33,30 @@ describe('Sidebar', () => {
   });
 
   it('renders Dijkstra avatar after title', () => {
-    render(<Sidebar {...defaultProps} />);
+    const { container } = render(<Sidebar {...defaultProps} />);
+
+    // Find the header link that contains both text and icon
+    const headerLink = container.querySelector('a[href*="github.com"]');
+    expect(headerLink).toBeInTheDocument();
+
+    // Get all child nodes to verify order
+    const children = Array.from(headerLink?.childNodes || []);
+
+    // First child should be text node containing "Thinkers Chat"
+    const textNode = children.find(
+      (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.includes('Thinkers Chat')
+    );
+    expect(textNode).toBeTruthy();
+
+    // Image should come after the text
     const avatar = screen.getByAltText('Dijkstra');
     expect(avatar).toBeInTheDocument();
     expect(avatar).toHaveAttribute('src');
+
+    // Verify the image is after the text node in DOM order
+    const textIndex = children.indexOf(textNode!);
+    const imageIndex = children.findIndex((node) => node === avatar || node.contains(avatar));
+    expect(imageIndex).toBeGreaterThan(textIndex);
   });
 
   it('renders new chat button', () => {

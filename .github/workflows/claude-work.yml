@@ -251,7 +251,7 @@ jobs:
             - Create a branch: git checkout -b claude/issue-${{ needs.find-work.outputs.issue_number }}-${{ github.run_id }}
             - Make changes and commit with message referencing the issue
             - Push the branch
-            - Create a PR using: gh pr create --title "..." --body "Fixes #${{ needs.find-work.outputs.issue_number }}"
+            - Create a PR using: gh pr create --title "..." --body "Relates to #${{ needs.find-work.outputs.issue_number }}" (DO NOT use "Fixes #" - issues are closed after deploy)
             - Enable auto-merge: gh pr merge --auto --squash (this merges automatically when CI passes)
 
             ## Testing Requirements

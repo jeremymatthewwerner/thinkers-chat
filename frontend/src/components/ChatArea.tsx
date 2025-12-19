@@ -139,9 +139,12 @@ export function ChatArea({
       <div
         className="sticky top-0 z-10 flex flex-wrap items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 sm:gap-3 bg-white dark:bg-zinc-900 flex-shrink-0"
         style={{
+          position: '-webkit-sticky' as const,
           WebkitTransform: 'translateZ(0)',
           transform: 'translateZ(0)',
           willChange: 'transform',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
         }}
       >
         {/* Hamburger button - only visible on mobile */}

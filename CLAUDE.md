@@ -312,178 +312,625 @@ gh pr merge <number> --repo jeremymatthewwerner/thinkers-chat --squash --delete-
 
 ## Claude Automation (GitHub Actions)
 
-Background automation handles issue triage and work without manual intervention.
+Background automation handles issue triage and work without manual intervention. This section provides **complete, battle-tested instructions** for setting up Claude automation on any GitHub repository.
 
-### Automated Workflows
+### Complete Automation Lifecycle
 
-**Issue Triage** (`.github/workflows/claude-triage.yml`):
-- Triggers when P3 label is added (user-reported issues needing triage)
-- Analyzes issue content and assigns appropriate priority (P0/P1/P2)
-- Adds type labels (bug, enhancement, task)
-- Comments with triage reasoning and priority justification
-- Checks for duplicate issues and closes them with "not planned" reason
-
-**Automated Work** (`.github/workflows/claude-work.yml`):
-- **Event-driven**: Triggers immediately when issues get P0/P1/P2 labels
-- **Reopened issues**: Triggers when issues are reopened (fix didn't work in production)
-- **Self-chaining**: Uses `repository_dispatch` to continue processing queue
-- **Fallback**: Scheduled every 6 hours to catch edge cases
-- Finds highest priority open issue (P0 → P1 → P2)
-- Adds `claude-working` label while in progress
-- **Status comments**: Posts updates to issue when starting and completing work
-- Implements changes, runs tests, creates PR with **auto-merge enabled**
-- PRs merge automatically when CI passes (no manual intervention needed)
-- Removes `claude-working` label when done (on success only - failed issues keep label)
-- Concurrency control: only one work job runs at a time (others queue)
-
-**Reopened Issue Handling**:
-When an issue is reopened, it means the previous fix didn't actually work in production. The workflow:
-1. Triggers automatically on the `reopened` event
-2. Removes `in-review` label (from the failed fix attempt)
-3. Works on that specific issue directly
-4. Claude is instructed to understand this is a RETRY - the original fix failed in production
-
-**CI/CD Fix Loop** (`.github/workflows/claude-cicd-fix.yml`):
-- **Triggers**: When CI/CD fails on a PR created by `claude[bot]`
-- **Iterative fixing**: Analyzes failure logs, commits fix, waits for CI/CD rerun
-- **Up to 15 attempts**: Each attempt uses commit message format `Fix CI/CD: <description>`
-- **Audit trail**: Commit messages link to previous attempts with retry count
-- **Human escalation**: After 15 failures, @mentions repo owner and adds `needs-human-help` label
-- Commits reference the failing check and error for traceability
-
-### How It Works
-
-1. User reports bug via "Report a Bug" button → Creates P3 issue
-2. Triage workflow runs → Assigns P0/P1/P2 label with comment
-3. Work workflow triggers immediately (event-driven by label)
-4. Claude implements fix → Creates PR with `Relates to #N` + enables auto-merge
-5. CI/CD runs on PR
-6. **If CI/CD fails**: CI/CD Fix workflow triggers
-   - Analyzes failure logs
-   - Commits fix with `Fix CI/CD: <description>` message
-   - CI/CD reruns automatically
-   - Repeats up to 15 times until green or escalates to human
-7. CI/CD passes → PR merged → **Deployment runs**
-8. **After successful deploy + smoke tests**: Issues are auto-closed with deploy confirmation
-9. Work workflow self-chains → Picks up next issue if any
-10. Cycle continues until no P0-P2 issues remain
-
-**Important**: Issues are NOT closed on PR merge. They are only closed after successful deployment to production. This ensures users don't see "fixed" issues that haven't actually been deployed.
-
-### Manual Trigger
-
-To manually trigger work on a specific issue:
-```bash
-gh workflow run claude-work.yml --repo jeremymatthewwerner/thinkers-chat -f issue_number=123
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        CLAUDE AUTOMATION LIFECYCLE                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. USER REPORTS BUG ──► Issue created with P3 label                       │
+│           │                                                                 │
+│           ▼                                                                 │
+│  2. TRIAGE WORKFLOW ──► Analyzes issue, assigns P0/P1/P2, adds type label  │
+│           │                                                                 │
+│           ▼                                                                 │
+│  3. WORK WORKFLOW ──► Picks up issue, implements fix, creates PR           │
+│           │                                                                 │
+│           ▼                                                                 │
+│  4. CI/CD RUNS ──► Tests, linting, type checking                           │
+│           │                                                                 │
+│      ┌────┴────┐                                                            │
+│      │         │                                                            │
+│   PASSES    FAILS ──► CI/CD Fix workflow retries up to 15 times            │
+│      │         │                                                            │
+│      │     ┌───┴───┐                                                        │
+│      │     │       │                                                        │
+│      │  FIXED   ESCALATE ──► needs-human-help label, @mention owner        │
+│      │     │                                                                │
+│      ▼     ▼                                                                │
+│  5. PR MERGES (auto-merge when CI passes)                                  │
+│           │                                                                 │
+│           ▼                                                                 │
+│  6. DEPLOY TO PRODUCTION                                                   │
+│           │                                                                 │
+│           ▼                                                                 │
+│  7. SMOKE TESTS PASS ──► Issue auto-closed ONLY after deploy succeeds     │
+│           │                                                                 │
+│      ┌────┴────┐                                                            │
+│      │         │                                                            │
+│   WORKS    BROKEN ──► User reopens issue ──► Workflow retries with         │
+│      │                 different approach (knows previous fix failed)       │
+│      ▼                                                                      │
+│  8. DONE! ──► Work workflow self-chains to next issue                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-To manually trigger CI/CD fix on a PR:
+### Automated Workflows Overview
+
+| Workflow | File | Triggers | Purpose |
+|----------|------|----------|---------|
+| **Triage** | `claude-triage.yml` | P3 label added, issue opened | Assign priority and type labels |
+| **Work** | `claude-work.yml` | P0/P1/P2 label, reopened, assigned, scheduled | Implement fixes, create PRs |
+| **CI/CD Fix** | `claude-cicd-fix.yml` | CI fails on claude[bot] PR | Auto-fix failing CI |
+| **Breakdown** | `claude-breakdown.yml` | Issue too complex (50+ turns) | Split into sub-tasks |
+
+---
+
+## Setting Up Claude Automation for New Projects (Complete Guide)
+
+### Step 1: Create Required Labels
+
 ```bash
-gh workflow run claude-cicd-fix.yml --repo jeremymatthewwerner/thinkers-chat -f pr_number=42
+# Priority labels
+gh label create "P0" --color "FF0000" --description "Critical: Blocks most functionality"
+gh label create "P1" --color "FF6600" --description "High: Blocks some functionality"
+gh label create "P2" --color "FBCA04" --description "Medium: Optimizations, cleanup"
+gh label create "P3" --color "EEEEEE" --description "Needs triage"
+
+# Status labels
+gh label create "claude-working" --color "7057ff" --description "Claude is actively working"
+gh label create "claude-triaging" --color "7057ff" --description "Claude is triaging this issue"
+gh label create "in-review" --color "0E8A16" --description "PR created, awaiting merge/deploy"
+gh label create "needs-human-help" --color "D93F0B" --description "Requires human intervention"
+gh label create "epic" --color "3E4B9E" --description "Parent issue with sub-tasks"
+gh label create "duplicate" --color "CFD3D7" --description "Duplicate of another issue"
+
+# Type labels
+gh label create "bug" --color "D73A4A" --description "Something isn't working"
+gh label create "enhancement" --color "A2EEEF" --description "New feature or request"
+gh label create "task" --color "F9D0C4" --description "General task or work item"
 ```
 
-### Monitoring
+### Step 2: Add Repository Secrets
 
-- View automation runs: `gh run list --workflow=claude-triage.yml` or `claude-work.yml` or `claude-cicd-fix.yml`
-- View logs: `gh run view <run-id> --log`
-- Check `claude-working` label for in-progress issues
-- Check `needs-human-help` label for PRs that exhausted CI/CD fix attempts
+Go to **Settings → Secrets and variables → Actions** and add:
 
-### Requirements
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | Your Claude API key (starts with `sk-ant-`) |
 
-- `ANTHROPIC_API_KEY` secret must be set in repository settings
-- Workflows need `contents: write`, `issues: write`, `pull-requests: write` permissions
+### Step 3: Create the Work Workflow
 
-### Setting Up Claude Automation for New Projects
+Create `.github/workflows/claude-work.yml`:
 
-To add this automation to another project, copy these workflows and customize:
+```yaml
+name: Claude Automated Work
 
-1. **Copy workflow files:**
-   - `.github/workflows/claude-triage.yml` - Issue triage
-   - `.github/workflows/claude-work.yml` - Automated work
-   - `.github/workflows/claude-cicd-fix.yml` - CI/CD fix loop
+on:
+  # Trigger when issues get priority labels, assigned to claude[bot], or reopened
+  issues:
+    types: [labeled, assigned, reopened]
 
-2. **Add required secrets:**
-   - `ANTHROPIC_API_KEY` - Your Claude API key
+  # Self-chain via repository_dispatch
+  repository_dispatch:
+    types: [claude-work-continue]
 
-3. **Create labels:**
-   ```bash
-   gh label create "P0" --color "FF0000" --description "Critical: Blocks most functionality"
-   gh label create "P1" --color "FF6600" --description "High: Blocks some functionality"
-   gh label create "P2" --color "FBCA04" --description "Medium: Optimizations, cleanup"
-   gh label create "P3" --color "EEEEEE" --description "Needs triage"
-   gh label create "claude-working" --color "7057ff" --description "Claude is working on this"
-   gh label create "needs-human-help" --color "D93F0B" --description "Needs human intervention"
-   ```
+  # Fallback: catch edge cases
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
 
-4. **Customize workflow prompts:**
-   - Update repo-specific instructions in the `prompt` section
-   - Adjust `allowed_tools` for your tech stack commands
-   - Modify test/lint commands for your project
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Specific issue number to work on (optional)'
+        required: false
+        type: number
 
-### Live Status Updates (track_progress)
+# Only one work job at a time - queue others
+concurrency:
+  group: claude-work
+  cancel-in-progress: false
 
-The `track_progress: true` feature enables real-time updates during work:
+jobs:
+  # Gate job: check if we should run
+  should-run:
+    if: >
+      github.event_name != 'issues' ||
+      github.event.action == 'assigned' ||
+      github.event.action == 'reopened' ||
+      github.event.label.name == 'P0' ||
+      github.event.label.name == 'P1' ||
+      github.event.label.name == 'P2'
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      assigned_issue: ${{ steps.check.outputs.assigned_issue }}
+    steps:
+      - name: Check trigger conditions
+        id: check
+        run: |
+          # Always run for manual triggers, schedule, and repository_dispatch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "${{ github.event_name }}" = "schedule" ] || \
+             [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "assigned_issue=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
+          # For issue events
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            ACTION="${{ github.event.action }}"
+
+            # Assignment to claude[bot] - work on THIS specific issue
+            if [ "$ACTION" = "assigned" ]; then
+              ASSIGNEE="${{ github.event.assignee.login }}"
+              if [ "$ASSIGNEE" = "claude[bot]" ]; then
+                echo "should_run=true" >> $GITHUB_OUTPUT
+                echo "assigned_issue=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+                exit 0
+              else
+                echo "should_run=false" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            fi
+
+            # Reopened issue - work on THIS specific issue (previous fix failed)
+            if [ "$ACTION" = "reopened" ]; then
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "assigned_issue=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            # Priority label - find highest priority issue
+            LABEL="${{ github.event.label.name }}"
+            if [ "$LABEL" = "P0" ] || [ "$LABEL" = "P1" ] || [ "$LABEL" = "P2" ]; then
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "assigned_issue=" >> $GITHUB_OUTPUT
+            else
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+
+          echo "should_run=false" >> $GITHUB_OUTPUT
+
+  find-work:
+    needs: should-run
+    if: needs.should-run.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      issue_number: ${{ steps.find.outputs.issue_number }}
+      issue_title: ${{ steps.find.outputs.issue_title }}
+      has_more_work: ${{ steps.find.outputs.has_more_work }}
+    permissions:
+      issues: read
+
+    steps:
+      - name: Find highest priority issue
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # If assigned or reopened, work on THAT specific issue
+          ASSIGNED_ISSUE="${{ needs.should-run.outputs.assigned_issue }}"
+          if [ -n "$ASSIGNED_ISSUE" ]; then
+            echo "issue_number=$ASSIGNED_ISSUE" >> $GITHUB_OUTPUT
+            TITLE=$(gh issue view $ASSIGNED_ISSUE --repo ${{ github.repository }} --json title -q .title)
+            echo "issue_title=$TITLE" >> $GITHUB_OUTPUT
+            echo "has_more_work=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # If specific issue provided via manual trigger
+          if [ -n "${{ inputs.issue_number }}" ]; then
+            echo "issue_number=${{ inputs.issue_number }}" >> $GITHUB_OUTPUT
+            TITLE=$(gh issue view ${{ inputs.issue_number }} --repo ${{ github.repository }} --json title -q .title)
+            echo "issue_title=$TITLE" >> $GITHUB_OUTPUT
+            echo "has_more_work=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Find issues by priority, excluding blocked ones
+          FOUND_COUNT=0
+          FOUND_NUMBER=""
+          FOUND_TITLE=""
+
+          for priority in P0 P1 P2; do
+            ISSUES=$(gh issue list --repo ${{ github.repository }} \
+              --label "$priority" \
+              --state open \
+              --json number,title,labels \
+              --jq '[.[] | select(.labels | map(.name) |
+                (index("claude-working") | not) and
+                (index("needs-human-help") | not) and
+                (index("epic") | not) and
+                (index("in-review") | not))]')
+
+            COUNT=$(echo "$ISSUES" | jq 'length')
+
+            if [ "$COUNT" -gt 0 ]; then
+              if [ -z "$FOUND_NUMBER" ]; then
+                FOUND_NUMBER=$(echo "$ISSUES" | jq -r '.[0].number')
+                FOUND_TITLE=$(echo "$ISSUES" | jq -r '.[0].title')
+              fi
+              FOUND_COUNT=$((FOUND_COUNT + COUNT))
+            fi
+          done
+
+          if [ -n "$FOUND_NUMBER" ]; then
+            echo "issue_number=$FOUND_NUMBER" >> $GITHUB_OUTPUT
+            echo "issue_title=$FOUND_TITLE" >> $GITHUB_OUTPUT
+            [ "$FOUND_COUNT" -gt 1 ] && echo "has_more_work=true" >> $GITHUB_OUTPUT || echo "has_more_work=false" >> $GITHUB_OUTPUT
+          else
+            echo "issue_number=" >> $GITHUB_OUTPUT
+            echo "has_more_work=false" >> $GITHUB_OUTPUT
+          fi
+
+  work-on-issue:
+    needs: find-work
+    if: needs.find-work.outputs.issue_number != ''
+    runs-on: ubuntu-latest
+    outputs:
+      has_more_work: ${{ needs.find-work.outputs.has_more_work }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mark issue as in-progress
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Remove in-review label if present (for reopened issues)
+          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "in-review" || true
+          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --add-label "claude-working"
+
+      - name: Work on issue
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}  # CRITICAL: Required for gh CLI to create PRs
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}  # CRITICAL: Required for action's GitHub operations
+          track_progress: ${{ github.event_name == 'issues' }}
+          allowed_bots: '*'
+          prompt: |
+            You are working on issue #${{ needs.find-work.outputs.issue_number }}: ${{ needs.find-work.outputs.issue_title }}
+
+            ## ⚠️ REOPENED ISSUE CHECK
+            ${{ github.event.action == 'reopened' && '**THIS IS A REOPENED ISSUE.** The previous fix did NOT work in production. You MUST:
+            1. Review the issue comments to understand what was tried before
+            2. Check the git history for the previous fix attempt
+            3. Understand WHY the previous fix failed in production
+            4. Take a DIFFERENT approach - do not repeat the same fix
+            5. Be more thorough with testing and verification' || 'This is a new issue (not reopened).' }}
+
+            ## Instructions
+            1. Read CLAUDE.md for project context and coding standards
+            2. Read the full issue details with: gh issue view ${{ needs.find-work.outputs.issue_number }}
+            3. Review issue comments for context on previous attempts
+            4. Understand the codebase structure
+            5. Implement the required changes
+            6. Run tests to verify your changes work
+            7. Create a PR with your changes
+
+            ## Development Workflow
+            - Create a branch: git checkout -b claude/issue-${{ needs.find-work.outputs.issue_number }}-${{ github.run_id }}
+            - Make changes and commit with message referencing the issue
+            - Push the branch
+            - Create a PR: gh pr create --title "..." --body "Relates to #${{ needs.find-work.outputs.issue_number }}"
+            - Enable auto-merge: gh pr merge --auto --squash
+
+            ## IMPORTANT: Use "Relates to #N", NOT "Fixes #N"
+            Issues are closed by the CI pipeline AFTER successful deployment, not on PR merge.
+            This ensures users don't see "fixed" issues that haven't deployed yet.
+
+          claude_args: |
+            --max-turns 50
+            --dangerously-skip-permissions
+            --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh issue:*),Bash(gh pr:*),Bash(gh api:*),Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)"
+
+      - name: Mark work complete on success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "claude-working" \
+            --add-label "in-review" || true
+
+      - name: Handle failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue edit ${{ needs.find-work.outputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "claude-working" \
+            --add-label "needs-human-help" || true
+
+  # Self-chain to process remaining issues
+  continue-work:
+    needs: [find-work, work-on-issue]
+    if: always() && needs.find-work.outputs.has_more_work == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Trigger next work cycle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/dispatches \
+            -f event_type=claude-work-continue
+```
+
+### Step 4: Create the Triage Workflow
+
+Create `.github/workflows/claude-triage.yml`:
+
+```yaml
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, labeled]
+
+concurrency:
+  group: claude-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    if: >
+      (github.event.action == 'opened') ||
+      (github.event.action == 'labeled' && github.event.label.name == 'P3')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mark as triaging
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --add-label "claude-triaging"
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Triage issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+
+            Body: ${{ github.event.issue.body }}
+
+            ## Priority Definitions
+            - P0: Blocks most/all functionality (critical bugs, system down)
+            - P1: Blocks some functionality OR new feature requests
+            - P2: Optimizations, cleanup, minor improvements
+
+            ## Your Task
+            1. Analyze the issue content
+            2. Assign priority (P0, P1, or P2)
+            3. Assign type (bug, enhancement, or task)
+            4. Check for duplicates
+            5. Comment with your reasoning
+
+            Commands:
+            - gh issue edit ${{ github.event.issue.number }} --remove-label "P3" --add-label "P1,bug"
+            - gh issue comment ${{ github.event.issue.number }} --body "..."
+
+          claude_args: |
+            --dangerously-skip-permissions
+            --allowedTools "Bash(gh issue:*),Bash(gh search:*)"
+
+      - name: Remove triaging label
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "claude-triaging" || true
+```
+
+### Step 5: Configure CI to Close Issues After Deploy
+
+Add this job to your CI workflow (runs AFTER deployment):
+
+```yaml
+  close-related-issues:
+    needs: [deploy, smoke-test]  # Only after successful deploy
+    if: success() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Close issues mentioned in merged PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get recent merged PRs
+          PRS=$(gh pr list --repo ${{ github.repository }} --state merged --limit 10 --json number,body)
+
+          # Extract issue numbers from "Relates to #N" patterns
+          echo "$PRS" | jq -r '.[].body' | grep -oP 'Relates to #\K\d+' | sort -u | while read ISSUE; do
+            echo "Closing issue #$ISSUE after successful deploy"
+            gh issue close "$ISSUE" --repo ${{ github.repository }} \
+              --comment "✅ Fix deployed to production and verified."
+            gh issue edit "$ISSUE" --repo ${{ github.repository }} \
+              --remove-label "in-review" || true
+          done
+```
+
+---
+
+## Critical Configuration Details (Gotchas)
+
+### 1. GH_TOKEN is REQUIRED for PR Creation
+
+The `gh` CLI needs authentication to create PRs. You MUST add BOTH:
+
+```yaml
+- name: Work on issue
+  uses: anthropics/claude-code-action@v1
+  env:
+    GH_TOKEN: ${{ github.token }}  # For gh CLI
+  with:
+    github_token: ${{ github.token }}  # For action internals
+```
+
+**Without this, Claude will complete work but can't create PRs!**
+
+### 2. Use Explicit gh Command Patterns in allowedTools
+
+The action may not recognize `Bash(gh:*)`. Use explicit patterns:
+
+```yaml
+# ❌ WRONG - may not work
+--allowedTools "Bash(gh:*)"
+
+# ✅ CORRECT - explicit patterns
+--allowedTools "Bash(gh issue:*),Bash(gh pr:*),Bash(gh api:*)"
+```
+
+### 3. Use "Relates to #N", NOT "Fixes #N"
+
+GitHub auto-closes issues when PRs with "Fixes #N" merge. But the fix isn't deployed yet!
+
+```yaml
+# ❌ WRONG - closes issue on PR merge (before deploy)
+git commit -m "Fix bug\n\nFixes #123"
+
+# ✅ CORRECT - CI closes issue after deploy
+git commit -m "Fix bug\n\nRelates to #123"
+```
+
+### 4. Handle Reopened Issues (Previous Fix Failed)
+
+When users reopen issues, the previous "fix" didn't actually work:
+
+```yaml
+on:
+  issues:
+    types: [labeled, assigned, reopened]  # Include 'reopened'!
+```
+
+And in the prompt:
+```yaml
+${{ github.event.action == 'reopened' && '**THIS IS A REOPENED ISSUE.**
+The previous fix did NOT work. Take a DIFFERENT approach!' || '' }}
+```
+
+### 5. Exclude Blocking Labels in Issue Search
+
+Prevent infinite loops and duplicate work:
+
+```bash
+gh issue list --label "P0" --json labels --jq '[.[] | select(.labels | map(.name) |
+  (index("claude-working") | not) and
+  (index("needs-human-help") | not) and
+  (index("epic") | not) and
+  (index("in-review") | not))]'
+```
+
+### 6. Branch Protection (Recommended)
+
+Without branch protection, auto-merge happens instantly (before CI runs!):
+
+```bash
+# Add via GitHub UI: Settings → Branches → Add rule
+# Or via API:
+gh api repos/OWNER/REPO/branches/main/protection -X PUT \
+  -f required_status_checks='{"strict":true,"contexts":["test","lint"]}' \
+  -f enforce_admins=false \
+  -f required_pull_request_reviews=null \
+  -f restrictions=null
+```
+
+---
+
+## Debugging Workflow Issues
+
+### Check if gh CLI has auth
+```bash
+gh run view <run-id> --log 2>&1 | grep "ALLOWED_TOOLS"
+```
+
+### See what tools Claude received
+```bash
+gh run view <run-id> --log 2>&1 | grep -A30 "SDK options"
+```
+
+### Check for PR creation errors
+```bash
+gh run view <run-id> --log 2>&1 | grep -i "gh pr\|error\|denied"
+```
+
+### Enable full output for debugging
 ```yaml
 - uses: anthropics/claude-code-action@v1
   with:
-    track_progress: ${{ github.event_name == 'issues' }}  # Only for issue events
+    show_full_output: true  # Shows full Claude conversation
 ```
 
-This creates a live-updating comment on the issue showing:
-- Current task being worked on
-- Todo list with checkboxes
-- Progress indicator
-- Link to workflow run
+---
 
-**Note:** `track_progress` only works for `pull_request`, `issues`, and `issue_comment` events.
+## Manual Triggers
 
-### Audit Log Best Practices
+```bash
+# Work on specific issue
+gh workflow run claude-work.yml -f issue_number=123
 
-The automation creates a beautiful audit trail:
+# Trigger CI/CD fix
+gh workflow run claude-cicd-fix.yml -f pr_number=42
 
-1. **Issue comments show progress:**
-   - Starting work comment with workflow link
-   - Live checkbox updates during work
-   - Completion comment with PR link
-
-2. **Commit messages reference issues:**
-   - `Fixes #N` to auto-close issues
-   - `Relates to #N` for partial progress
-
-3. **CI/CD fix commits show history:**
-   ```
-   Fix CI/CD: Add missing type annotation
-
-   Failing check: mypy
-   Error: Missing type annotation for parameter
-   Previous attempt: abc1234
-   Retry: 3/15
-   ```
-
-4. **Labels indicate status:**
-   - `claude-working` - Work in progress
-   - `needs-human-help` - Requires manual intervention
-
-### Allowed Tools Configuration
-
-To configure which tools Claude can use, pass `--allowedTools` via `claude_args`. Example:
-
-```yaml
-claude_args: |
-  --max-turns 50
-  --dangerously-skip-permissions
-  --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh:*),Bash(cd backend && uv run:*)"
+# Re-run failed workflow
+gh run rerun <run-id>
 ```
 
-Common tool patterns:
-- `Bash(git:*)` - All git commands
-- `Bash(gh:*)` - GitHub CLI commands (pr create, issue comment, etc.)
-- `Bash(cd backend && uv run:*)` - Python test/lint commands
-- `Bash(cd frontend && npm:*)` - Node.js test/lint commands
+---
 
-**Important:** The `--dangerously-skip-permissions` flag skips interactive confirmations, but Claude can only use tools in the `--allowedTools` list.
+## Monitoring
+
+```bash
+# View automation runs
+gh run list --workflow=claude-work.yml --limit 10
+
+# Check in-progress work
+gh issue list --label "claude-working"
+
+# Check blocked issues
+gh issue list --label "needs-human-help"
+
+# View specific run logs
+gh run view <run-id> --log
+gh run view <run-id> --log-failed  # Only failures
+```
 
 ## Architecture
 

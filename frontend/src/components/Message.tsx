@@ -179,7 +179,7 @@ export function Message({
       <div
         className={`max-w-[75%] ${
           isUser
-            ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm'
+            ? 'bg-blue-500 text-white rounded-2xl rounded-br-sm'
             : 'bg-zinc-100 dark:bg-zinc-800 rounded-2xl rounded-bl-sm'
         }`}
       >

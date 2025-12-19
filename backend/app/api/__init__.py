@@ -1,4 +1,4 @@
-"""API routes for Thinkers Chat."""
+"""API routes for Dining Philosophers."""
 
 from fastapi import APIRouter
 

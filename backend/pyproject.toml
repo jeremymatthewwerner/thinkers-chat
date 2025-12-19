@@ -1,7 +1,7 @@
 [project]
 name = "thinkers-chat-backend"
 version = "0.1.0"
-description = "Backend API for Thinkers Chat - real-time multi-party chat with AI thinkers"
+description = "Backend API for Dining Philosophers - real-time multi-party chat with AI thinkers"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -1,4 +1,4 @@
-"""SQLAlchemy models for Thinkers Chat."""
+"""SQLAlchemy models for Dining Philosophers."""
 
 from app.models.base import Base
 from app.models.conversation import Conversation

@@ -19,6 +19,35 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // iOS Safari testing with real WebKit engine
+    {
+      name: 'ios-safari-iphone-13',
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'webkit',
+      },
+    },
+    {
+      name: 'ios-safari-iphone-se',
+      use: {
+        ...devices['iPhone SE'],
+        browserName: 'webkit',
+      },
+    },
+    {
+      name: 'ios-safari-iphone-14-pro',
+      use: {
+        ...devices['iPhone 14 Pro'],
+        browserName: 'webkit',
+      },
+    },
+    {
+      name: 'ios-safari-ipad-pro',
+      use: {
+        ...devices['iPad Pro'],
+        browserName: 'webkit',
+      },
+    },
   ],
   webServer: {
     command: 'npm run dev',

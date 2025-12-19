@@ -126,11 +126,11 @@ export function ChatArea({
 
   return (
     <div
-      className="flex-1 flex flex-col bg-white dark:bg-zinc-900"
+      className="flex-1 flex flex-col bg-white dark:bg-zinc-900 relative"
       data-testid="chat-area"
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 bg-white dark:bg-zinc-900">
+      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 bg-white dark:bg-zinc-900 [position:-webkit-sticky]">
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
             {conversation.topic}

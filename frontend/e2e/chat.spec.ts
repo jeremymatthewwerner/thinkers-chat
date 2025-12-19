@@ -11,6 +11,50 @@ test.describe('Chat Functionality', () => {
     await setupAuthenticatedUser(page);
   });
 
+  test('header stays visible when scrolling on mobile', async ({ page, browserName }) => {
+    // Set mobile viewport (iOS Safari dimensions)
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await createConversationViaUI(page, 'Scroll test conversation', 'Aristotle');
+
+    // Get the header element
+    const header = page.getByTestId('chat-area').locator('div').first().locator('div.sticky');
+    await expect(header).toBeVisible();
+
+    // Get initial header position
+    const initialHeaderBox = await header.boundingBox();
+    expect(initialHeaderBox).toBeTruthy();
+    expect(initialHeaderBox!.y).toBeLessThanOrEqual(10); // Should be near top
+
+    // Send multiple messages to create scrollable content
+    const messageTextarea = page.getByTestId('message-textarea');
+    for (let i = 0; i < 10; i++) {
+      await messageTextarea.fill(`Test message ${i + 1} with enough content to make it scroll`);
+      await page.getByTestId('send-button').click();
+      await page.waitForTimeout(100);
+    }
+
+    // Wait for messages to appear
+    await expect(page.locator('text=Test message 1')).toBeVisible({ timeout: 5000 });
+
+    // Scroll down in the message list
+    const messageList = page.getByTestId('message-list');
+    await messageList.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+
+    await page.waitForTimeout(500);
+
+    // Check that header is still visible and at the top
+    const headerAfterScroll = page.getByTestId('chat-area').locator('div').first().locator('div.sticky');
+    await expect(headerAfterScroll).toBeVisible();
+
+    const scrolledHeaderBox = await headerAfterScroll.boundingBox();
+    expect(scrolledHeaderBox).toBeTruthy();
+    // Header should still be at the top (allowing small variance for rendering)
+    expect(scrolledHeaderBox!.y).toBeLessThanOrEqual(10);
+  });
+
   test('can send a message in conversation', async ({ page }) => {
     await createConversationViaUI(page, 'Quick test chat', 'Socrates');
 

@@ -105,7 +105,47 @@ This ensures comprehensive test coverage and prevents regressions.
 
 - **Python**: ruff (format + lint + isort), mypy strict
 - **TypeScript**: ESLint + Prettier, strict mode
-- Run formatters before committing
+
+### MANDATORY: Run Formatters and Linters Before Every Commit
+
+**NEVER commit code without running formatters and linters first.** This applies to ALL code changes, including automated workflows.
+
+```bash
+# Frontend (REQUIRED before every commit that touches frontend/)
+cd frontend
+npm run format          # Run Prettier to auto-fix formatting
+npm run lint -- --fix   # Run ESLint with auto-fix
+npm run typecheck       # Verify TypeScript types
+
+# Backend (REQUIRED before every commit that touches backend/)
+cd backend
+uv run ruff format .    # Auto-format Python code
+uv run ruff check . --fix  # Lint and auto-fix Python code
+uv run mypy .           # Type check Python code
+```
+
+**Why this is critical:**
+- CI will fail if formatting is wrong (Prettier, ruff)
+- CI will fail if linting errors exist (ESLint, ruff)
+- CI will fail if type errors exist (TypeScript, mypy)
+- Fixing linting errors AFTER pushing wastes CI time and requires additional commits
+
+**The workflow is:**
+1. Make code changes
+2. Run formatters (`npm run format`, `uv run ruff format .`)
+3. Run linters with auto-fix (`npm run lint -- --fix`, `uv run ruff check . --fix`)
+4. Run type checking (`npm run typecheck`, `uv run mypy .`)
+5. If any issues remain, fix them manually
+6. THEN commit
+
+**For automated workflows (GitHub Actions):**
+Add these steps to the claude-code-action prompt:
+```
+Before committing ANY changes:
+1. cd frontend && npm run format && npm run lint -- --fix
+2. cd backend && uv run ruff format . && uv run ruff check . --fix
+3. Verify no linting errors remain before git commit
+```
 
 ## Git Workflow
 
@@ -628,12 +668,30 @@ jobs:
             3. Review issue comments for context on previous attempts
             4. Understand the codebase structure
             5. Implement the required changes
-            6. Run tests to verify your changes work
-            7. Create a PR with your changes
+            6. Run formatters and linters (MANDATORY - see below)
+            7. Run tests to verify your changes work
+            8. Create a PR with your changes
+
+            ## MANDATORY: Run Formatters Before Every Commit
+            **NEVER commit code without running formatters first. CI WILL fail if you skip this.**
+
+            For frontend changes:
+            ```bash
+            cd frontend && npm run format && npm run lint -- --fix && npm run typecheck
+            ```
+
+            For backend changes:
+            ```bash
+            cd backend && uv run ruff format . && uv run ruff check . --fix && uv run mypy .
+            ```
+
+            Run these commands BEFORE `git commit`. If any errors remain after auto-fix, fix them manually.
 
             ## Development Workflow
             - Create a branch: git checkout -b claude/issue-${{ needs.find-work.outputs.issue_number }}-${{ github.run_id }}
-            - Make changes and commit with message referencing the issue
+            - Make changes
+            - Run formatters and linters (MANDATORY)
+            - Commit with message referencing the issue
             - Push the branch
             - Create a PR: gh pr create --title "..." --body "Relates to #${{ needs.find-work.outputs.issue_number }}"
             - Enable auto-merge: gh pr merge --auto --squash

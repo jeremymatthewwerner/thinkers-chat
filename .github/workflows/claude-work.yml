@@ -287,10 +287,23 @@ jobs:
             - **MUST** create PR automatically: `gh pr create --title "Fix: <description>" --body "Relates to #${{ needs.find-work.outputs.issue_number }}"`
             - **MUST** enable auto-merge: `gh pr merge --auto --squash`
 
+            ## MANDATORY: Run Formatters Before Every Commit
+            **CI WILL FAIL if you skip this step. Run these commands BEFORE every `git commit`:**
+
+            For frontend changes:
+            ```bash
+            cd frontend && npm run format && npm run lint -- --fix && npm run typecheck
+            ```
+
+            For backend changes:
+            ```bash
+            cd backend && uv run ruff format . && uv run ruff check . --fix && uv run mypy .
+            ```
+
             ## Testing Requirements
+            After formatting/linting, run tests:
             - Run backend tests: cd backend && uv run pytest
             - Run frontend tests: cd frontend && npm test
-            - Run linting: cd backend && uv run ruff check . && cd ../frontend && npm run lint
 
             ## Important
             - Follow existing code patterns

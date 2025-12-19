@@ -296,7 +296,7 @@ jobs:
           claude_args: |
             --max-turns 50
             --dangerously-skip-permissions
-            --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh:*),Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)"
+            --allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,Bash(git:*),Bash(gh issue:*),Bash(gh pr:*),Bash(gh api:*),Bash(cd backend && uv run:*),Bash(cd frontend && npm:*)"
 
       - name: Check failure type and handle appropriately
         if: failure()

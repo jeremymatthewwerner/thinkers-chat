@@ -76,13 +76,19 @@ test.describe('iOS Safari - Header Visibility', () => {
     for (let i = 1; i <= 10; i++) {
       await messageTextarea.fill(`iOS scroll test message ${i}`);
       await sendButton.click();
-      await expect(page.locator(`text=iOS scroll test message ${i}`)).toBeVisible({ timeout: 5000 });
+      await expect(
+        page.locator(`text=iOS scroll test message ${i}`)
+      ).toBeVisible({ timeout: 5000 });
     }
 
     // Get the messages container for scrolling
-    const messagesContainer = page.locator('[data-testid="message-list"]').or(
-      chatArea.locator('div').filter({ has: page.locator('[data-testid="message"]') })
-    );
+    const messagesContainer = page
+      .locator('[data-testid="message-list"]')
+      .or(
+        chatArea
+          .locator('div')
+          .filter({ has: page.locator('[data-testid="message"]') })
+      );
 
     // Scroll down
     await messagesContainer.evaluate((el) => {
@@ -103,7 +109,9 @@ test.describe('iOS Safari - Header Visibility', () => {
     }
   });
 
-  test('header remains visible on iPhone 14 Pro with Dynamic Island', async ({ page }) => {
+  test('header remains visible on iPhone 14 Pro with Dynamic Island', async ({
+    page,
+  }) => {
     // iPhone 14 Pro has Dynamic Island which can affect viewport
     await createConversationViaUI(page, 'Dynamic Island test', 'Plato');
 
@@ -176,7 +184,9 @@ test.describe('iOS Safari - Sidebar Toggle', () => {
     await expect(sidebarToggle).toBeVisible();
   });
 
-  test('sidebar can be reopened after closing on iPhone SE', async ({ page }) => {
+  test('sidebar can be reopened after closing on iPhone SE', async ({
+    page,
+  }) => {
     await createConversationViaUI(page, 'Sidebar reopen test', 'Descartes');
 
     await expect(page.getByTestId('chat-area')).toBeVisible();
@@ -219,7 +229,9 @@ test.describe('iOS Safari - Sticky Positioning', () => {
     await setupAuthenticatedUser(page);
   });
 
-  test('sticky header maintains position during scroll on iPhone 13', async ({ page }) => {
+  test('sticky header maintains position during scroll on iPhone 13', async ({
+    page,
+  }) => {
     await createConversationViaUI(page, 'Sticky position test', 'Nietzsche');
 
     const chatArea = page.getByTestId('chat-area');
@@ -248,7 +260,9 @@ test.describe('iOS Safari - Sticky Positioning', () => {
     for (let i = 1; i <= 5; i++) {
       await messageTextarea.fill(`Sticky test ${i}`);
       await sendButton.click();
-      await expect(page.locator(`text=Sticky test ${i}`)).toBeVisible({ timeout: 5000 });
+      await expect(page.locator(`text=Sticky test ${i}`)).toBeVisible({
+        timeout: 5000,
+      });
     }
 
     // Record header position before scroll
@@ -256,9 +270,13 @@ test.describe('iOS Safari - Sticky Positioning', () => {
     expect(headerBoxBefore).not.toBeNull();
 
     // Scroll
-    const messagesContainer = page.locator('[data-testid="message-list"]').or(
-      chatArea.locator('div').filter({ has: page.locator('[data-testid="message"]') })
-    );
+    const messagesContainer = page
+      .locator('[data-testid="message-list"]')
+      .or(
+        chatArea
+          .locator('div')
+          .filter({ has: page.locator('[data-testid="message"]') })
+      );
     await messagesContainer.evaluate((el) => {
       el.scrollTo({ top: 300, behavior: 'instant' });
     });
@@ -271,11 +289,15 @@ test.describe('iOS Safari - Sticky Positioning', () => {
 
     if (headerBoxBefore && headerBoxAfter) {
       // Y position should be similar (within a few pixels)
-      expect(Math.abs(headerBoxAfter.y - headerBoxBefore.y)).toBeLessThanOrEqual(5);
+      expect(
+        Math.abs(headerBoxAfter.y - headerBoxBefore.y)
+      ).toBeLessThanOrEqual(5);
     }
   });
 
-  test('sticky positioning works with iOS safe areas on iPhone 14 Pro', async ({ page }) => {
+  test('sticky positioning works with iOS safe areas on iPhone 14 Pro', async ({
+    page,
+  }) => {
     await createConversationViaUI(page, 'Safe area test', 'Einstein');
 
     const chatArea = page.getByTestId('chat-area');
@@ -307,7 +329,9 @@ test.describe('iOS Safari - Orientation Changes', () => {
     await setupAuthenticatedUser(page);
   });
 
-  test('header adapts to portrait to landscape orientation change', async ({ page }) => {
+  test('header adapts to portrait to landscape orientation change', async ({
+    page,
+  }) => {
     // Start in portrait (iPhone 13: 390x844)
     await page.setViewportSize({ width: 390, height: 844 });
 
@@ -340,7 +364,9 @@ test.describe('iOS Safari - Orientation Changes', () => {
     await expect(pauseButton).toContainText('Resume');
   });
 
-  test('layout remains functional after multiple orientation changes', async ({ page }) => {
+  test('layout remains functional after multiple orientation changes', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 
     await createConversationViaUI(page, 'Multiple orientations', 'Seneca');
@@ -399,7 +425,9 @@ test.describe('iOS Safari - iPad Specific Tests', () => {
     await expect(page.getByTestId('export-menu')).toBeVisible();
   });
 
-  test('iPad handles split view simulation (narrow width)', async ({ page }) => {
+  test('iPad handles split view simulation (narrow width)', async ({
+    page,
+  }) => {
     // Simulate iPad in split view (narrow width)
     await page.setViewportSize({ width: 375, height: 1024 });
 
@@ -422,7 +450,9 @@ test.describe('iOS Safari - Touch Interactions', () => {
     await setupAuthenticatedUser(page);
   });
 
-  test('touch targets meet iOS 44x44pt minimum on iPhone 13', async ({ page }) => {
+  test('touch targets meet iOS 44x44pt minimum on iPhone 13', async ({
+    page,
+  }) => {
     await createConversationViaUI(page, 'Touch target test', 'Socrates');
 
     await expect(page.getByTestId('chat-area')).toBeVisible();
@@ -518,7 +548,9 @@ test.describe('iOS Safari - Screenshot on Failure', () => {
     await setupAuthenticatedUser(page);
   });
 
-  test('captures screenshot on test failure (iPhone 13)', async ({ page }, testInfo) => {
+  test('captures screenshot on test failure (iPhone 13)', async ({
+    page,
+  }, testInfo) => {
     await createConversationViaUI(page, 'Screenshot test', 'Descartes');
 
     await expect(page.getByTestId('chat-area')).toBeVisible();
@@ -557,7 +589,9 @@ test.describe('iOS Safari - Regression Tests', () => {
     expect(transform).toBe('none');
   });
 
-  test('sticky positioning works after WebKit fix (Issue #217)', async ({ page }) => {
+  test('sticky positioning works after WebKit fix (Issue #217)', async ({
+    page,
+  }) => {
     await createConversationViaUI(page, 'Sticky regression', 'Einstein');
 
     const chatArea = page.getByTestId('chat-area');
@@ -577,7 +611,9 @@ test.describe('iOS Safari - Regression Tests', () => {
     for (let i = 1; i <= 3; i++) {
       await messageTextarea.fill(`Message ${i}`);
       await sendButton.click();
-      await expect(page.locator(`text=Message ${i}`)).toBeVisible({ timeout: 5000 });
+      await expect(page.locator(`text=Message ${i}`)).toBeVisible({
+        timeout: 5000,
+      });
     }
 
     // Header should remain visible

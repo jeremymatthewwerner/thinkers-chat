@@ -50,14 +50,17 @@ test.describe('Billing Error Handling', () => {
     await setupAuthenticatedUser(page);
   });
 
-  test('shows error message when API quota is exceeded during thinker suggestion', async ({ page }) => {
+  test('shows error message when API quota is exceeded during thinker suggestion', async ({
+    page,
+  }) => {
     // Mock the thinker suggestion API to return a quota error
     await page.route('**/api/thinkers/suggest*', async (route) => {
       await route.fulfill({
         status: 503,
         contentType: 'application/json',
         body: JSON.stringify({
-          detail: 'API credit limit reached. Our service is temporarily unavailable due to billing limits. We have been notified and are working to resolve this.',
+          detail:
+            'API credit limit reached. Our service is temporarily unavailable due to billing limits. We have been notified and are working to resolve this.',
         }),
       });
     });
@@ -78,17 +81,22 @@ test.describe('Billing Error Handling', () => {
     await page.getByTestId('next-button').click();
 
     // Verify we can still proceed with manual thinker selection
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
   });
 
-  test('shows error message when API quota is exceeded during thinker validation', async ({ page }) => {
+  test('shows error message when API quota is exceeded during thinker validation', async ({
+    page,
+  }) => {
     // Mock the thinker validation API to return a quota error
     await page.route('**/api/thinkers/validate*', async (route) => {
       await route.fulfill({
         status: 503,
         contentType: 'application/json',
         body: JSON.stringify({
-          detail: 'API credit limit reached. Our service is temporarily unavailable due to billing limits. We have been notified and are working to resolve this.',
+          detail:
+            'API credit limit reached. Our service is temporarily unavailable due to billing limits. We have been notified and are working to resolve this.',
         }),
       });
     });
@@ -102,7 +110,9 @@ test.describe('Billing Error Handling', () => {
     await page.getByTestId('next-button').click();
 
     // Wait for thinker step
-    await page.locator('h2', { hasText: 'Select Thinkers' }).waitFor({ timeout: 30000 });
+    await page
+      .locator('h2', { hasText: 'Select Thinkers' })
+      .waitFor({ timeout: 30000 });
 
     // Try to add a custom thinker (this triggers validation)
     const customInput = page.getByTestId('custom-thinker-input');
@@ -125,13 +135,24 @@ test.describe('Billing Error Handling', () => {
     expect(thinkerAdded > 0 || hasError > 0).toBeTruthy();
   });
 
-  test('shows error banner when billing error is received via WebSocket', async ({ page }) => {
+  test('shows error banner when billing error is received via WebSocket', async ({
+    page,
+  }) => {
     // Create a conversation first
-    await createConversationViaAPI(page, 'Test billing error display', ['Aristotle']);
+    const { id: conversationId } = await createConversationViaAPI(
+      page,
+      'Test billing error display',
+      ['Aristotle']
+    );
 
-    // Navigate to the conversation
+    // Navigate to the homepage and select the conversation
     await page.reload();
     await page.waitForLoadState('networkidle');
+
+    // Click on the conversation in the sidebar to navigate to it
+    const conversationSelector = `[data-testid="conversation-${conversationId}"]`;
+    await page.waitForSelector(conversationSelector, { timeout: 10000 });
+    await page.click(conversationSelector);
 
     // Wait for conversation to load
     await page.waitForSelector('[data-testid="chat-area"]', { timeout: 10000 });
@@ -140,7 +161,8 @@ test.describe('Billing Error Handling', () => {
     await page.evaluate(() => {
       // Simulate receiving an error message through the WebSocket handler
       const errorEvent = new CustomEvent('websocket-error', {
-        detail: 'Spend limit reached ($10.00/$10.00). Contact admin to increase your limit.'
+        detail:
+          'Spend limit reached ($10.00/$10.00). Contact admin to increase your limit.',
       });
       window.dispatchEvent(errorEvent);
     });
@@ -153,9 +175,10 @@ test.describe('Billing Error Handling', () => {
       const event = new MessageEvent('message', {
         data: JSON.stringify({
           type: 'error',
-          content: 'Spend limit reached ($10.00/$10.00). Contact admin to increase your limit.',
-          conversation_id: (window as any).__conversationId
-        })
+          content:
+            'Spend limit reached ($10.00/$10.00). Contact admin to increase your limit.',
+          conversation_id: (window as any).__conversationId,
+        }),
       });
 
       // Dispatch to window for testing (the actual WebSocket would receive this)
@@ -186,7 +209,10 @@ test.describe('Billing Error Handling', () => {
   });
 
   // This test will be enabled once GitHub issue filing is implemented (sub-tasks #113-116)
-  test.skip('files GitHub issue when billing error occurs', async ({ page, request }) => {
+  test.skip('files GitHub issue when billing error occurs', async ({
+    page,
+    request,
+  }) => {
     // TODO: Once GitHubIssueService is implemented, enable this test
 
     // Mock the GitHub API to track issue creation
@@ -217,7 +243,8 @@ test.describe('Billing Error Handling', () => {
         status: 503,
         contentType: 'application/json',
         body: JSON.stringify({
-          detail: 'API credit limit reached. Our service is temporarily unavailable due to billing limits.',
+          detail:
+            'API credit limit reached. Our service is temporarily unavailable due to billing limits.',
         }),
       });
     });
@@ -254,19 +281,27 @@ test.describe('Billing Error Handling', () => {
 
     // Application should still be functional
     await page.getByTestId('next-button').click();
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     // Should be able to close the modal
-    const cancelButton = page.locator('button', { hasText: /cancel|close/i }).first();
+    const cancelButton = page
+      .locator('button', { hasText: /cancel|close/i })
+      .first();
     if (await cancelButton.isVisible()) {
       await cancelButton.click();
     }
 
     // Should be back at the main page
-    await expect(page.locator('text=Welcome to Dining Philosophers')).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('text=Welcome to Dining Philosophers')
+    ).toBeVisible({ timeout: 5000 });
   });
 
-  test('shows error banner when billing error occurs via real WebSocket', async ({ page }) => {
+  test('shows error banner when billing error occurs via real WebSocket', async ({
+    page,
+  }) => {
     // Create a conversation via real backend API
     const { id: conversationId } = await createConversationViaAPI(
       page,
@@ -275,12 +310,17 @@ test.describe('Billing Error Handling', () => {
     );
 
     // Verify backend test endpoint works (validates BillingError exception handling)
-    const token = await page.evaluate(() => localStorage.getItem('access_token'));
-    const testResponse = await page.request.get('http://localhost:8000/api/test/billing-error', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const token = await page.evaluate(() =>
+      localStorage.getItem('access_token')
+    );
+    const testResponse = await page.request.get(
+      'http://localhost:8000/api/test/billing-error',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
     expect(testResponse.status()).toBe(503);
     const errorBody = await testResponse.json();
     expect(errorBody.detail).toContain('billing');
@@ -331,7 +371,8 @@ test.describe('Billing Error Handling', () => {
           const errorMessage = JSON.stringify({
             type: 'error',
             conversation_id: convId,
-            content: 'API billing error: API credit limit reached. Please contact support.',
+            content:
+              'API billing error: API credit limit reached. Please contact support.',
           });
           const event = new MessageEvent('message', { data: errorMessage });
           ws.onmessage(event);
@@ -410,7 +451,9 @@ test.describe('Billing Error Recovery', () => {
     await page.waitForTimeout(1000);
 
     // Close the modal
-    const cancelButton = page.locator('button', { hasText: /cancel|close/i }).first();
+    const cancelButton = page
+      .locator('button', { hasText: /cancel|close/i })
+      .first();
     if (await cancelButton.isVisible()) {
       await cancelButton.click();
       await page.waitForTimeout(500);
@@ -422,7 +465,9 @@ test.describe('Billing Error Recovery', () => {
     await page.getByTestId('next-button').click();
 
     // Should successfully reach thinker selection
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     expect(callCount).toBeGreaterThanOrEqual(2);
   });

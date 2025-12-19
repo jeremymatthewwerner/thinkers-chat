@@ -143,9 +143,14 @@ export function ChatArea({
           {onSidebarToggle && !sidebarOpen && (
             <button
               onClick={onSidebarToggle}
-              className="lg:hidden p-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex-shrink-0"
+              className="lg:hidden p-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex-shrink-0 touch-manipulation"
+              style={{
+                minWidth: '44px',
+                minHeight: '44px',
+              }}
               aria-label="Open sidebar"
-              data-testid="header-menu-button"
+              data-testid="sidebar-toggle"
+              title="Open sidebar"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

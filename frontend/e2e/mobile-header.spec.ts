@@ -42,16 +42,24 @@ test.describe('Mobile Header Behavior', () => {
     const sendButton = page.getByTestId('send-button');
 
     for (let i = 1; i <= 10; i++) {
-      await messageTextarea.fill(`Test message ${i} to create scrollable content`);
+      await messageTextarea.fill(
+        `Test message ${i} to create scrollable content`
+      );
       await sendButton.click();
       // Wait for message to appear
-      await expect(page.locator(`text=Test message ${i}`)).toBeVisible({ timeout: 5000 });
+      await expect(page.locator(`text=Test message ${i}`)).toBeVisible({
+        timeout: 5000,
+      });
     }
 
     // Get the messages container for scrolling
-    const messagesContainer = page.locator('[data-testid="message-list"]').or(
-      chatArea.locator('div').filter({ has: page.locator('[data-testid="message"]') })
-    );
+    const messagesContainer = page
+      .locator('[data-testid="message-list"]')
+      .or(
+        chatArea
+          .locator('div')
+          .filter({ has: page.locator('[data-testid="message"]') })
+      );
 
     // Scroll down in the chat area
     await messagesContainer.evaluate((el) => {
@@ -148,7 +156,9 @@ test.describe('Mobile Header Behavior', () => {
     expect(headerBox).not.toBeNull();
 
     // Check that topic and thinkers are visible
-    await expect(page.locator('h2', { hasText: 'iPhone 12 Pro test' })).toBeVisible();
+    await expect(
+      page.locator('h2', { hasText: 'iPhone 12 Pro test' })
+    ).toBeVisible();
     await expect(page.locator('text=with Confucius')).toBeVisible();
 
     // Verify controls are accessible
@@ -164,7 +174,9 @@ test.describe('Mobile Header Behavior', () => {
     await expect(sendButton).toBeVisible();
     await sendButton.click();
 
-    await expect(page.locator('text=Testing input accessibility')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Testing input accessibility')).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('header works correctly on iPhone 14 Pro Max', async ({ page }) => {
@@ -209,7 +221,9 @@ test.describe('Mobile Header Behavior', () => {
     }
   });
 
-  test('header wraps controls appropriately on narrow viewport', async ({ page }) => {
+  test('header wraps controls appropriately on narrow viewport', async ({
+    page,
+  }) => {
     // Set viewport to very narrow (320x568 - iPhone SE 1st gen)
     await page.setViewportSize({ width: 320, height: 568 });
 
@@ -240,7 +254,9 @@ test.describe('Mobile Header Behavior', () => {
     await expect(pauseButton).toContainText('Resume');
   });
 
-  test('header remains functional after orientation change', async ({ page }) => {
+  test('header remains functional after orientation change', async ({
+    page,
+  }) => {
     // Start in portrait
     await page.setViewportSize({ width: 390, height: 844 });
 
@@ -267,7 +283,9 @@ test.describe('Mobile Header Behavior', () => {
     await expect(pauseButton).toContainText('Resume');
   });
 
-  test('header controls do not overlap conversation content', async ({ page }) => {
+  test('header controls do not overlap conversation content', async ({
+    page,
+  }) => {
     // Test on medium-sized mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
 
@@ -275,11 +293,15 @@ test.describe('Mobile Header Behavior', () => {
 
     // Send a message
     const messageTextarea = page.getByTestId('message-textarea');
-    await messageTextarea.fill('This message should be visible below the header');
+    await messageTextarea.fill(
+      'This message should be visible below the header'
+    );
     await page.getByTestId('send-button').click();
 
     // Wait for message to appear
-    const userMessage = page.locator('text=This message should be visible below the header');
+    const userMessage = page.locator(
+      'text=This message should be visible below the header'
+    );
     await expect(userMessage).toBeVisible({ timeout: 5000 });
 
     // Get positions of header and first message
@@ -292,11 +314,15 @@ test.describe('Mobile Header Behavior', () => {
 
     if (headerBox && messageBox) {
       // Message should be below the header (not overlapping)
-      expect(messageBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
+      expect(messageBox.y).toBeGreaterThanOrEqual(
+        headerBox.y + headerBox.height
+      );
     }
   });
 
-  test('all buttons meet minimum 44x44px touch target size', async ({ page }) => {
+  test('all buttons meet minimum 44x44px touch target size', async ({
+    page,
+  }) => {
     // Test on iPhone SE (smallest common viewport)
     await page.setViewportSize({ width: 375, height: 667 });
 
@@ -338,7 +364,9 @@ test.describe('Mobile Header Behavior', () => {
     }
   });
 
-  test('buttons have adequate spacing for touch (8px minimum)', async ({ page }) => {
+  test('buttons have adequate spacing for touch (8px minimum)', async ({
+    page,
+  }) => {
     // Test on iPhone SE (smallest common viewport)
     await page.setViewportSize({ width: 375, height: 667 });
 

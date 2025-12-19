@@ -22,7 +22,9 @@ test.describe('Chat Functionality', () => {
     await sendButton.click();
 
     // Message should appear in the chat
-    await expect(page.locator('text=Hello, this is a test message!')).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('text=Hello, this is a test message!')
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('pause/resume button toggles UI state', async ({ page }) => {
@@ -45,7 +47,9 @@ test.describe('Chat Functionality', () => {
   test('can delete a conversation', async ({ page }) => {
     // Create a conversation to delete
     await createConversationViaUI(page, 'Topic to delete', 'Aristotle');
-    await expect(page.locator('h2', { hasText: 'Topic to delete' })).toBeVisible();
+    await expect(
+      page.locator('h2', { hasText: 'Topic to delete' })
+    ).toBeVisible();
 
     // Verify conversation is in sidebar
     const conversationItem = page.getByTestId('conversation-item');
@@ -59,7 +63,9 @@ test.describe('Chat Functionality', () => {
     await expect(conversationItem).not.toBeVisible({ timeout: 5000 });
 
     // Should show empty state or welcome message
-    await expect(page.locator('text=Welcome to Dining Philosophers')).toBeVisible();
+    await expect(
+      page.locator('text=Welcome to Dining Philosophers')
+    ).toBeVisible();
   });
 
   test('can switch between conversations', async ({ page }) => {
@@ -79,16 +85,24 @@ test.describe('Chat Functionality', () => {
     await expect(conversationItems).toHaveCount(2);
 
     // Click on first conversation in sidebar
-    const firstConvItem = page.getByTestId('conversation-item').filter({ hasText: 'First topic' });
+    const firstConvItem = page
+      .getByTestId('conversation-item')
+      .filter({ hasText: 'First topic' });
     await firstConvItem.scrollIntoViewIfNeeded();
     await firstConvItem.click();
-    await expect(page.getByTestId('chat-area').locator('h2', { hasText: 'First topic' })).toBeVisible();
+    await expect(
+      page.getByTestId('chat-area').locator('h2', { hasText: 'First topic' })
+    ).toBeVisible();
 
     // Click on second conversation in sidebar
-    const secondConvItem = page.getByTestId('conversation-item').filter({ hasText: 'Second topic' });
+    const secondConvItem = page
+      .getByTestId('conversation-item')
+      .filter({ hasText: 'Second topic' });
     await secondConvItem.scrollIntoViewIfNeeded();
     await secondConvItem.click();
-    await expect(page.getByTestId('chat-area').locator('h2', { hasText: 'Second topic' })).toBeVisible();
+    await expect(
+      page.getByTestId('chat-area').locator('h2', { hasText: 'Second topic' })
+    ).toBeVisible();
 
     // Sidebar should still show both conversations
     await expect(conversationItems).toHaveCount(2);
@@ -110,7 +124,9 @@ test.describe('Thinker Responses', () => {
     await page.getByTestId('send-button').click();
 
     // Wait for user message to appear
-    await expect(page.locator('text=What is virtue?')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=What is virtue?')).toBeVisible({
+      timeout: 5000,
+    });
 
     // Get initial message count
     const getMessageCount = async () => {
@@ -158,7 +174,9 @@ test.describe('Thinker Responses', () => {
 
   // SKIP: Flaky in CI - depends on Claude API response times which can timeout
   // TODO: Mock Claude API or add better retry logic
-  test.skip('sends message and receives responses from multiple thinkers', async ({ page }) => {
+  test.skip('sends message and receives responses from multiple thinkers', async ({
+    page,
+  }) => {
     test.setTimeout(120000);
     await setupAuthenticatedUser(page);
 
@@ -168,7 +186,9 @@ test.describe('Thinker Responses', () => {
     await page.getByTestId('topic-input').fill('Philosophy of knowledge');
     await page.getByTestId('next-button').click();
 
-    await expect(page.locator('h2', { hasText: 'Select Thinkers' })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.locator('h2', { hasText: 'Select Thinkers' })
+    ).toBeVisible({ timeout: 30000 });
 
     // Add first thinker (Socrates)
     const customInput = page.getByTestId('custom-thinker-input');
@@ -177,14 +197,18 @@ test.describe('Thinker Responses', () => {
     const addButton = page.getByTestId('add-custom-thinker');
     await addButton.scrollIntoViewIfNeeded();
     await addButton.click();
-    await expect(page.getByTestId('selected-thinker').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('selected-thinker').first()).toBeVisible({
+      timeout: 15000,
+    });
 
     // Add second thinker (Aristotle)
     await customInput.scrollIntoViewIfNeeded();
     await customInput.fill('Aristotle');
     await addButton.scrollIntoViewIfNeeded();
     await addButton.click();
-    await expect(page.getByTestId('selected-thinker')).toHaveCount(2, { timeout: 15000 });
+    await expect(page.getByTestId('selected-thinker')).toHaveCount(2, {
+      timeout: 15000,
+    });
 
     // Create the conversation
     const createButton = page.getByTestId('create-button');
@@ -199,7 +223,9 @@ test.describe('Thinker Responses', () => {
     await sendButton.click();
 
     // User message should appear immediately
-    await expect(page.locator('text=What is the nature of knowledge?')).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('text=What is the nature of knowledge?')
+    ).toBeVisible({ timeout: 5000 });
 
     // Wait for thinker responses
     const thinkerMessages = page.locator('[data-sender-type="thinker"]');
@@ -220,7 +246,9 @@ test.describe('Thinker Responses', () => {
       if (name) respondedThinkers.add(name);
     }
 
-    console.log(`Thinkers who responded: ${Array.from(respondedThinkers).join(', ')}`);
+    console.log(
+      `Thinkers who responded: ${Array.from(respondedThinkers).join(', ')}`
+    );
 
     // Verify at least one thinker responded
     expect(respondedThinkers.size).toBeGreaterThanOrEqual(1);

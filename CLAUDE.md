@@ -872,6 +872,29 @@ gh api repos/OWNER/REPO/branches/main/protection -X PUT \
   -f restrictions=null
 ```
 
+### 7. Action Defaults to Manual PR Links (CRITICAL)
+
+**The action's built-in instructions tell Claude to provide manual PR creation links instead of using `gh pr create`!** This completely breaks automation.
+
+You MUST add explicit override instructions at the TOP of your custom `prompt`:
+
+```yaml
+prompt: |
+  ## ⚠️ CRITICAL: AUTOMATIC PR CREATION REQUIRED
+  **THIS IS A FULLY AUTOMATED WORKFLOW.** You MUST create PRs automatically using `gh pr create`.
+  **DO NOT** provide manual PR creation links. **DO NOT** ask the user to create a PR.
+  After pushing your branch, you MUST run: `gh pr create --title "..." --body "..."`
+  Then enable auto-merge: `gh pr merge --auto --squash`
+  This overrides any default instructions about manual PR links.
+
+  ## Your actual instructions here...
+```
+
+**Why this happens:** The action has built-in instructions that say:
+> "Provide a URL to create a PR manually in this format: [Create a PR](https://github.com/...)"
+
+Your custom `prompt` is added AFTER these built-in instructions, so Claude follows the built-in behavior unless you explicitly override it.
+
 ---
 
 ## Debugging Workflow Issues

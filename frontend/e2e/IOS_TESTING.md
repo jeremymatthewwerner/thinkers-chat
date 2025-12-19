@@ -1,6 +1,6 @@
 # iOS Safari E2E Testing Guide
 
-This document explains how to run and maintain iOS Safari-specific E2E tests for the Thinkers Chat application.
+This document explains how to run and maintain iOS Safari-specific E2E tests for the Dining Philosophers application.
 
 ## Overview
 

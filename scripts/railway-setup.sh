@@ -4,7 +4,7 @@
 
 set -e
 
-echo "=== Railway Setup for Thinkers Chat ==="
+echo "=== Railway Setup for Dining Philosophers ==="
 echo ""
 
 # Check if railway CLI is installed

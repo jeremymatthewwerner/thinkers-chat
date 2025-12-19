@@ -1,5 +1,5 @@
 #!/bin/bash
-# Initial setup script for Thinkers Chat development
+# Initial setup script for Dining Philosophers development
 
 set -e
 
@@ -9,7 +9,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Setting up Thinkers Chat Development Environment${NC}"
+echo -e "${GREEN}Setting up Dining Philosophers Development Environment${NC}"
 echo ""
 
 # Check if we're in the project root

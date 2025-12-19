@@ -1,5 +1,5 @@
 #!/bin/bash
-# Railway deployment script for Thinkers Chat
+# Railway deployment script for Dining Philosophers
 # This script helps set up and deploy to Railway
 
 set -e
@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Thinkers Chat - Railway Deployment${NC}"
+echo -e "${GREEN}Dining Philosophers - Railway Deployment${NC}"
 echo ""
 
 # Check if we're in the project root

@@ -9,7 +9,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Starting Thinkers Chat Development Environment${NC}"
+echo -e "${GREEN}Starting Dining Philosophers Development Environment${NC}"
 echo ""
 
 # Check if we're in the project root
@@ -47,7 +47,7 @@ cd ..
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Thinkers Chat is running!${NC}"
+echo -e "${GREEN}Dining Philosophers is running!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "Backend:  ${YELLOW}http://localhost:8000${NC}"

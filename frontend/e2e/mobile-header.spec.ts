@@ -295,4 +295,117 @@ test.describe('Mobile Header Behavior', () => {
       expect(messageBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
     }
   });
+
+  test('all buttons meet minimum 44x44px touch target size', async ({ page }) => {
+    // Test on iPhone SE (smallest common viewport)
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await createConversationViaUI(page, 'Touch target test', 'Marcus Aurelius');
+
+    // Wait for chat area
+    await expect(page.getByTestId('chat-area')).toBeVisible();
+
+    // Test pause/resume button meets 44x44px minimum
+    const pauseButton = page.getByTestId('pause-resume-button');
+    await expect(pauseButton).toBeVisible();
+    const pauseBox = await pauseButton.boundingBox();
+    expect(pauseBox).not.toBeNull();
+    if (pauseBox) {
+      expect(pauseBox.width).toBeGreaterThanOrEqual(44);
+      expect(pauseBox.height).toBeGreaterThanOrEqual(44);
+    }
+
+    // Test export button meets 44x44px minimum
+    const exportButton = page.getByTestId('export-button');
+    await expect(exportButton).toBeVisible();
+    const exportBox = await exportButton.boundingBox();
+    expect(exportBox).not.toBeNull();
+    if (exportBox) {
+      expect(exportBox.width).toBeGreaterThanOrEqual(44);
+      expect(exportBox.height).toBeGreaterThanOrEqual(44);
+    }
+
+    // Test speed slider has adequate touch area (44px height)
+    const speedControl = page.getByTestId('speed-control');
+    if (await speedControl.isVisible()) {
+      const speedSlider = page.getByTestId('speed-slider');
+      const sliderBox = await speedSlider.boundingBox();
+      expect(sliderBox).not.toBeNull();
+      if (sliderBox) {
+        // Slider should have 44px height for easy finger interaction
+        expect(sliderBox.height).toBeGreaterThanOrEqual(44);
+      }
+    }
+  });
+
+  test('buttons have adequate spacing for touch (8px minimum)', async ({ page }) => {
+    // Test on iPhone SE (smallest common viewport)
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await createConversationViaUI(page, 'Button spacing test', 'Seneca');
+
+    // Wait for chat area
+    await expect(page.getByTestId('chat-area')).toBeVisible();
+
+    // Get button positions
+    const pauseButton = page.getByTestId('pause-resume-button');
+    const exportButton = page.getByTestId('export-button');
+
+    await expect(pauseButton).toBeVisible();
+    await expect(exportButton).toBeVisible();
+
+    const pauseBox = await pauseButton.boundingBox();
+    const exportBox = await exportButton.boundingBox();
+
+    expect(pauseBox).not.toBeNull();
+    expect(exportBox).not.toBeNull();
+
+    if (pauseBox && exportBox) {
+      // Calculate horizontal spacing between buttons
+      // Assumes buttons are ordered left-to-right (export, then pause)
+      const spacing = Math.abs(pauseBox.x - (exportBox.x + exportBox.width));
+
+      // Should have at least 8px spacing (we set gap-3 which is 12px in Tailwind)
+      expect(spacing).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  test('pace slider is usable with finger on mobile', async ({ page }) => {
+    // Test on iPhone SE
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await createConversationViaUI(page, 'Slider usability test', 'Epictetus');
+
+    // Wait for chat area
+    await expect(page.getByTestId('chat-area')).toBeVisible();
+
+    const speedControl = page.getByTestId('speed-control');
+    if (await speedControl.isVisible()) {
+      const speedSlider = page.getByTestId('speed-slider');
+      await expect(speedSlider).toBeVisible();
+
+      // Verify slider is interactable
+      await expect(speedSlider).toBeEnabled();
+
+      // Get initial value
+      const initialValue = await speedSlider.inputValue();
+
+      // Simulate touch interaction by changing value
+      await speedSlider.evaluate((el: HTMLInputElement) => {
+        el.value = '2.0';
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+
+      // Verify value changed
+      const newValue = await speedSlider.inputValue();
+      expect(newValue).not.toBe(initialValue);
+
+      // Verify slider has adequate touch area
+      const sliderBox = await speedSlider.boundingBox();
+      expect(sliderBox).not.toBeNull();
+      if (sliderBox) {
+        expect(sliderBox.height).toBeGreaterThanOrEqual(44);
+      }
+    }
+  });
 });

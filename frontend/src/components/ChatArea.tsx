@@ -146,11 +146,11 @@ export function ChatArea({
             with {conversation.thinkers.map((t) => t.name).join(', ')}
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 sm:gap-3 flex-shrink-0">
           {/* Speed control */}
           {onSpeedChange && (
             <div
-              className="flex items-center gap-1 sm:gap-2"
+              className="flex items-center gap-2 sm:gap-2"
               data-testid="speed-control"
             >
               <label className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap hidden sm:inline">
@@ -163,7 +163,12 @@ export function ChatArea({
                 step="0.5"
                 value={speedMultiplier}
                 onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-                className="w-16 sm:w-24 h-1.5 accent-blue-600 cursor-pointer"
+                className="w-20 sm:w-24 h-2.5 accent-blue-600 cursor-pointer touch-manipulation"
+                style={{
+                  minHeight: '44px',
+                  padding: '0',
+                  margin: '0',
+                }}
                 title={`Conversation pace: ${getSpeedLabel(speedMultiplier)}`}
                 data-testid="speed-slider"
               />
@@ -177,7 +182,11 @@ export function ChatArea({
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-sm rounded-lg transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              className="flex items-center justify-center gap-1 sm:gap-1.5 px-3 sm:px-3 py-2.5 text-sm rounded-lg transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 touch-manipulation"
+              style={{
+                minWidth: '44px',
+                minHeight: '44px',
+              }}
               data-testid="export-button"
               title="Export conversation"
             >
@@ -251,11 +260,15 @@ export function ChatArea({
           {(onPause || onResume) && (
             <button
               onClick={isPaused ? onResume : onPause}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              className={`flex items-center justify-center gap-1 sm:gap-1.5 px-3 sm:px-3 py-2.5 text-sm rounded-lg transition-colors touch-manipulation ${
                 isPaused
                   ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                   : 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50'
               }`}
+              style={{
+                minWidth: '44px',
+                minHeight: '44px',
+              }}
               data-testid="pause-resume-button"
               title={isPaused ? 'Resume thinkers' : 'Pause thinkers'}
             >

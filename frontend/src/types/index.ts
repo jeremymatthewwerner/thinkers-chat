@@ -1,5 +1,5 @@
 /**
- * Type definitions for Thinkers Chat frontend.
+ * Type definitions for Dining Philosophers frontend.
  * These mirror the backend Pydantic schemas.
  */
 

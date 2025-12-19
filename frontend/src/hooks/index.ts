@@ -1,5 +1,5 @@
 /**
- * Hook exports for Thinkers Chat.
+ * Hook exports for Dining Philosophers.
  */
 
 export { useWebSocket } from './useWebSocket';

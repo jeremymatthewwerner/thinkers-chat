@@ -440,7 +440,8 @@ Return ONLY the JSON, no other text."""
         def get_sender_label(msg: "Message") -> str:
             sender = msg.sender_type
             is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
-            return "User" if is_user else (msg.sender_name or "Unknown")
+            # Use the actual sender name from the message (display_name or username)
+            return (msg.sender_name or "User") if is_user else (msg.sender_name or "Unknown")
 
         conversation_history = "\n".join(
             f"{get_sender_label(m)}: {m.content}"
@@ -761,7 +762,8 @@ Respond with ONLY what you would say as {thinker.name}, nothing else."""
         def get_sender_label(msg: "Message") -> str:
             sender = msg.sender_type
             is_user = (hasattr(sender, "value") and sender.value == "user") or sender == "user"
-            return "User" if is_user else (msg.sender_name or "Unknown")
+            # Use the actual sender name from the message (display_name or username)
+            return (msg.sender_name or "User") if is_user else (msg.sender_name or "Unknown")
 
         conversation_history = "\n".join(
             f"{get_sender_label(m)}: {m.content}"

@@ -4,6 +4,7 @@
 
 'use client';
 
+import Image from 'next/image';
 import type { ConversationSummary } from '@/types';
 import { ConversationList } from './ConversationList';
 import { CostMeter } from './CostMeter';
@@ -74,8 +75,15 @@ export function Sidebar({
                 href="https://github.com/jeremymatthewwerner/thinkers-chat"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-lg font-bold text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
+                <Image
+                  src="/icon.png"
+                  alt="Dijkstra"
+                  width={32}
+                  height={32}
+                  className="rounded-full"
+                />
                 Thinkers Chat
               </a>
               <button

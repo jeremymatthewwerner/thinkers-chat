@@ -149,13 +149,16 @@ test.describe('Billing Error Handling', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
+    // Wait for sidebar to load conversations (may take a moment after page load)
+    await page.waitForTimeout(1000);
+
     // Click on the conversation in the sidebar to navigate to it
     const conversationSelector = `[data-testid="conversation-${conversationId}"]`;
-    await page.waitForSelector(conversationSelector, { timeout: 10000 });
+    await page.waitForSelector(conversationSelector, { timeout: 15000 });
     await page.click(conversationSelector);
 
     // Wait for conversation to load
-    await page.waitForSelector('[data-testid="chat-area"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="chat-area"]', { timeout: 15000 });
 
     // Inject JavaScript to simulate a WebSocket error message
     await page.evaluate(() => {

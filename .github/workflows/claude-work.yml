@@ -251,7 +251,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
-          track_progress: ${{ github.event_name == 'issues' }}  # Only supported for issue events
+          track_progress: ${{ github.event_name == 'issues' && github.event.action != 'reopened' }}  # Not supported for 'reopened' action
           allowed_bots: '*'  # Allow self-chaining via repository_dispatch
           prompt: |
             You are working on issue #${{ needs.find-work.outputs.issue_number }}: ${{ needs.find-work.outputs.issue_title }}

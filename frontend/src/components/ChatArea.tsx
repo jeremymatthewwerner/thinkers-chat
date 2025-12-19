@@ -130,8 +130,8 @@ export function ChatArea({
       data-testid="chat-area"
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 bg-white dark:bg-zinc-900">
-        <div className="min-w-0 flex-1">
+      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 gap-2 sm:gap-3 bg-white dark:bg-zinc-900">
+        <div className="min-w-0 flex-1 min-w-[200px]">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
             {conversation.topic}
           </h2>
@@ -139,11 +139,11 @@ export function ChatArea({
             with {conversation.thinkers.map((t) => t.name).join(', ')}
           </p>
         </div>
-        <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* Speed control */}
           {onSpeedChange && (
             <div
-              className="flex items-center gap-0.5 sm:gap-2"
+              className="flex items-center gap-1 sm:gap-2"
               data-testid="speed-control"
             >
               <label className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap hidden sm:inline">
@@ -156,11 +156,11 @@ export function ChatArea({
                 step="0.5"
                 value={speedMultiplier}
                 onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-                className="w-12 sm:w-24 h-1.5 accent-blue-600 cursor-pointer"
+                className="w-16 sm:w-24 h-1.5 accent-blue-600 cursor-pointer"
                 title={`Conversation pace: ${getSpeedLabel(speedMultiplier)}`}
                 data-testid="speed-slider"
               />
-              <span className="text-xs text-zinc-600 dark:text-zinc-300 w-10 sm:w-16 text-center text-[10px] sm:text-xs">
+              <span className="text-xs text-zinc-600 dark:text-zinc-300 w-12 sm:w-16 text-center">
                 {getSpeedLabel(speedMultiplier)}
               </span>
             </div>
@@ -170,7 +170,7 @@ export function ChatArea({
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 text-sm rounded-lg transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-sm rounded-lg transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               data-testid="export-button"
               title="Export conversation"
             >
@@ -244,7 +244,7 @@ export function ChatArea({
           {(onPause || onResume) && (
             <button
               onClick={isPaused ? onResume : onPause}
-              className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 isPaused
                   ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                   : 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50'

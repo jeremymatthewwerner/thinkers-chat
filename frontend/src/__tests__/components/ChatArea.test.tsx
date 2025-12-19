@@ -171,7 +171,7 @@ describe('ChatArea', () => {
       />
     );
 
-    expect(screen.getByTestId('header-menu-button')).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-toggle')).toBeInTheDocument();
   });
 
   it('calls onSidebarToggle when hamburger button is clicked', () => {
@@ -186,7 +186,7 @@ describe('ChatArea', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('header-menu-button'));
+    fireEvent.click(screen.getByTestId('sidebar-toggle'));
     expect(onSidebarToggle).toHaveBeenCalled();
   });
 
@@ -194,6 +194,6 @@ describe('ChatArea', () => {
     const conversation = createConversation();
     render(<ChatArea {...defaultProps} conversation={conversation} />);
 
-    expect(screen.queryByTestId('header-menu-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-toggle')).not.toBeInTheDocument();
   });
 });

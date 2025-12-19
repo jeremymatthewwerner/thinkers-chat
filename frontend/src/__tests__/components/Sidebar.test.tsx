@@ -32,6 +32,13 @@ describe('Sidebar', () => {
     expect(screen.getByText('Thinkers Chat')).toBeInTheDocument();
   });
 
+  it('renders Dijkstra avatar before title', () => {
+    render(<Sidebar {...defaultProps} />);
+    const avatar = screen.getByAltText('Dijkstra');
+    expect(avatar).toBeInTheDocument();
+    expect(avatar).toHaveAttribute('src');
+  });
+
   it('renders new chat button', () => {
     render(<Sidebar {...defaultProps} />);
     expect(screen.getByTestId('new-chat-button')).toBeInTheDocument();

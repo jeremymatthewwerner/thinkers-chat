@@ -95,7 +95,7 @@ describe('Home', () => {
       render(<Home />);
     });
     await waitFor(() => {
-      expect(screen.getByText('Welcome to Thinkers Chat')).toBeInTheDocument();
+      expect(screen.getByText('Welcome to Dining Philosophers')).toBeInTheDocument();
     });
   });
 

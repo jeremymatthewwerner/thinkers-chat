@@ -29,7 +29,7 @@ describe('Sidebar', () => {
   it('renders sidebar with title', () => {
     render(<Sidebar {...defaultProps} />);
     expect(screen.getByTestId('sidebar')).toBeInTheDocument();
-    expect(screen.getByText('Thinkers Chat')).toBeInTheDocument();
+    expect(screen.getByText('Dining Philosophers')).toBeInTheDocument();
   });
 
   it('renders Dijkstra avatar after title', () => {
@@ -42,9 +42,9 @@ describe('Sidebar', () => {
     // Get all child nodes to verify order
     const children = Array.from(headerLink?.childNodes || []);
 
-    // First child should be text node containing "Thinkers Chat"
+    // First child should be text node containing "Dining Philosophers"
     const textNode = children.find(
-      (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.includes('Thinkers Chat')
+      (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.includes('Dining Philosophers')
     );
     expect(textNode).toBeTruthy();
 

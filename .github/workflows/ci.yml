@@ -277,9 +277,9 @@ jobs:
 
     steps:
       - name: Wait for deployment to stabilize
-        run: sleep 30
+        run: sleep 60
 
-      - name: Check backend health
+      - name: Check backend health (with retry)
         run: |
           BACKEND_URL="${{ secrets.PRODUCTION_BACKEND_URL }}"
           if [ -z "$BACKEND_URL" ]; then
@@ -287,15 +287,22 @@ jobs:
             exit 0
           fi
           echo "Checking backend health at $BACKEND_URL/health"
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health" || echo "000")
-          if [ "$response" = "200" ]; then
-            echo "Backend health check passed"
-          else
-            echo "Backend health check failed with status: $response"
-            exit 1
-          fi
 
-      - name: Check frontend health
+          # Retry up to 5 times with 10-second intervals
+          for i in 1 2 3 4 5; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health" || echo "000")
+            if [ "$response" = "200" ]; then
+              echo "Backend health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: Backend returned $response, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "Backend health check failed after 5 attempts"
+          exit 1
+
+      - name: Check frontend health (with retry)
         run: |
           FRONTEND_URL="${{ secrets.PRODUCTION_FRONTEND_URL }}"
           if [ -z "$FRONTEND_URL" ]; then
@@ -303,13 +310,20 @@ jobs:
             exit 0
           fi
           echo "Checking frontend at $FRONTEND_URL"
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL" || echo "000")
-          if [ "$response" = "200" ]; then
-            echo "Frontend health check passed"
-          else
-            echo "Frontend health check failed with status: $response"
-            exit 1
-          fi
+
+          # Retry up to 5 times with 10-second intervals
+          for i in 1 2 3 4 5; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL" || echo "000")
+            if [ "$response" = "200" ]; then
+              echo "Frontend health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: Frontend returned $response, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "Frontend health check failed after 5 attempts"
+          exit 1
 
       - name: Test user registration
         id: register

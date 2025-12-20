@@ -77,7 +77,6 @@ export function Sidebar({
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
-                Dining Philosophers
                 <Image
                   src="/icon.png"
                   alt="Dijkstra"
@@ -85,6 +84,7 @@ export function Sidebar({
                   height={32}
                   className="rounded-full"
                 />
+                Dining Philosophers
               </a>
               <button
                 onClick={onToggle}

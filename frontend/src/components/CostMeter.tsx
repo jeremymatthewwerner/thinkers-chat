@@ -62,7 +62,7 @@ export function CostMeter({ totalCost, className = '' }: CostMeterProps) {
       data-testid="cost-meter"
       title="Total cost this session (resets on page reload)"
     >
-      <span className="text-zinc-500 dark:text-zinc-400">Session:</span>
+      <span className="text-zinc-500 dark:text-zinc-400">This Session:</span>
       <span className={`font-mono font-medium ${getCostColor()}`}>
         {formatCost(displayCost)}
       </span>

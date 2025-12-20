@@ -5,7 +5,7 @@ describe('CostMeter', () => {
   it('renders with zero cost', () => {
     render(<CostMeter totalCost={0} />);
     expect(screen.getByTestId('cost-meter')).toBeInTheDocument();
-    expect(screen.getByText('Session:')).toBeInTheDocument();
+    expect(screen.getByText('This Session:')).toBeInTheDocument();
     expect(screen.getByText('$0.0000')).toBeInTheDocument();
   });
 

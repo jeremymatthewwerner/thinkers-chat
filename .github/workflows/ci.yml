@@ -158,7 +158,8 @@ jobs:
 
       - name: Run E2E tests
         working-directory: frontend
-        run: npm run test:e2e
+        # Only run chromium project - WebKit/iOS projects require additional browser install
+        run: npm run test:e2e -- --project=chromium
 
   build-and-push:
     name: Build & Push Docker Images

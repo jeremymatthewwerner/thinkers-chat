@@ -24,11 +24,8 @@ export default function Home() {
     useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionCost, setSessionCost] = useState(0);
-  // Start with sidebar closed on mobile (< 1024px), open on desktop
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window === 'undefined') return true; // SSR default
-    return window.innerWidth >= 1024;
-  });
+  // Sidebar always starts open - it's the main interface for starting conversations
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [spendLimitExceeded, setSpendLimitExceeded] = useState(false);
@@ -91,21 +88,6 @@ export default function Home() {
       router.replace('/login');
     }
   }, [authLoading, isAuthenticated, router]);
-
-  // Handle window resize to adjust sidebar visibility
-  useEffect(() => {
-    const handleResize = () => {
-      const isDesktop = window.innerWidth >= 1024;
-      // On desktop, always show sidebar
-      // On mobile, keep current state (let user control it)
-      if (isDesktop && !sidebarOpen) {
-        setSidebarOpen(true);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [sidebarOpen]);
 
   // Load conversations when authenticated
   useEffect(() => {

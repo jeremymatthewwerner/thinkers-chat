@@ -12,11 +12,17 @@
 import { test, expect } from '@playwright/test';
 import { createConversationViaUI, setupAuthenticatedUser } from './test-utils';
 
-test.describe('iOS Safari - Header Visibility', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
+// These tests are iOS/mobile-specific and should only run on mobile projects
+// Skip when running on desktop chromium project
+test.beforeEach(async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === 'chromium',
+    'Mobile-only test - skipping on desktop chromium'
+  );
+  await setupAuthenticatedUser(page);
+});
 
+test.describe('iOS Safari - Header Visibility', () => {
   test('header visible after chat selection on iPhone 13', async ({ page }) => {
     // Create conversation via UI
     await createConversationViaUI(page, 'iOS header test', 'Socrates');
@@ -139,10 +145,6 @@ test.describe('iOS Safari - Header Visibility', () => {
 });
 
 test.describe('iOS Safari - Sidebar Toggle', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('sidebar opens and closes correctly on iPhone 13', async ({ page }) => {
     await createConversationViaUI(page, 'Sidebar test', 'Confucius');
 
@@ -225,10 +227,6 @@ test.describe('iOS Safari - Sidebar Toggle', () => {
 });
 
 test.describe('iOS Safari - Sticky Positioning', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('sticky header maintains position during scroll on iPhone 13', async ({
     page,
   }) => {
@@ -325,10 +323,6 @@ test.describe('iOS Safari - Sticky Positioning', () => {
 });
 
 test.describe('iOS Safari - Orientation Changes', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('header adapts to portrait to landscape orientation change', async ({
     page,
   }) => {
@@ -397,10 +391,6 @@ test.describe('iOS Safari - Orientation Changes', () => {
 });
 
 test.describe('iOS Safari - iPad Specific Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('header displays correctly on iPad Pro', async ({ page }) => {
     // iPad Pro has larger viewport, may show different layout
     await createConversationViaUI(page, 'iPad test', 'Epictetus');
@@ -446,10 +436,6 @@ test.describe('iOS Safari - iPad Specific Tests', () => {
 });
 
 test.describe('iOS Safari - Touch Interactions', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('touch targets meet iOS 44x44pt minimum on iPhone 13', async ({
     page,
   }) => {
@@ -501,10 +487,6 @@ test.describe('iOS Safari - Touch Interactions', () => {
 });
 
 test.describe('iOS Safari - Viewport and Safe Areas', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('viewport meta tag configured correctly', async ({ page }) => {
     await page.goto('/');
 
@@ -544,10 +526,6 @@ test.describe('iOS Safari - Viewport and Safe Areas', () => {
 });
 
 test.describe('iOS Safari - Screenshot on Failure', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('captures screenshot on test failure (iPhone 13)', async ({
     page,
   }, testInfo) => {
@@ -567,10 +545,6 @@ test.describe('iOS Safari - Screenshot on Failure', () => {
 });
 
 test.describe('iOS Safari - Regression Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAuthenticatedUser(page);
-  });
-
   test('no WebKit transform on header (Issue #215)', async ({ page }) => {
     // Regression test for iOS header visibility bug
     await createConversationViaUI(page, 'Transform regression', 'Nietzsche');

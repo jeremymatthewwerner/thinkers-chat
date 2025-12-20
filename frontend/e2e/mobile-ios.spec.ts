@@ -12,12 +12,14 @@
 import { test, expect } from '@playwright/test';
 import { createConversationViaUI, setupAuthenticatedUser } from './test-utils';
 
-// These tests are iOS/mobile-specific and should only run on mobile projects
-// Skip when running on desktop chromium project
+// These tests require WebKit (iOS Safari) to be meaningful.
+// Skip when running on Chromium-based projects since Safari-specific
+// behaviors (sticky positioning quirks, safe areas, etc.) differ.
+// To run these tests locally: npx playwright install webkit && npx playwright test mobile-ios --project=webkit
 test.beforeEach(async ({ page }, testInfo) => {
   test.skip(
-    testInfo.project.name === 'chromium',
-    'Mobile-only test - skipping on desktop chromium'
+    !testInfo.project.name.includes('webkit') && !testInfo.project.name.includes('safari'),
+    'iOS/Safari-only test - requires WebKit browser'
   );
   await setupAuthenticatedUser(page);
 });

@@ -276,53 +276,53 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch')
 
     steps:
-      - name: Wait for deployment to stabilize
-        run: sleep 60
+      - name: Wait for Railway to start deployment
+        run: sleep 15
 
-      - name: Check backend health (with retry)
+      - name: Check backend health (poll until ready)
         run: |
           BACKEND_URL="${{ secrets.PRODUCTION_BACKEND_URL }}"
           if [ -z "$BACKEND_URL" ]; then
             echo "Warning: PRODUCTION_BACKEND_URL not set, skipping backend check"
             exit 0
           fi
-          echo "Checking backend health at $BACKEND_URL/health"
+          echo "Polling backend health at $BACKEND_URL/health"
 
-          # Retry up to 5 times with 10-second intervals
-          for i in 1 2 3 4 5; do
+          # Poll up to 12 times with 10-second intervals (2 minutes total)
+          for i in $(seq 1 12); do
             response=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health" || echo "000")
             if [ "$response" = "200" ]; then
               echo "Backend health check passed (attempt $i)"
               exit 0
             fi
-            echo "Attempt $i: Backend returned $response, retrying in 10s..."
+            echo "Attempt $i/12: Backend returned $response, retrying in 10s..."
             sleep 10
           done
 
-          echo "Backend health check failed after 5 attempts"
+          echo "Backend health check failed after 12 attempts (2 minutes)"
           exit 1
 
-      - name: Check frontend health (with retry)
+      - name: Check frontend health (poll until ready)
         run: |
           FRONTEND_URL="${{ secrets.PRODUCTION_FRONTEND_URL }}"
           if [ -z "$FRONTEND_URL" ]; then
             echo "Warning: PRODUCTION_FRONTEND_URL not set, skipping frontend check"
             exit 0
           fi
-          echo "Checking frontend at $FRONTEND_URL"
+          echo "Polling frontend at $FRONTEND_URL"
 
-          # Retry up to 5 times with 10-second intervals
-          for i in 1 2 3 4 5; do
+          # Poll up to 12 times with 10-second intervals (2 minutes total)
+          for i in $(seq 1 12); do
             response=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL" || echo "000")
             if [ "$response" = "200" ]; then
               echo "Frontend health check passed (attempt $i)"
               exit 0
             fi
-            echo "Attempt $i: Frontend returned $response, retrying in 10s..."
+            echo "Attempt $i/12: Frontend returned $response, retrying in 10s..."
             sleep 10
           done
 
-          echo "Frontend health check failed after 5 attempts"
+          echo "Frontend health check failed after 12 attempts (2 minutes)"
           exit 1
 
       - name: Test user registration
